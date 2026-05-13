@@ -279,7 +279,7 @@ export default function Home() {
                               type="number" 
                               placeholder="MIN" 
                               value={minPrice}
-                              onChange={e => setMinPrice(e.target.value)}
+                              onChange={e => setMinPrice(e.target.value ? Number(e.target.value) : '')}
                               className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs outline-none focus:border-[#FF3B30]"
                             />
                             <span className="text-white/40">-</span>
@@ -287,7 +287,7 @@ export default function Home() {
                               type="number" 
                               placeholder="MAX" 
                               value={maxPrice}
-                              onChange={e => setMaxPrice(e.target.value)}
+                              onChange={e => setMaxPrice(e.target.value ? Number(e.target.value) : '')}
                               className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs outline-none focus:border-[#FF3B30]"
                             />
                           </div>

@@ -1,55 +1,52 @@
-import { GoogleGenAI } from "@google/genai";
-
-export const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+import axios from "axios";
+import toast from "react-hot-toast";
+import { api } from "./api"; // we can use the existing api axios instance
 
 export async function detectProduct(text: string) {
   try {
-    const isUrl = text.startsWith('http');
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Identify the main product being described or linked: "${text}". 
-      Return ONLY the concise product name with model number if applicable (no extra punctuation). 
-      Example: "iPhone 15 Pro", "Sony WH-1000XM5". ${isUrl ? 'If it is a URL, parse the product name from the slug.' : ''}`,
-    });
-    const result = response.text?.trim().replace(/^"|"$/g, '') || text;
-    return result.split('\n')[0].substring(0, 80);
+    const { data } = await api.post("/gemini/detect", { text });
+    return data.result;
   } catch (error: any) {
-    const errorStr = (error?.message || error).toString();
-    if (!errorStr.includes('429') && !errorStr.includes('RESOURCE_EXHAUSTED')) {
-      console.error("Gemini Detection Error:", errorStr);
-    }
+    const errorStr = (error?.response?.data?.error || error?.message || error).toString();
+    console.error("Gemini Detection Error:", errorStr);
+    toast.error("AI Detection Error: " + errorStr);
     return text.substring(0, 100);
   }
 }
 
 export async function extractProductFeatures(productName: string): Promise<string[]> {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `You are an elite hardware/software analyst. Provide exactly 3 hyper-concise, highly technical features (max 5 words each) for the product: "${productName}". Example format: "A17 Pro Bionic Chip, Titanium Aerospace Frame, 120Hz ProMotion Display". Separate by commas.`,
-    });
-    const text = response.text?.trim() || "";
-    return text.split(',').map(s => s.trim()).filter(Boolean).slice(0, 3);
-  } catch (error) {
+    const { data } = await api.post("/gemini/features", { productName });
+    return data.features;
+  } catch (error: any) {
+    const errorStr = (error?.response?.data?.error || error?.message || error).toString();
+    console.error("Gemini Feature Extraction Error:", errorStr);
+    toast.error("AI Feature Error: " + errorStr);
     return ["Tech Spec Alpha", "Performance Beta", "Design Gamma"];
   }
 }
 
 export async function getShoppingAdvice(query: string, results: any[]) {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `You are BuyWise INDIA Intelligence Assistant, an elite AI with unparalleled, genius-level market intelligence and predictive pricing models.
-      Analyze these market results: ${JSON.stringify(results.slice(0, 5))}.
-      Deliver a cutting-edge, ruthless 3-sentence market synthesis for "${query}". 
-      Identify precise value arbitrage (price vs hardware specs), pinpoint the exact platform yielding maximum ROI, and cite actual Rupee (₹) figures from the data. Expose marketing gimmicks. Be hyper-intelligent, authoritative, and visionary.`,
-    });
-    return response.text?.trim() || "Analyzing macro-economic market vectors...";
+    const { data } = await api.post("/gemini/advice", { query, results });
+    return data.advice;
   } catch (error: any) {
-    const errorStr = (error?.message || error).toString();
-    if (!errorStr.includes('429') && !errorStr.includes('RESOURCE_EXHAUSTED')) {
-      console.error("Gemini Advice Error:", errorStr);
-    }
+    const errorStr = (error?.response?.data?.error || error?.message || error).toString();
+    console.error("Gemini Advice Error:", errorStr);
+    toast.error("AI Advice Error: " + errorStr);
     return "Our intelligence matrix is currently reprocessing global market data. Awaiting uplink.";
   }
 }
+
+export async function predictPriceTrend(productTitle: string, currentPriceStr: string) {
+  try {
+    const { data } = await api.post("/gemini/predict", { productTitle, currentPriceStr });
+    return data.prediction;
+  } catch (error: any) {
+    const errorStr = (error?.response?.data?.error || error?.message || error).toString();
+    console.error("Gemini Prediction Error:", errorStr);
+    // Don't toast here as it's handled gracefully in the radar component
+    return null;
+  }
+}
+
