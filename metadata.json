@@ -1,0 +1,6 @@
+{
+  "name": "BuyWise",
+  "description": "A clean and simple price comparison engine that helps you find the best deals across the global market in real-time.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["AI Product Detection", "3D Visualization", "Price Tracking", "Voice Search"]
+}
