@@ -76,7 +76,7 @@ export default function Home() {
 
            return {
              title: item.title,
-             price: item.price,
+             price: item.price || "N/A",
              thumbnail: item.thumbnail,
              link: item.link || item.product_link,
              source: item.source,
