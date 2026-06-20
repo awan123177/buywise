@@ -4,6 +4,7 @@ import { Search, Loader2, Sparkles, Diamond, ArrowRight, Camera, Mic, Volume2, F
 import { searchProducts } from '../lib/api';
 import { detectProduct, extractProductFeatures } from '../lib/gemini';
 import ProductCard from './ProductCard';
+import ProductSkeleton from './ProductSkeleton';
 import ChatAssistant from './ChatAssistant';
 import Product3DViewer from './Product3DViewer';
 
@@ -232,7 +233,7 @@ export default function Home() {
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"
             >
               {[1, 2, 3, 4].map((idx) => (
-                <ProductCard key={`skeleton-${idx}`} isLoading={true} isBest={idx === 1} />
+                <ProductSkeleton key={`skeleton-${idx}`} isBest={idx === 1} />
               ))}
             </motion.div>
           ) : results.length > 0 ? (

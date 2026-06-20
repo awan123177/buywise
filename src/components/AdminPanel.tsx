@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { 
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
-  Trash2, Plus, TrendingUp, AlertTriangle, Search
+  Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity
 } from 'lucide-react';
 import { fetchAdminStats } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
 export default function AdminPanel() {
@@ -15,6 +15,8 @@ export default function AdminPanel() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [isClearing, setIsClearing] = useState(false);
+  const [trackLogs, setTrackLogs] = useState<any[]>([]);
+  const [wishLogs, setWishLogs] = useState<any[]>([]);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -22,6 +24,25 @@ export default function AdminPanel() {
         setStats(data);
         setLoading(false);
       });
+
+      const qTrack = query(collection(db, "price_tracking"), orderBy("trackedAt", "desc"), limit(20));
+      const unsubTrack = onSnapshot(qTrack, (snap) => {
+         const data: any[] = [];
+         snap.forEach(d => data.push({ id: d.id, type: "TRK", ...d.data() }));
+         setTrackLogs(data);
+      });
+
+      const qWish = query(collection(db, "wishlist"), orderBy("addedAt", "desc"), limit(20));
+      const unsubWish = onSnapshot(qWish, (snap) => {
+         const data: any[] = [];
+         snap.forEach(d => data.push({ id: d.id, type: "WSH", ...d.data() }));
+         setWishLogs(data);
+      });
+
+      return () => {
+        unsubTrack();
+        unsubWish();
+      };
     }
   }, [isAuthorized]);
 
@@ -99,6 +120,12 @@ export default function AdminPanel() {
     { name: 'Sat', value: 900 },
     { name: 'Sun', value: 1100 },
   ];
+
+  const historyLogs = [...trackLogs, ...wishLogs].sort((a, b) => {
+     const tA = new Date(a.trackedAt || a.addedAt).getTime();
+     const tB = new Date(b.trackedAt || b.addedAt).getTime();
+     return tB - tA;
+  }).slice(0, 15);
 
   return (
     <div className="min-h-screen pt-44 px-12 max-w-[1600px] mx-auto pb-24 bg-transparent text-white">
@@ -207,6 +234,53 @@ export default function AdminPanel() {
           </div>
         </div>
       </div>
+
+      {/* Real-time History Feed */}
+      <div className="mt-12 terminal-card p-12 bg-black/40 backdrop-blur-md">
+        <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
+          <div className="flex items-center gap-3">
+             <Activity className="text-[#FF3B30] animate-pulse" size={24} />
+             <h4 className="text-xs font-black text-white/80 tracking-[0.3em] uppercase">LIVE_ACTIVITY_STREAM</h4>
+          </div>
+          <span className="text-[10px] text-green-400 font-black uppercase tracking-widest bg-green-500/20 px-3 py-1 rounded-sm border border-green-500/50">Listening</span>
+        </div>
+        
+        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+           {historyLogs.length === 0 ? (
+             <div className="text-center py-10 text-white/30 text-xs font-black tracking-widest uppercase">No Activity Detected</div>
+           ) : (
+             historyLogs.map((log) => (
+               <motion.div 
+                 key={log.id} 
+                 initial={{ opacity: 0, x: -20 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 className="flex items-center gap-6 p-6 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors"
+               >
+                 <div className={`w-12 h-12 rounded-lg flex items-center justify-center font-black text-[10px] border ${
+                   log.type === "TRK" 
+                     ? "bg-[#FF3B30]/20 border-[#FF3B30]/50 text-[#FF3B30]" 
+                     : "bg-blue-500/20 border-blue-500/50 text-blue-400"
+                 }`}>
+                   {log.type}
+                 </div>
+                 <div className="flex-grow">
+                   <p className="text-sm font-black text-white uppercase tracking-tight line-clamp-1">{log.productTitle}</p>
+                   <div className="flex gap-4 mt-2 text-[9px] uppercase tracking-widest text-white/50 font-bold">
+                     <span>ID: {log.userId.substring(0,6)}...</span>
+                     <span>|</span>
+                     <span>{new Date(log.trackedAt || log.addedAt).toLocaleString()}</span>
+                   </div>
+                 </div>
+                 <div className="hidden md:flex flex-col items-end gap-1">
+                   <span className="text-sm font-black text-white tracking-tighter">{log.currentPrice || "N/A"}</span>
+                   <span className="text-[9px] uppercase tracking-widest text-[#FF3B30] font-black">{log.source}</span>
+                 </div>
+               </motion.div>
+             ))
+           )}
+        </div>
+      </div>
+
     </div>
   );
 }
