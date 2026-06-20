@@ -76,7 +76,7 @@ export default function Home() {
 
            return {
              title: item.title,
-             price: item.price || "N/A",
+             price: item.price,
              thumbnail: item.thumbnail,
              link: item.link || item.product_link,
              source: item.source,
@@ -97,8 +97,8 @@ export default function Home() {
          setSelectedRating(0);
          setSelectedSpecs([]);
       } else {
-         alert("No specific shopping matches found. Try refining the name.");
-       }
+        alert("No specific shopping matches found. Try refining the name.");
+      }
     } catch (error) {
       console.error("Search failed:", error);
       alert("Intelligence uplift failed. Please check network connection.");
@@ -117,23 +117,22 @@ export default function Home() {
 
   const filteredResults = useMemo(() => {
      return results.filter(item => {
-        const safePrice = item.price || "0";
-        const pValue = parseFloat(String(safePrice).replace(/[^0-9.]/g, "")) || 0;
-         if (minPrice !== '' && pValue < Number(minPrice)) return false;
-         if (maxPrice !== '' && pValue > Number(maxPrice)) return false;
-         if (selectedBrands.length > 0 && !selectedBrands.includes(item.brand)) return false;
-         if (selectedRating > 0 && item.rating < selectedRating) return false;
-         
-         if (selectedSpecs.length > 0) {
-             // Check if product features contain all selected specs
-             // Wait, we can do AT LEAST ONE or ALL. Let's do AT LEAST ONE for broader results or ALL for strict. Let's do ALL.
-             const hasSpecs = selectedSpecs.every(spec => 
-                 item.features?.includes(spec) || item.title.toLowerCase().includes(spec.toLowerCase())
-             );
-             if (!hasSpecs) return false;
-         }
-         return true;
-      });
+        const pValue = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+        if (minPrice !== '' && pValue < Number(minPrice)) return false;
+        if (maxPrice !== '' && pValue > Number(maxPrice)) return false;
+        if (selectedBrands.length > 0 && !selectedBrands.includes(item.brand)) return false;
+        if (selectedRating > 0 && item.rating < selectedRating) return false;
+        
+        if (selectedSpecs.length > 0) {
+            // Check if product features contain all selected specs
+            // Wait, we can do AT LEAST ONE or ALL. Let's do AT LEAST ONE for broader results or ALL for strict. Let's do ALL.
+            const hasSpecs = selectedSpecs.every(spec => 
+                item.features?.includes(spec) || item.title.toLowerCase().includes(spec.toLowerCase())
+            );
+            if (!hasSpecs) return false;
+        }
+        return true;
+     });
   }, [results, minPrice, maxPrice, selectedBrands, selectedRating, selectedSpecs]);
 
   return (
@@ -196,7 +195,7 @@ export default function Home() {
             <div className="flex h-16 md:h-24">
               <button 
                 onClick={startVoiceSearch}
-                className={`w-16 md:w-24 flex items-center justify-center border-r border-white/10 transition-all hover:bg-white/10 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/50'}`}
+                className={`w-16 md:w-24 flex items-center justify-center border-r border-white/10 transition-all hover:bg-white/10 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/70'}`}
               >
                 <Mic size={24} className="w-5 h-5 md:w-6 md:h-6" />
               </button>
@@ -304,7 +303,7 @@ export default function Home() {
                               <button
                                 key={brand}
                                 onClick={() => setSelectedBrands(prev => prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand])}
-                                className={`px-2 py-1 text-[10px] font-black tracking-widest rounded border transition-colors ${selectedBrands.includes(brand) ? 'bg-[#FF3B30] border-[#FF3B30] text-white' : 'bg-transparent border-white/20 text-white/70 hover:text-white'}`}
+                                className={`px-2 py-1 text-[10px] font-black tracking-widest rounded border transition-colors ${selectedBrands.includes(brand) ? 'bg-[#FF3B30] border-[#FF3B30] text-white' : 'bg-transparent border-white/20 text-white/70 hover:border-white/50'}`}
                               >
                                 {brand}
                               </button>
@@ -343,7 +342,7 @@ export default function Home() {
                               <button
                                 key={spec}
                                 onClick={() => setSelectedSpecs(prev => prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec])}
-                                className={`flex items-center gap-2 text-[10px] text-left transition-colors uppercase font-bold tracking-wider ${selectedSpecs.includes(spec) ? 'text-[#FF3B30]' : 'text-white/60 hover:text-white'}`}
+                                className={`flex items-center gap-2 text-[10px] text-left transition-colors uppercase font-bold tracking-wider ${selectedSpecs.includes(spec) ? 'text-[#FF3B30]' : 'text-white/70 hover:text-white'}`}
                               >
                                 <div className={`w-3 h-3 flex-shrink-0 border rounded-[2px] flex items-center justify-center ${selectedSpecs.includes(spec) ? 'bg-[#FF3B30] border-[#FF3B30]' : 'border-white/20'}`}>
                                   {selectedSpecs.includes(spec) && <Check size={10} className="text-white" />}
@@ -394,7 +393,7 @@ export default function Home() {
 
       <ChatAssistant results={filteredResults} />
 
-      <footer className="w-full h-auto py-4 md:h-16 md:py-0 border-t border-white/10 px-4 md:px-16 flex flex-col md:flex-row items-center justify-between text-[8px] md:text-[10px] text-white font-black uppercase tracking-[0.2em]">
+      <footer className="w-full h-auto py-4 md:h-16 md:py-0 border-t border-white/10 px-4 md:px-16 flex flex-col md:flex-row items-center justify-between text-[8px] md:text-[10px] text-white font-black uppercase tracking-[0.2em] bg-[#050505] relative z-[100] gap-2 md:gap-0 mt-20">
         <div>&copy; 2024 BUY_WISE_INTEL_HUB.</div>
         <div className="flex flex-wrap justify-center gap-4 md:gap-12 opacity-50 md:opacity-100">
           <span className="flex items-center gap-2 md:gap-3"><div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#FF3B30] animate-pulse"></div> SYSTEM_READY</span>

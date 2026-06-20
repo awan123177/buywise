@@ -1,11 +1,32 @@
-import React, { useRef, Suspense, useState, useMemo } from 'react';
+import React, { useRef, Suspense, useState, useMemo, Component, ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { PerspectiveCamera, OrbitControls, ContactShadows, Environment, PerformanceMonitor, Preload, useTexture, Detailed } from '@react-three/drei';
 import * as THREE from 'three';
 
+class ErrorBoundary extends Component<{ children: ReactNode; fallback: ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
 function TexturedBox({ imageUrl }: { imageUrl: string }) {
   const lodRef = useRef<THREE.LOD>(null!);
-  const texture = useTexture(imageUrl);
+  
+  // Use proxy for external images to avoid CORS issues
+  const proxiedUrl = useMemo(() => {
+    if (!imageUrl || imageUrl.startsWith('data:') || imageUrl.startsWith('/') || imageUrl.includes(window.location.host)) {
+      return imageUrl;
+    }
+    return `/api/proxy-image?url=${encodeURIComponent(imageUrl)}`;
+  }, [imageUrl]);
+
+  const texture = useTexture(proxiedUrl);
   const { gl } = useThree();
 
   useMemo(() => {
@@ -107,7 +128,13 @@ export default function Product3DViewer({ imageUrl }: { imageUrl?: string }) {
         
         {/* Lazy loading the model and textures via Suspense */}
         <Suspense fallback={<WireframeBox />}>
-          {imageUrl ? <TexturedBox imageUrl={imageUrl} /> : <WireframeBox />}
+          {imageUrl ? (
+            <ErrorBoundary fallback={<WireframeBox />}>
+              <TexturedBox imageUrl={imageUrl} />
+            </ErrorBoundary>
+          ) : (
+            <WireframeBox />
+          )}
           
           <ContactShadows position={[0, -3.5, 0]} opacity={0.4} scale={15} blur={3} far={5} />
           {/* Low res HDRI for optimization */}

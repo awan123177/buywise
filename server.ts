@@ -7,18 +7,12 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-console.log("GEMINI_API_KEY IS:", process.env.GEMINI_API_KEY ? "SET" : "UNDEFINED");
-
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
-
-  app.get("/api/debug-key", (req, res) => {
-    res.json({ key_is_set: !!process.env.GEMINI_API_KEY });
-  });
 
   // SERP/Rapid API Search
   app.get("/api/search", async (req, res) => {
@@ -170,86 +164,6 @@ async function startServer() {
       ],
       activeUsers: 342,
     });
-  });
-
-  // --- GEMINI ROUTES ---
-  app.post("/api/gemini/detect", async (req, res) => {
-    const { text } = req.body;
-    try {
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const isUrl = text.startsWith('http');
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `Identify the main product being described or linked: "${text}". 
-        Return ONLY the concise product name with model number if applicable (no extra punctuation). 
-        Example: "iPhone 15 Pro", "Sony WH-1000XM5". ${isUrl ? 'If it is a URL, parse the product name from the slug.' : ''}`,
-      });
-      const result = response.text?.trim().replace(/^"|"$/g, '') || text;
-      res.json({ result: result.split('\n')[0].substring(0, 80) });
-    } catch (e: any) {
-      res.status(500).json({ error: String(e.message || e) });
-    }
-  });
-
-  app.post("/api/gemini/features", async (req, res) => {
-    const { productName } = req.body;
-    try {
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `You are an elite hardware/software analyst. Provide exactly 3 hyper-concise, highly technical features (max 5 words each) for the product: "${productName}". Example format: "A17 Pro Bionic Chip, Titanium Aerospace Frame, 120Hz ProMotion Display". Separate by commas.`,
-      });
-      const text = response.text?.trim() || "";
-      const features = text.split(',').map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
-      res.json({ features });
-    } catch (e: any) {
-      res.status(500).json({ error: String(e.message || e) });
-    }
-  });
-
-  app.post("/api/gemini/advice", async (req, res) => {
-    const { query, results } = req.body;
-    try {
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `You are BuyWise INDIA Intelligence Assistant, an elite AI with unparalleled, genius-level market intelligence and predictive pricing models.
-        Analyze these market results: ${JSON.stringify(results.slice(0, 5))}.
-        Deliver a cutting-edge, ruthless 3-sentence market synthesis for "${query}". 
-        Identify precise value arbitrage (price vs hardware specs), pinpoint the exact platform yielding maximum ROI, and cite actual Rupee (₹) figures from the data. Expose marketing gimmicks. Be hyper-intelligent, authoritative, and visionary.`,
-      });
-      res.json({ advice: response.text?.trim() || "Analyzing macro-economic market vectors..." });
-    } catch (e: any) {
-      res.status(500).json({ error: String(e.message || e) });
-    }
-  });
-
-  app.post("/api/gemini/predict", async (req, res) => {
-    const { productTitle, currentPriceStr } = req.body;
-    try {
-      const { GoogleGenAI } = await import("@google/genai");
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: `You are BuyWise Predictor, an elite AI market analyst.
-        Analyze the price trend for "${productTitle}" currently priced at "${currentPriceStr}".
-        Predict its future price trend and give a 1-sentence explanation.
-        Return EXACTLY IN THIS JSON FORMAT, NO MARKDOWN, JUST RAW JSON:
-        {
-          "trend": "UP" | "DOWN" | "STABLE",
-          "predictedPrice": "₹X,XXX",
-          "explanation": "Short 1-sentence explanation."
-        }`,
-      });
-      const text = response.text?.trim() || "";
-      const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim();
-      res.json({ prediction: JSON.parse(jsonStr) });
-    } catch (e: any) {
-      res.status(500).json({ error: String(e.message || e) });
-    }
   });
 
   // Image proxy to bypass CORS for 3D textures
