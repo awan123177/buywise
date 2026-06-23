@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { ExternalLink, Star, Truck, TrendingDown, Check, Heart } from "lucide-react";
 import Product3DViewer from "./Product3DViewer";
 import { useAuth } from "../contexts/AuthContext";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc } from "../lib/firebase";
 import { db } from "../lib/firebase";
 
 interface ProductCardProps {

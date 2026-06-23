@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
 
 export default function Navbar() {

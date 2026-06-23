@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, Check, QrCode as QrCodeIcon, Upload, IndianRupee } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import toast from 'react-hot-toast';
 import QRCode from 'react-qr-code';

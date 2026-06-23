@@ -1,6 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useGoogleLogin, googleLogout } from '@react-oauth/google';
-import { jwtDecode } from 'jwt-decode';
 
 export interface BuyWiseUser {
   uid: string;
@@ -37,8 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem('google_user');
-      const storedToken = localStorage.getItem('google_access_token');
+      const storedUser = localStorage.getItem('demo_user');
+      const storedToken = localStorage.getItem('demo_access_token');
       if (storedUser) {
          setUser(JSON.parse(storedUser));
       }
@@ -51,46 +49,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-  const login = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        setAccessToken(tokenResponse.access_token);
-        localStorage.setItem('google_access_token', tokenResponse.access_token);
-        
-        // Fetch user profile info
-        const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
-        });
-        
-        const data = await res.json();
-        
-        const loggedUser: BuyWiseUser = {
-           uid: data.sub,
-           email: data.email,
-           displayName: data.name,
-           photoURL: data.picture,
-           isPremium: false,
-        };
-        
-        setUser(loggedUser);
-        localStorage.setItem('google_user', JSON.stringify(loggedUser));
-      } catch (e) {
-        console.error("Failed to fetch Google profile:", e);
-      }
-    },
-    onError: error => console.error('Login Failed:', error)
-  });
-
   const signInWithGoogle = () => {
-     login();
+    const demoUser: BuyWiseUser = {
+       uid: 'demo_user_123',
+       email: 'demo@buywise.app',
+       displayName: 'Demo User',
+       photoURL: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
+       isPremium: true,
+    };
+    const token = 'fake_demo_token_xyz';
+    
+    setUser(demoUser);
+    setAccessToken(token);
+    localStorage.setItem('demo_user', JSON.stringify(demoUser));
+    localStorage.setItem('demo_access_token', token);
   };
 
   const logout = () => {
-    googleLogout();
     setUser(null);
     setAccessToken(null);
-    localStorage.removeItem('google_user');
-    localStorage.removeItem('google_access_token');
+    localStorage.removeItem('demo_user');
+    localStorage.removeItem('demo_access_token');
   };
 
   return (

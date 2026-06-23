@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { fetchAdminStats } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot, updateDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import toast from 'react-hot-toast';
 

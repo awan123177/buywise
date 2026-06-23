@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
 import AdminPanel from './components/AdminPanel';
@@ -12,11 +11,8 @@ import ThreeBackground from './components/ThreeBackground';
 import SupportChat from './components/SupportChat';
 import { AuthProvider } from './contexts/AuthContext';
 
-const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-
 export default function App() {
   return (
-    <GoogleOAuthProvider clientId={clientId}>
       <Router>
         <AuthProvider>
           <div className="min-h-screen bg-[#050505] text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-white">
@@ -52,6 +48,5 @@ export default function App() {
           </div>
         </AuthProvider>
       </Router>
-    </GoogleOAuthProvider>
   );
 }
