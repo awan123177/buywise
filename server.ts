@@ -4,15 +4,193 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import dotenv from "dotenv";
+import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
 
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
+  httpOptions: {
+    headers: {
+      'User-Agent': 'aistudio-build',
+    }
+  }
+});
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Gemini AI Proxies (Secure Server-Side Implementation)
+  app.post("/api/gemini/detect", async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text) return res.status(400).json({ error: "Missing text parameter" });
+      const isUrl = text.startsWith('http');
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: `Identify the main product being described or linked: "${text}". 
+        Return ONLY the concise product name with model number if applicable (no extra punctuation). 
+        Example: "iPhone 15 Pro", "Sony WH-1000XM5". ${isUrl ? 'If it is a URL, parse the product name from the slug.' : ''}`,
+      });
+      const result = response.text?.trim().replace(/^"|"$/g, '') || text;
+      res.json({ result: result.split('\n')[0].substring(0, 80) });
+    } catch (e: any) {
+      console.error("Gemini Detect Error:", e.message);
+      res.status(500).json({ error: e.message || "Failed to detect product" });
+    }
+  });
+
+  app.post("/api/gemini/extract-features", async (req, res) => {
+    try {
+      const { productName } = req.body;
+      if (!productName) return res.status(400).json({ error: "Missing productName parameter" });
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        config: {
+          systemInstruction: "You are an elite hardware/software analyst."
+        },
+        contents: `Provide exactly 3 hyper-concise, highly technical features (max 5 words each) for the product: "${productName}". Example format: "A17 Pro Bionic Chip, Titanium Aerospace Frame, 120Hz ProMotion Display". Separate by commas.`,
+      });
+      const text = response.text?.trim() || "";
+      const features = text.split(',').map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
+      res.json({ features });
+    } catch (e: any) {
+      console.error("Gemini Extract Features Error:", e.message);
+      res.status(500).json({ error: e.message || "Failed to extract features" });
+    }
+  });
+
+  app.post("/api/gemini/shopping-advice", async (req, res) => {
+    try {
+      const { query, results } = req.body;
+      const systemInstruction = `You are "BuyWise INDIA Intelligence Assistant", an elite AI with unparalleled, genius-level market intelligence and predictive pricing models.
+     
+Your core identity is to guide users to the best purchasing decisions using the BuyWise App features. You know everything about the BuyWise platform:
+1. ABOUT THE BUYWISE APP:
+   - It is a comprehensive AI-powered Shopping and Travel Super App.
+   - Primary features: AI Product Search & Real-time Comparison, Interactive 3D Product Viewer (which renders real-time 3D textures/meshes for physical assessment), Price Radar & Trend Tracking, Google Flights Integration & Travel Route Builder, and real-time Premium user sync.
+   - Created by: mohammdsaeed24 (with lead developer awanwarsi).
+
+2. SUBSCRIPTION & PRICING PLANS:
+   - We offer three premium tiers:
+     - Weekly Pass: ₹30 (Provides Unlimited AI Insights, Price Drop Alerts, & Flight/Train scans)
+     - Monthly Elite: ₹100 (Adds a Premium Badge, Ad-free Experience, & Priority Support)
+     - Forever Founder (Lifetime): ₹700 (Includes all features, Early Access, Lifetime Support)
+   - Users pay by scanning the QR code, entering the UTR transaction number, and submitting a premium request. Admin (mohammdsaeed24) approves requests from the Admin Panel. Once approved, the status is updated instantly in real-time. Admin can also revoke premium access if needed.
+
+3. POWERFUL SECTIONS WITHIN THE APP:
+   - PRODUCT SEARCH & COMPARE (Home): Searches Amazon, Flipkart, Croma, and Reliance Digital. It also uses Google Shopping (SerpApi) or falls back to mock intelligence. It displays rating, discount badge, delivery ETA, source, and a custom 3D viewer button.
+   - 3D VIEW (Interactive Viewer): Let users inspect high-fidelity 3D renderings of products to check specifications.
+   - PRICE RADAR (Wishlist): Allows tracking of prices with alerts and AI price-trend predictions.
+   - TRAVEL ROUTE BUILDER: Under "/travel", users can search real-time flight routes, find prices in INR, check duration, and plan itineraries. It also has Google Flights autocomplete.
+   - ADMIN PANEL: Under "/admin", accessible by email "mohammdsaeed24@gmail.com". Has real-time stats and allows managing premium requests.
+
+Always respond professionally with genius-level insight. If analyzing product search results, deliver a cutting-edge, ruthless market synthesis for the user query. Identify precise value arbitrage (price vs hardware specs), pinpoint the exact platform yielding maximum ROI, and cite actual Rupee (₹) figures from the data. Expose marketing gimmicks. Be hyper-intelligent, authoritative, and visionary. Include details about BuyWise app features and plans whenever appropriate.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        config: {
+          systemInstruction: systemInstruction,
+        },
+        contents: `User Query: "${query}"\n\nMarket Search Results Data: ${JSON.stringify(results?.slice(0, 5) || [])}`,
+      });
+      res.json({ advice: response.text?.trim() || "Analyzing macro-economic market vectors..." });
+    } catch (e: any) {
+      console.error("Gemini Shopping Advice Error:", e.message);
+      res.status(500).json({ error: e.message || "Failed to generate shopping advice" });
+    }
+  });
+
+  app.post("/api/gemini/predict-trend", async (req, res) => {
+    try {
+      const { productTitle, currentPriceStr } = req.body;
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        config: {
+          systemInstruction: "You are BuyWise Predictor, an elite AI market analyst."
+        },
+        contents: `Analyze the price trend for "${productTitle}" currently priced at "${currentPriceStr}".
+        Predict its future price trend and give a 1-sentence explanation.
+        Return EXACTLY IN THIS JSON FORMAT, NO MARKDOWN, JUST RAW JSON:
+        {
+          "trend": "UP" | "DOWN" | "STABLE",
+          "predictedPrice": "₹X,XXX",
+          "explanation": "Short 1-sentence explanation."
+        }`,
+      });
+      const text = response.text?.trim() || "";
+      const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim();
+      res.json(JSON.parse(jsonStr));
+    } catch (e: any) {
+      console.error("Gemini Predict Trend Error:", e.message);
+      res.status(500).json({ error: e.message || "Failed to predict price trend" });
+    }
+  });
+
+  app.post("/api/support/chat", async (req, res) => {
+    try {
+      const { messages, userEmail } = req.body;
+      if (!messages || !Array.isArray(messages)) {
+        return res.status(400).json({ error: "Missing messages array" });
+      }
+
+      const systemInstruction = `You are "BuyWise Support Intelligence", the official virtual assistant for BuyWise, a futuristic shopping engine and travel super app designed for smart consumers in India and globally.
+
+YOUR VITAL INFO & APP SPECS:
+1. WHAT IS BUYWISE?
+   - BuyWise is a high-tech shopping, tracking, and travel booking companion. It combines AI product search, price forecasting, interactive 3D product examination, and Google Flights integration into a single beautiful portal.
+   - Built by the visionary creator & administrator mohammdsaeed24 (mohammdsaeed24@gmail.com) and lead engineer awanwarsi (awanwarsi790@gmail.com).
+
+2. KEY MODULES & FEATURES:
+   - PRODUCT EXPLORER (Home): Instantly searches Amazon, Flipkart, Croma, and Reliance Digital. Provides smart pricing, discount comparisons, fast delivery ETAs, and detailed product specifications.
+   - INTERACTIVE 3D VIEWER: Accessible from compared search items. Users inspect high-fidelity, interactive 3D product structures and aesthetics to judge physical build quality.
+   - PRICE RADAR (Wishlist): Tracks item prices, provides smart drop alerts, and uses advanced Gemini AI predictive models to forecast whether prices will go UP, DOWN, or remain STABLE.
+   - TRAVEL ROUTE FINDER (/travel): Under the Travel tab, users construct optimal flight paths in Indian Rupees (₹), analyze travel durations, search autocomplete routes with Google Flights, and build beautiful travel itineraries.
+   - ADMIN PANEL (/admin): Run by mohammdsaeed24@gmail.com. Enables instant real-time oversight of premium status requests, stats telemetry, and subscription control (approving or revoking premium access in real-time).
+
+3. PREMIUM TIERS & PAYMENT PROCESS:
+   - Weekly Pass: ₹30 (Unlimited AI shopping insights, price-drop alerts, flight scans).
+   - Monthly Elite: ₹100 (No Ads, Premium Profile Badge, Priority Support).
+   - Forever Founder: ₹700 (Lifetime access, all current & beta features, direct developer access).
+   - PAYMENT WORKFLOW: Go to the "Premium" tab, pick a plan, scan the custom UPI QR Code, enter your payment's Unique Transaction Reference (UTR) number, and submit.
+   - APPROVAL SCHEDULE: Approved manually by admin mohammdsaeed24. Approval takes only 5 to 10 minutes on Saturdays and Sundays, and between 9 AM to 3 PM on Monday to Friday. Once approved, the database updates in real-time instantly.
+
+4. USER CORRESPONDENCE & ESCALATION:
+   - If a user asks to contact human support, or wants direct human help with their payment approval/refund, let them know that:
+     - Creator/Admin is mohammdsaeed24 (mohammdsaeed24@gmail.com)
+     - Lead Developer is awanwarsi (awanwarsi790@gmail.com / WhatsApp: +91 77604 49306)
+     - Say: "Let me open the Live Support Channels for you!" or mention they can click the direct links to email/WhatsApp.
+
+REPLY STYLE:
+- Be extremely polite, high-tech, and intelligent. Keep your responses crisp, scannable, and extremely helpful.
+- Reference actual rupees (₹) when explaining plans.
+- Give exact, direct answers to what the user asks.
+
+Current user's email: ${userEmail || "anonymous / guest"}`;
+
+      // Convert history to Gemini API format
+      const contents = messages.map((m: any) => ({
+        role: m.sender === 'user' ? 'user' : 'model',
+        parts: [{ text: m.text }]
+      }));
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.5-flash",
+        config: {
+          systemInstruction: systemInstruction,
+        },
+        contents: contents,
+      });
+
+      res.json({ text: response.text?.trim() || "I am connected to the BuyWise brain. How can I guide your journey today?" });
+    } catch (e: any) {
+      console.error("Support Chat Error:", e.message);
+      res.status(500).json({ error: e.message || "Failed to process support chat" });
+    }
+  });
 
   // SERP/Rapid API Search
   app.get("/api/search", async (req, res) => {
