@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
            .eq('userId', sessionUser.id)
            .eq('status', 'approved');
          
-         let hasPremium = (sessionUser.email === 'awanwarsi790@gmail.com' || sessionUser.email === 'mohammdsaeed24@gmail.com');
+         let hasPremium = false;
          if (data && data.length > 0) {
            hasPremium = true;
          }
@@ -71,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        checkPremium();
        
        if (unsubPremium) supabase.removeChannel(unsubPremium);
-       unsubPremium = supabase.channel(`premium_updates_${sessionUser.id}`)
+       unsubPremium = supabase.channel(`premium_updates_${sessionUser.id}_${Date.now()}`)
          .on('postgres_changes', { event: '*', schema: 'public', table: 'premium_requests', filter: `userId=eq.${sessionUser.id}` }, () => {
             checkPremium();
          })

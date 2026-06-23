@@ -49,7 +49,7 @@ export default function AdminPanel() {
       };
       fetchPremium();
 
-      const premiumSub = supabase.channel('premium_reqs')
+      const premiumSub = supabase.channel(`premium_reqs_${Date.now()}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'premium_requests' }, () => {
            fetchPremium();
         })
@@ -393,11 +393,7 @@ export default function AdminPanel() {
                  </div>
                  <div className="flex gap-2">
                    <button 
-                     onClick={() => {
-                        if (window.confirm('Are you sure you want to revoke this premium subscription?')) {
-                           handlePremiumStatus(req.id, 'revoked');
-                        }
-                     }}
+                     onClick={() => handlePremiumStatus(req.id, 'revoked')}
                      className="px-4 py-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50 text-[10px] font-black uppercase tracking-widest z-20"
                    >
                      REVOKE
