@@ -1,6 +1,6 @@
 {
   "name": "BuyWise",
-  "description": "A clean and simple price comparison engine that helps you find the best deals across the global market in real-time.",
+  "description": "Comprehensive AI-powered Shopping and Travel Super App with price tracking, deal finder, trip route builder, and real-time offline-first premium intelligence.",
   "requestFramePermissions": ["camera", "microphone"],
   "majorCapabilities": ["AI Product Detection", "3D Visualization", "Price Tracking", "Voice Search"]
 }

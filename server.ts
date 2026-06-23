@@ -153,6 +153,57 @@ async function startServer() {
     }
   });
 
+  app.get("/api/airports", async (req, res) => {
+    const { q } = req.query;
+    if (!q) return res.json([]);
+    const serpApiKey = process.env.SERP_API_KEY || "542dce7198130662e8dd49b345591dec556b37394cc9a0e3dd0010d5f1354075";
+
+    try {
+      const params = {
+        engine: "google_flights_autocomplete",
+        q,
+        api_key: serpApiKey,
+        hl: "en",
+        gl: "us"
+      };
+      const serpResponse = await axios.get("https://serpapi.com/search", { params });
+      return res.json(serpResponse.data.suggestions || []);
+    } catch (e: any) {
+      console.error("Autocomplete API Error:", e.response?.data || e.message);
+      res.status(500).json({ error: "Failed to fetch autocomplete" });
+    }
+  });
+
+  app.get("/api/flights", async (req, res) => {
+    const { departure_id, arrival_id, outbound_date, return_date, type, adults } = req.query;
+    const serpApiKey = process.env.SERP_API_KEY || "542dce7198130662e8dd49b345591dec556b37394cc9a0e3dd0010d5f1354075";
+
+    try {
+      const params: any = {
+        engine: "google_flights",
+        departure_id: departure_id || "BOM",
+        arrival_id: arrival_id || "DEL",
+        outbound_date: outbound_date,
+        type: type || "2", // default to one-way
+        adults: adults || "1",
+        api_key: serpApiKey,
+        hl: "en",
+        gl: "in",
+        currency: "INR"
+      };
+
+      if (return_date && type === "1") {
+        params.return_date = return_date;
+      }
+
+      const serpResponse = await axios.get("https://serpapi.com/search", { params });
+      return res.json(serpResponse.data);
+    } catch (e: any) {
+      console.error("Flight API Error:", e.response?.data || e.message);
+      res.status(500).json({ error: "Failed to fetch flights" });
+    }
+  });
+
   // Admin Dashboard Mock Data
   app.get("/api/admin/stats", (req, res) => {
     res.json({

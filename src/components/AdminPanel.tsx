@@ -1,22 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
-  Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity
+  Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X
 } from 'lucide-react';
 import { fetchAdminStats } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
+import toast from 'react-hot-toast';
 
 export default function AdminPanel() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  const [email, setEmail] = useState('');
   const [passcode, setPasscode] = useState('');
   const [isClearing, setIsClearing] = useState(false);
   const [trackLogs, setTrackLogs] = useState<any[]>([]);
   const [wishLogs, setWishLogs] = useState<any[]>([]);
+  const [premiumRequests, setPremiumRequests] = useState<any[]>([]);
 
   useEffect(() => {
     if (isAuthorized) {
@@ -38,17 +41,25 @@ export default function AdminPanel() {
          snap.forEach(d => data.push({ id: d.id, type: "WSH", ...d.data() }));
          setWishLogs(data);
       });
+      
+      const qPremium = query(collection(db, "premium_requests"), orderBy("timestamp", "desc"));
+      const unsubPremium = onSnapshot(qPremium, (snap) => {
+         const data: any[] = [];
+         snap.forEach(d => data.push({ id: d.id, ...d.data() }));
+         setPremiumRequests(data);
+      });
 
       return () => {
         unsubTrack();
         unsubWish();
+        unsubPremium();
       };
     }
   }, [isAuthorized]);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    if (passcode === '2026') { 
+    if (email === 'mohammdsaeed24@gmail.com' && passcode === 'awanwarsi') { 
       setIsAuthorized(true);
     } else {
       alert('INVALID ACCESS CREDENTIALS');
@@ -76,6 +87,15 @@ export default function AdminPanel() {
       setIsClearing(false);
     }
   };
+  
+  const handlePremiumStatus = async (id: string, status: 'approved' | 'rejected') => {
+     try {
+         await updateDoc(doc(db, "premium_requests", id), { status });
+         toast.success(`Request ${status}`);
+     } catch (e) {
+         toast.error(`Error updating request`);
+     }
+  };
 
   if (!isAuthorized) {
     return (
@@ -92,6 +112,13 @@ export default function AdminPanel() {
           <p className="text-white/40 text-[10px] tracking-[0.4em] uppercase font-black mb-12">Executive Credentials Required</p>
           
           <form onSubmit={handleAuth} className="space-y-4">
+            <input 
+              type="email" 
+              placeholder="EMAIL_"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 text-center text-white font-black tracking-[0.2em] focus:bg-white/10 outline-none transition-all uppercase placeholder:text-white/20"
+            />
             <input 
               type="password" 
               placeholder="PASSCODE_"
@@ -276,6 +303,57 @@ export default function AdminPanel() {
                    <span className="text-[9px] uppercase tracking-widest text-[#FF3B30] font-black">{log.source}</span>
                  </div>
                </motion.div>
+             ))
+           )}
+        </div>
+      </div>
+
+      {/* Premium Requests Queue */}
+      <div className="mt-12 terminal-card p-12 bg-black/40 backdrop-blur-md mb-20">
+        <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
+          <div className="flex items-center gap-3">
+             <ShieldCheck className="text-yellow-500" size={24} />
+             <h4 className="text-xs font-black text-white/80 tracking-[0.3em] uppercase">PENDING_PREMIUM_APPROVALS</h4>
+          </div>
+          <span className="text-[10px] text-yellow-500 font-black uppercase tracking-widest bg-yellow-500/20 px-3 py-1 rounded-sm border border-yellow-500/50">{premiumRequests.filter(r => r.status === 'pending').length} Action Required</span>
+        </div>
+        
+        <div className="space-y-4">
+           {premiumRequests.length === 0 ? (
+             <div className="text-center py-10 text-white/30 text-xs font-black tracking-widest uppercase">No Requests Pending</div>
+           ) : (
+             premiumRequests.map((req) => (
+               <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-white/5 border border-white/10 rounded-xl relative overflow-hidden">
+                 {req.status !== 'pending' && (
+                    <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center backdrop-blur-sm">
+                      <span className={`text-xl font-black uppercase tracking-[0.2em] px-4 py-2 border-2 ${req.status === 'approved' ? 'text-green-500 border-green-500' : 'text-red-500 border-red-500'} rotate-[-5deg] opacity-70`}>{req.status}</span>
+                    </div>
+                 )}
+                 <div>
+                   <p className="text-sm font-black uppercase tracking-tight">{req.name} <span className="text-[#FF3B30] ml-2">({req.plan})</span></p>
+                   <div className="flex gap-4 mt-2 text-[9px] uppercase tracking-widest text-white/50 font-bold">
+                     <span>UTR: {req.utr}</span>
+                     <span>|</span>
+                     <span>{req.userEmail}</span>
+                   </div>
+                 </div>
+                 <div className="flex gap-2">
+                   <button 
+                     onClick={() => handlePremiumStatus(req.id, 'approved')}
+                     disabled={req.status !== 'pending'}
+                     className="p-3 bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-colors border border-green-500/50"
+                   >
+                     <Check size={20} />
+                   </button>
+                   <button 
+                     onClick={() => handlePremiumStatus(req.id, 'rejected')}
+                     disabled={req.status !== 'pending'}
+                     className="p-3 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50"
+                   >
+                     <X size={20} />
+                   </button>
+                 </div>
+               </div>
              ))
            )}
         </div>

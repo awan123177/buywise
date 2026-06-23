@@ -1,10 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Send, X, Bot, Sparkles } from 'lucide-react';
+import { MessageSquare, Send, X, Bot, Sparkles, ShieldCheck } from 'lucide-react';
 import { getShoppingAdvice } from '../lib/gemini';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import ReactMarkdown from 'react-markdown';
 
 export default function ChatAssistant({ results }: { results: any[] }) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([
     { role: 'ai', text: 'Market node active. How may I assist your sourcing today?' },
@@ -22,6 +26,11 @@ export default function ChatAssistant({ results }: { results: any[] }) {
   const handleSend = async () => {
     if (!input.trim()) return;
     
+    if (!user?.isPremium) {
+       navigate('/premium');
+       return;
+    }
+
     const userMsg = input;
     setInput('');
     setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
@@ -39,7 +48,6 @@ export default function ChatAssistant({ results }: { results: any[] }) {
 
   return (
     <>
-      {/* Trigger */}
       <motion.button
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -50,16 +58,14 @@ export default function ChatAssistant({ results }: { results: any[] }) {
         <Bot size={28} className="relative z-10 group-hover:scale-110 transition-transform" />
       </motion.button>
 
-      {/* Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-32 right-24 w-[450px] max-w-[calc(100vw-8rem)] h-[700px] max-h-[calc(100vh-12rem)] bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col z-50 overflow-hidden"
+            className="fixed bottom-32 right-24 w-[450px] max-w-[calc(100vw-8rem)] h-[700px] max-h-[calc(100vh-12rem)] bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col z-50 overflow-hidden shadow-2xl"
           >
-            {/* Header */}
             <div className="p-8 bg-white/5 text-white flex items-center justify-between border-b border-white/10">
               <div className="flex items-center gap-2">
                 <Sparkles size={18} className="text-[#cc0000]" />
@@ -70,8 +76,17 @@ export default function ChatAssistant({ results }: { results: any[] }) {
               </button>
             </div>
 
-            {/* Messages */}
-            <div ref={scrollRef} className="flex-grow overflow-y-auto p-8 space-y-6 bg-transparent">
+            <div ref={scrollRef} className="flex-grow overflow-y-auto p-8 space-y-6 bg-transparent relative">
+              {!user?.isPremium && (
+                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 p-8 text-center text-white flex flex-col items-center gap-4 bg-black/80 backdrop-blur m-4 border border-white/10 rounded-2xl z-20">
+                  <ShieldCheck size={48} className="text-[#FF3B30]" />
+                  <h3 className="font-black uppercase tracking-tighter text-xl">Premium Node Required</h3>
+                  <p className="text-xs tracking-widest text-white/50 uppercase">Upgrade to unlock cognitive assistance</p>
+                  <button onClick={() => navigate('/premium')} className="mt-4 bg-[#FF3B30] text-white px-8 py-3 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-red-600 transition-colors">
+                    Access Premium
+                  </button>
+                </div>
+              )}
               {messages.map((msg, i) => (
                 <motion.div
                   key={i}
@@ -97,20 +112,22 @@ export default function ChatAssistant({ results }: { results: any[] }) {
               )}
             </div>
 
-            {/* Input */}
             <div className="p-6 bg-white/5 border-t border-white/10">
-              <div className="flex gap-3">
+              <div className="flex gap-3 relative">
+                {!user?.isPremium && <div className="absolute inset-0 bg-transparent z-10" onClick={() => navigate('/premium')} />}
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                  placeholder="QUERY_SYSTEM_"
-                  className="flex-grow bg-white/5 border border-white/10 rounded-xl px-6 py-4 text-white text-sm font-black focus:outline-none focus:bg-white/10 placeholder:text-white/30 uppercase tracking-tighter"
+                  placeholder={user?.isPremium ? "QUERY_SYSTEM_" : "LOCKED_"}
+                  disabled={!user?.isPremium}
+                  className="flex-grow bg-white/5 border border-white/10 rounded-xl px-6 py-4 text-white text-sm font-black focus:outline-none focus:bg-white/10 placeholder:text-white/30 uppercase tracking-tighter disabled:opacity-50"
                 />
                 <button
                   onClick={handleSend}
-                  className="bg-white/10 text-white p-4 rounded-xl border border-white/10 transition-all hover:bg-[#cc0000] hover:text-white active:scale-95 flex items-center justify-center"
+                  disabled={!user?.isPremium}
+                  className="bg-white/10 text-white p-4 rounded-xl border border-white/10 transition-all hover:bg-[#cc0000] hover:text-white active:scale-95 flex items-center justify-center disabled:opacity-50"
                 >
                   <Send size={24} />
                 </button>

@@ -16,5 +16,9 @@ service cloud.firestore {
     match /presence/{sessionId} {
       allow read, write: if true;
     }
+
+    match /premium_requests/{requestId} {
+      allow read, write: if true;
+    }
   }
 }
