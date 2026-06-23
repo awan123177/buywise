@@ -326,22 +326,6 @@ export default function Radar() {
     };
   }, [user]);
 
-  if (!user) {
-    return (
-      <div className="min-h-screen pt-44 flex items-center justify-center px-4">
-        <div className="terminal-card p-12 text-center max-w-md">
-          <h2 className="text-2xl font-black uppercase tracking-tighter mb-4 text-[#FF3B30]">ACCESS_DENIED</h2>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#f5f5f5]/60 mb-6">AUTOMATED_DEFENSE_SYSTEM_ENGAGED</p>
-          <div className="bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-lg p-4 text-xs font-mono text-[#FF3B30]">
-            {"// ERROR: UNAUTHORIZED_USER_DETECTED"}
-            <br />
-            {"// ACTION: PLEASE_AUTHENTICATE_TO_ACCESS_RADAR"}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen pt-24 md:pt-36 px-4 md:px-8 max-w-7xl mx-auto pb-24">
       <div className="mb-12">
