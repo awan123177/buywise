@@ -28,7 +28,7 @@ export default function ProductCard({
   isBest,
   isLoading,
 }: ProductCardProps) {
-  const { user, signInWithGoogle } = useAuth();
+  const { user, openLogin } = useAuth();
   const [isTracked, setIsTracked] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -41,7 +41,7 @@ export default function ProductCard({
   const handleTrackPrice = async () => {
     if (!product) return;
     if (!user) {
-      await signInWithGoogle();
+      openLogin();
       return;
     }
     
@@ -66,7 +66,7 @@ export default function ProductCard({
   const handleWishlist = async () => {
     if (!product) return;
     if (!user) {
-      await signInWithGoogle();
+      openLogin();
       return;
     }
     

@@ -8,7 +8,7 @@ import { db } from '../lib/firebase';
 
 export default function Navbar() {
   const location = useLocation();
-  const { user, signInWithGoogle, logout } = useAuth();
+  const { user, openLogin, logout } = useAuth();
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -119,7 +119,7 @@ export default function Navbar() {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={signInWithGoogle}
+              onClick={openLogin}
               className="h-10 md:h-12 px-4 md:px-6 border border-white/10 rounded-lg group overflow-hidden bg-white/5 cursor-pointer flex items-center gap-2 md:gap-3 transition-colors hover:bg-white hover:text-black hover:border-white"
             >
               <User size={16} className="text-[#f5f5f5] group-hover:text-black transition-colors" />

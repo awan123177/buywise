@@ -9,6 +9,7 @@ import Travel from './components/Travel';
 import Premium from './components/Premium';
 import ThreeBackground from './components/ThreeBackground';
 import SupportChat from './components/SupportChat';
+import LoginModal from './components/LoginModal';
 import { AuthProvider } from './contexts/AuthContext';
 
 export default function App() {
@@ -18,6 +19,7 @@ export default function App() {
           <div className="min-h-screen bg-[#050505] text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-white">
             <ThreeBackground />
             <Navbar />
+            <LoginModal />
             <Toaster 
               position="bottom-right"
               toastOptions={{
