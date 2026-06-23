@@ -326,6 +326,37 @@ export default function Radar() {
     };
   }, [user]);
 
+  if (!user) {
+    return (
+      <div className="min-h-screen pt-24 md:pt-36 px-4 md:px-8 max-w-7xl mx-auto pb-24 flex items-center justify-center">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full max-w-2xl bg-[#0a0a0a] border border-white/5 rounded-2xl p-12 text-center"
+        >
+          <h1 className="text-5xl font-black text-[#FF3B30] tracking-tighter mb-6 uppercase drop-shadow-[0_0_15px_rgba(255,59,48,0.5)]">
+            ACCESS_DENIED
+          </h1>
+          <p className="text-[#f5f5f5]/60 text-xs font-black uppercase tracking-[0.3em] mb-12">
+            AUTOMATED_DEFENSE_SYSTEM_ENGAGED
+          </p>
+
+          <div className="mx-auto max-w-md bg-[#FF3B30]/5 border border-[#FF3B30]/10 rounded-lg p-6 text-left">
+            <p className="text-[#FF3B30] font-mono text-sm mb-2">
+              <span className="opacity-50">//</span> ERROR: UNAUTHORIZED_USER_DETECTED
+            </p>
+            <p className="text-[#FF3B30] font-mono text-sm mb-2">
+              <span className="opacity-50">//</span> ACTION:
+            </p>
+            <p className="text-[#FF3B30] font-mono text-sm ml-6">
+              PLEASE_AUTHENTICATE_TO_ACCESS_RADAR
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen pt-24 md:pt-36 px-4 md:px-8 max-w-7xl mx-auto pb-24">
       <div className="mb-12">

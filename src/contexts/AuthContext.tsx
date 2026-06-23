@@ -34,9 +34,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       if (firebaseUser) {
-        setUser(firebaseUser);
+        setUser(firebaseUser as BuyWiseUser);
         
-        // Listen for premium status from premium_requests
         const reqRef = doc(db, 'premium_requests', firebaseUser.uid);
         unsubPremium = onSnapshot(reqRef, (docSnap) => {
            if (docSnap.exists()) {
@@ -88,3 +87,4 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+
