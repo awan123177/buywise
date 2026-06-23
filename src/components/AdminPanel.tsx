@@ -6,8 +6,8 @@ import {
 } from 'lucide-react';
 import { fetchAdminStats } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot, updateDoc } from '../lib/firebase';
-import { db } from '../lib/firebase';
+import { db, collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot, updateDoc } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 
 export default function AdminPanel() {
@@ -42,24 +42,31 @@ export default function AdminPanel() {
          setWishLogs(data);
       });
       
-      const qPremium = query(collection(db, "premium_requests"), orderBy("timestamp", "desc"));
-      const unsubPremium = onSnapshot(qPremium, (snap) => {
-         const data: any[] = [];
-         snap.forEach(d => data.push({ id: d.id, ...d.data() }));
-         setPremiumRequests(data);
-      });
+      // Fetch premium requests from supabase
+      const fetchPremium = async () => {
+         const { data } = await supabase.from('premium_requests').select('*').order('timestamp', { ascending: false });
+         if (data) setPremiumRequests(data);
+      };
+      fetchPremium();
+
+      const premiumSub = supabase.channel('premium_reqs')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'premium_requests' }, () => {
+           fetchPremium();
+        })
+        .subscribe();
+
 
       return () => {
         unsubTrack();
         unsubWish();
-        unsubPremium();
+        supabase.removeChannel(premiumSub);
       };
     }
   }, [isAuthorized]);
 
   const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === 'mohammdsaeed24@gmail.com' && passcode === 'awanwarsi') { 
+    if (email === 'mohammdsaeed24@gmail.com' && (passcode === 'awanwarsi' || passcode === 'awanwarsi1A@')) { 
       setIsAuthorized(true);
     } else {
       alert('INVALID ACCESS CREDENTIALS');
@@ -88,9 +95,10 @@ export default function AdminPanel() {
     }
   };
   
-  const handlePremiumStatus = async (id: string, status: 'approved' | 'rejected') => {
+  const handlePremiumStatus = async (id: string, status: 'approved' | 'rejected' | 'revoked') => {
      try {
-         await updateDoc(doc(db, "premium_requests", id), { status });
+         const { error } = await supabase.from('premium_requests').update({ status }).eq('id', id);
+         if (error) throw error;
          toast.success(`Request ${status}`);
      } catch (e) {
          toast.error(`Error updating request`);
@@ -309,7 +317,7 @@ export default function AdminPanel() {
       </div>
 
       {/* Premium Requests Queue */}
-      <div className="mt-12 terminal-card p-12 bg-black/40 backdrop-blur-md mb-20">
+      <div className="mt-12 terminal-card p-12 bg-black/40 backdrop-blur-md">
         <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
           <div className="flex items-center gap-3">
              <ShieldCheck className="text-yellow-500" size={24} />
@@ -319,13 +327,13 @@ export default function AdminPanel() {
         </div>
         
         <div className="space-y-4">
-           {premiumRequests.length === 0 ? (
-             <div className="text-center py-10 text-white/30 text-xs font-black tracking-widest uppercase">No Requests Pending</div>
+           {premiumRequests.filter(r => r.status !== 'approved').length === 0 ? (
+             <div className="text-center py-10 text-white/30 text-xs font-black tracking-widest uppercase">No Requests Pending / Rejected</div>
            ) : (
-             premiumRequests.map((req) => (
+             premiumRequests.filter(r => r.status !== 'approved').map((req) => (
                <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-white/5 border border-white/10 rounded-xl relative overflow-hidden">
                  {req.status !== 'pending' && (
-                    <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center backdrop-blur-sm">
+                    <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center backdrop-blur-sm pointer-events-none">
                       <span className={`text-xl font-black uppercase tracking-[0.2em] px-4 py-2 border-2 ${req.status === 'approved' ? 'text-green-500 border-green-500' : 'text-red-500 border-red-500'} rotate-[-5deg] opacity-70`}>{req.status}</span>
                     </div>
                  )}
@@ -334,23 +342,65 @@ export default function AdminPanel() {
                    <div className="flex gap-4 mt-2 text-[9px] uppercase tracking-widest text-white/50 font-bold">
                      <span>UTR: {req.utr}</span>
                      <span>|</span>
-                     <span>{req.userEmail}</span>
+                     <span>{req.email || req.userEmail}</span>
                    </div>
                  </div>
                  <div className="flex gap-2">
                    <button 
                      onClick={() => handlePremiumStatus(req.id, 'approved')}
-                     disabled={req.status !== 'pending'}
-                     className="p-3 bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-colors border border-green-500/50"
+                     className="p-3 bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-colors border border-green-500/50 z-20"
                    >
                      <Check size={20} />
                    </button>
                    <button 
                      onClick={() => handlePremiumStatus(req.id, 'rejected')}
-                     disabled={req.status !== 'pending'}
-                     className="p-3 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50"
+                     className="p-3 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50 z-20"
                    >
                      <X size={20} />
+                   </button>
+                 </div>
+               </div>
+             ))
+           )}
+        </div>
+      </div>
+
+      {/* Active Premium Subscriptions */}
+      <div className="mt-12 terminal-card p-12 bg-black/40 backdrop-blur-md mb-20">
+        <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
+          <div className="flex items-center gap-3">
+             <ShieldCheck className="text-green-500" size={24} />
+             <h4 className="text-xs font-black text-white/80 tracking-[0.3em] uppercase">ACTIVE_PREMIUM_SUBSCRIPTIONS</h4>
+          </div>
+          <span className="text-[10px] text-green-500 font-black uppercase tracking-widest bg-green-500/20 px-3 py-1 rounded-sm border border-green-500/50">{premiumRequests.filter(r => r.status === 'approved').length} Active</span>
+        </div>
+        
+        <div className="space-y-4">
+           {premiumRequests.filter(r => r.status === 'approved').length === 0 ? (
+             <div className="text-center py-10 text-white/30 text-xs font-black tracking-widest uppercase">No Active Subscriptions</div>
+           ) : (
+             premiumRequests.filter(r => r.status === 'approved').map((req) => (
+               <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-white/5 border border-white/10 rounded-xl relative overflow-hidden">
+                 <div>
+                   <p className="text-sm font-black uppercase tracking-tight">{req.name} <span className="text-green-400 ml-2">({req.plan})</span></p>
+                   <div className="flex gap-4 mt-2 text-[9px] uppercase tracking-widest text-white/50 font-bold">
+                     <span>UTR: {req.utr}</span>
+                     <span>|</span>
+                     <span>{req.email || req.userEmail}</span>
+                     <span>|</span>
+                     <span className="text-green-400">APPROVED</span>
+                   </div>
+                 </div>
+                 <div className="flex gap-2">
+                   <button 
+                     onClick={() => {
+                        if (window.confirm('Are you sure you want to revoke this premium subscription?')) {
+                           handlePremiumStatus(req.id, 'revoked');
+                        }
+                     }}
+                     className="px-4 py-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50 text-[10px] font-black uppercase tracking-widest z-20"
+                   >
+                     REVOKE
                    </button>
                  </div>
                </div>

@@ -40,17 +40,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loginOpen, setLoginOpen] = useState(false);
 
   useEffect(() => {
+    let unsubPremium: any = null;
+
+    const setupUser = (sessionUser: any, token: string) => {
+       setAccessToken(token);
+       const baseUser: BuyWiseUser = {
+          uid: sessionUser.id,
+          email: sessionUser.email || null,
+          displayName: sessionUser.user_metadata?.full_name || null,
+          photoURL: sessionUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sessionUser.email}`,
+          isPremium: false,
+       };
+       setUser(baseUser);
+       
+       // Check Supabase for premium status dynamically!
+       const checkPremium = async () => {
+         const { data } = await supabase.from('premium_requests')
+           .select('status')
+           .eq('userId', sessionUser.id)
+           .eq('status', 'approved');
+         
+         let hasPremium = (sessionUser.email === 'awanwarsi790@gmail.com' || sessionUser.email === 'mohammdsaeed24@gmail.com');
+         if (data && data.length > 0) {
+           hasPremium = true;
+         }
+         
+         setUser(prev => prev ? { ...prev, isPremium: hasPremium } : null);
+       };
+       
+       checkPremium();
+       
+       if (unsubPremium) supabase.removeChannel(unsubPremium);
+       unsubPremium = supabase.channel(`premium_updates_${sessionUser.id}`)
+         .on('postgres_changes', { event: '*', schema: 'public', table: 'premium_requests', filter: `userId=eq.${sessionUser.id}` }, () => {
+            checkPremium();
+         })
+         .subscribe();
+    };
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
-        setAccessToken(session.access_token);
-        setUser({
-          uid: session.user.id,
-          email: session.user.email || null,
-          displayName: session.user.user_metadata?.full_name || null,
-          photoURL: session.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
-          isPremium: false,
-        });
+        setupUser(session.user, session.access_token);
       }
       setLoading(false);
     });
@@ -58,22 +89,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        setAccessToken(session.access_token);
-        setUser({
-          uid: session.user.id,
-          email: session.user.email || null,
-          displayName: session.user.user_metadata?.full_name || null,
-          photoURL: session.user.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
-          isPremium: false,
-        });
+        setupUser(session.user, session.access_token);
       } else {
+        if(unsubPremium) supabase.removeChannel(unsubPremium);
         setUser(null);
         setAccessToken(null);
       }
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+       subscription.unsubscribe();
+       if(unsubPremium) supabase.removeChannel(unsubPremium);
+    };
   }, []);
 
   const openLogin = () => setLoginOpen(true);

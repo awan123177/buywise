@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { ShieldCheck, Check, QrCode as QrCodeIcon, Upload, IndianRupee } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { doc, setDoc } from '../lib/firebase';
-import { db } from '../lib/firebase';
+import { supabase } from '../lib/supabase';
+import { db, doc, setDoc } from '../lib/firebase';
 import toast from 'react-hot-toast';
 import QRCode from 'react-qr-code';
 
@@ -51,15 +51,20 @@ export default function Premium() {
     }
     
     try {
-      await setDoc(doc(db, "premium_requests", user.uid), {
-        userId: user.uid,
-        userEmail: user.email,
-        name,
-        utr,
-        plan: selectedPlan,
-        status: 'pending',
-        timestamp: new Date().toISOString()
-      });
+      const { error } = await supabase.from('premium_requests').insert([
+        {
+          userId: user.uid,
+          email: user.email,
+          name: name,
+          utr: utr,
+          plan: selectedPlan,
+          status: 'pending',
+          timestamp: new Date().toISOString()
+        }
+      ]);
+      
+      if (error) throw error;
+      
       toast.success('Payment submitted! Awaiting admin approval (ETA 2-4 hours).');
       setShowPayment(false);
       setUtr('');
