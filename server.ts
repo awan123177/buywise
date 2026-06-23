@@ -10,12 +10,31 @@ dotenv.config();
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      'User-Agent': 'aistudio-build',
+});
+
+// Helper function to safely process history for Gemini API multi-turn conversation
+// It ensures that the sequence starts with a "user" message and strictly alternates.
+function formatGeminiContents(messages: any[]) {
+  const firstUserIdx = messages.findIndex((m: any) => m.sender === 'user');
+  if (firstUserIdx === -1) {
+    return [];
+  }
+  const processed = messages.slice(firstUserIdx);
+
+  const contents: any[] = [];
+  for (const msg of processed) {
+    const role = msg.sender === 'user' ? 'user' : 'model';
+    if (contents.length > 0 && contents[contents.length - 1].role === role) {
+      contents[contents.length - 1].parts[0].text += "\n" + msg.text;
+    } else {
+      contents.push({
+        role: role,
+        parts: [{ text: msg.text }]
+      });
     }
   }
-});
+  return contents;
+}
 
 async function startServer() {
   const app = express();
@@ -30,7 +49,7 @@ async function startServer() {
       if (!text) return res.status(400).json({ error: "Missing text parameter" });
       const isUrl = text.startsWith('http');
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         contents: `Identify the main product being described or linked: "${text}". 
         Return ONLY the concise product name with model number if applicable (no extra punctuation). 
         Example: "iPhone 15 Pro", "Sony WH-1000XM5". ${isUrl ? 'If it is a URL, parse the product name from the slug.' : ''}`,
@@ -48,7 +67,7 @@ async function startServer() {
       const { productName } = req.body;
       if (!productName) return res.status(400).json({ error: "Missing productName parameter" });
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         config: {
           systemInstruction: "You are an elite hardware/software analyst."
         },
@@ -91,7 +110,7 @@ Your core identity is to guide users to the best purchasing decisions using the 
 Always respond professionally with genius-level insight. If analyzing product search results, deliver a cutting-edge, ruthless market synthesis for the user query. Identify precise value arbitrage (price vs hardware specs), pinpoint the exact platform yielding maximum ROI, and cite actual Rupee (₹) figures from the data. Expose marketing gimmicks. Be hyper-intelligent, authoritative, and visionary. Include details about BuyWise app features and plans whenever appropriate.`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         config: {
           systemInstruction: systemInstruction,
         },
@@ -108,7 +127,7 @@ Always respond professionally with genius-level insight. If analyzing product se
     try {
       const { productTitle, currentPriceStr } = req.body;
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         config: {
           systemInstruction: "You are BuyWise Predictor, an elite AI market analyst."
         },
@@ -171,14 +190,16 @@ REPLY STYLE:
 
 Current user's email: ${userEmail || "anonymous / guest"}`;
 
-      // Convert history to Gemini API format
-      const contents = messages.map((m: any) => ({
-        role: m.sender === 'user' ? 'user' : 'model',
-        parts: [{ text: m.text }]
-      }));
+      // Safely transform history to Gemini API format (ensuring first message is user and properly alternates)
+      const contents = formatGeminiContents(messages);
+
+      // If no valid user input can be found, return a fallback greeting
+      if (contents.length === 0) {
+        return res.json({ text: "Namaste! I am your BuyWise AI Support. How can I help you find products, track prices, or manage your Premium subscription today?" });
+      }
 
       const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
+        model: "gemini-2.5-flash",
         config: {
           systemInstruction: systemInstruction,
         },
