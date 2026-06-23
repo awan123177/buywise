@@ -12,7 +12,7 @@ import ThreeBackground from './components/ThreeBackground';
 import SupportChat from './components/SupportChat';
 import { AuthProvider } from './contexts/AuthContext';
 
-const clientId = (import.meta as any).env.VITE_GOOGLE_CLIENT_ID || "PASTE_YOUR_GOOGLE_CLIENT_ID_HERE";
+const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 
 export default function App() {
   return (
