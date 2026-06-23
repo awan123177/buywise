@@ -82,7 +82,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({
         email,
-        password: password || 'dummy_password_for_testing',
+        password: password || '',
         options: {
           data: { full_name: name || '' }
         }
@@ -91,7 +91,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } else {
       const { error } = await supabase.auth.signInWithPassword({
         email,
-        password: password || 'dummy_password_for_testing',
+        password: password || '',
       });
       if (error) throw error;
     }
