@@ -41,6 +41,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   useEffect(() => {
     let unsubPremium: any = null;
+    let fallbackInterval: any = null;
 
     const setupUser = (sessionUser: any, token: string) => {
        setAccessToken(token);
@@ -70,8 +71,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        
        checkPremium();
        
+       // Fallback interval polling in case Supabase real-time is not enabled for the table
+       if (fallbackInterval) clearInterval(fallbackInterval);
+       fallbackInterval = setInterval(checkPremium, 15000);
+       
        if (unsubPremium) supabase.removeChannel(unsubPremium);
-       unsubPremium = supabase.channel(`premium_updates_${sessionUser.id}_${Date.now()}`)
+       const channelId = Math.random().toString(36).substring(2, 15);
+       unsubPremium = supabase.channel(`premium_updates_${sessionUser.id}_${channelId}`)
          .on('postgres_changes', { event: '*', schema: 'public', table: 'premium_requests' }, () => {
             checkPremium();
          })
@@ -92,6 +98,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setupUser(session.user, session.access_token);
       } else {
         if(unsubPremium) supabase.removeChannel(unsubPremium);
+        if (fallbackInterval) clearInterval(fallbackInterval);
         setUser(null);
         setAccessToken(null);
       }
@@ -101,6 +108,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return () => {
        subscription.unsubscribe();
        if(unsubPremium) supabase.removeChannel(unsubPremium);
+       if (fallbackInterval) clearInterval(fallbackInterval);
     };
   }, []);
 

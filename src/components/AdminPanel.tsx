@@ -20,6 +20,16 @@ export default function AdminPanel() {
   const [trackLogs, setTrackLogs] = useState<any[]>([]);
   const [wishLogs, setWishLogs] = useState<any[]>([]);
   const [premiumRequests, setPremiumRequests] = useState<any[]>([]);
+  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
+
+  const parseNameField = (nameStr: string) => {
+    if (!nameStr) return { displayName: 'Unknown', screenshot: null };
+    const parts = nameStr.split('|||');
+    return {
+      displayName: parts[0] || 'Unknown',
+      screenshot: parts[1] || null
+    };
+  };
 
   useEffect(() => {
     if (isAuthorized) {
@@ -49,7 +59,8 @@ export default function AdminPanel() {
       };
       fetchPremium();
 
-      const premiumSub = supabase.channel(`premium_reqs_${Date.now()}`)
+      const channelId = Math.random().toString(36).substring(2, 15);
+      const premiumSub = supabase.channel(`premium_reqs_${channelId}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'premium_requests' }, () => {
            fetchPremium();
         })
@@ -101,6 +112,9 @@ export default function AdminPanel() {
          const { error } = await supabase.from('premium_requests').update({ status }).eq('id', targetId);
          if (error) throw error;
          toast.success(`Request ${status}`);
+         // Fetch again to update the UI instantly, in case real-time events are disabled in Supabase
+         const { data } = await supabase.from('premium_requests').select('*').order('timestamp', { ascending: false });
+         if (data) setPremiumRequests(data);
      } catch (e) {
          toast.error(`Error updating request`);
      }
@@ -331,37 +345,62 @@ export default function AdminPanel() {
            {premiumRequests.filter(r => r.status !== 'approved').length === 0 ? (
              <div className="text-center py-10 text-white/30 text-xs font-black tracking-widest uppercase">No Requests Pending / Rejected</div>
            ) : (
-             premiumRequests.filter(r => r.status !== 'approved').map((req) => (
-               <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-white/5 border border-white/10 rounded-xl relative overflow-hidden">
-                 {req.status !== 'pending' && (
-                    <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center backdrop-blur-sm pointer-events-none">
-                      <span className={`text-xl font-black uppercase tracking-[0.2em] px-4 py-2 border-2 ${req.status === 'approved' ? 'text-green-500 border-green-500' : 'text-red-500 border-red-500'} rotate-[-5deg] opacity-70`}>{req.status}</span>
-                    </div>
-                 )}
-                 <div>
-                   <p className="text-sm font-black uppercase tracking-tight">{req.name} <span className="text-[#FF3B30] ml-2">({req.plan})</span></p>
-                   <div className="flex gap-4 mt-2 text-[9px] uppercase tracking-widest text-white/50 font-bold">
-                     <span>UTR: {req.utr}</span>
-                     <span>|</span>
-                     <span>{req.email || req.userEmail}</span>
+             premiumRequests.filter(r => r.status !== 'approved').map((req) => {
+               const { displayName, screenshot } = parseNameField(req.name);
+               return (
+                 <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-white/5 border border-white/10 rounded-xl relative overflow-hidden animate-fade-in">
+                   {req.status !== 'pending' && (
+                      <div className="absolute inset-0 bg-black/50 z-10 flex items-center justify-center backdrop-blur-sm pointer-events-none">
+                        <span className={`text-xl font-black uppercase tracking-[0.2em] px-4 py-2 border-2 ${req.status === 'approved' ? 'text-green-500 border-green-500' : 'text-red-500 border-red-500'} rotate-[-5deg] opacity-70`}>{req.status}</span>
+                      </div>
+                   )}
+                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-grow">
+                     {screenshot && (
+                       <div 
+                         onClick={() => setSelectedScreenshot(screenshot)}
+                         className="w-16 h-16 rounded-lg border border-white/10 bg-black cursor-pointer overflow-hidden flex-shrink-0 group relative hover:border-[#FF3B30] transition-colors z-20"
+                         title="Click to zoom screenshot"
+                       >
+                         <img src={screenshot} alt="Payment Verification" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                           <span className="text-[9px] font-bold text-white uppercase bg-black/70 px-1.5 py-0.5 rounded">Zoom</span>
+                         </div>
+                       </div>
+                     )}
+                     <div>
+                       <p className="text-sm font-black uppercase tracking-tight">{displayName} <span className="text-[#FF3B30] ml-2">({req.plan})</span></p>
+                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[9px] uppercase tracking-widest text-white/50 font-bold">
+                         <span>UTR: <strong className="text-white font-medium">{req.utr}</strong></span>
+                         <span>|</span>
+                         <span>{req.email || req.userEmail}</span>
+                         {screenshot && (
+                           <>
+                             <span>|</span>
+                             <span className="text-yellow-500 font-black cursor-pointer hover:underline" onClick={() => setSelectedScreenshot(screenshot)}>
+                               📸 HAS SCREENSHOT
+                             </span>
+                           </>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                   <div className="flex gap-2 z-20">
+                     <button 
+                       onClick={() => handlePremiumStatus(req.id, 'approved')}
+                       className="p-3 bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-colors border border-green-500/50"
+                     >
+                       <Check size={20} />
+                     </button>
+                     <button 
+                       onClick={() => handlePremiumStatus(req.id, 'rejected')}
+                       className="p-3 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50"
+                     >
+                       <X size={20} />
+                     </button>
                    </div>
                  </div>
-                 <div className="flex gap-2">
-                   <button 
-                     onClick={() => handlePremiumStatus(req.id, 'approved')}
-                     className="p-3 bg-green-500/20 text-green-500 hover:bg-green-500 hover:text-white rounded-lg transition-colors border border-green-500/50 z-20"
-                   >
-                     <Check size={20} />
-                   </button>
-                   <button 
-                     onClick={() => handlePremiumStatus(req.id, 'rejected')}
-                     className="p-3 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50 z-20"
-                   >
-                     <X size={20} />
-                   </button>
-                 </div>
-               </div>
-             ))
+               );
+             })
            )}
         </div>
       </div>
@@ -380,31 +419,94 @@ export default function AdminPanel() {
            {premiumRequests.filter(r => r.status === 'approved').length === 0 ? (
              <div className="text-center py-10 text-white/30 text-xs font-black tracking-widest uppercase">No Active Subscriptions</div>
            ) : (
-             premiumRequests.filter(r => r.status === 'approved').map((req) => (
-               <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-white/5 border border-white/10 rounded-xl relative overflow-hidden">
-                 <div>
-                   <p className="text-sm font-black uppercase tracking-tight">{req.name} <span className="text-green-400 ml-2">({req.plan})</span></p>
-                   <div className="flex gap-4 mt-2 text-[9px] uppercase tracking-widest text-white/50 font-bold">
-                     <span>UTR: {req.utr}</span>
-                     <span>|</span>
-                     <span>{req.email || req.userEmail}</span>
-                     <span>|</span>
-                     <span className="text-green-400">APPROVED</span>
+             premiumRequests.filter(r => r.status === 'approved').map((req) => {
+               const { displayName, screenshot } = parseNameField(req.name);
+               return (
+                 <div key={req.id} className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 bg-white/5 border border-white/10 rounded-xl relative overflow-hidden animate-fade-in">
+                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-grow">
+                     {screenshot && (
+                       <div 
+                         onClick={() => setSelectedScreenshot(screenshot)}
+                         className="w-16 h-16 rounded-lg border border-white/10 bg-black cursor-pointer overflow-hidden flex-shrink-0 group relative hover:border-green-500 transition-colors z-20"
+                         title="Click to zoom screenshot"
+                       >
+                         <img src={screenshot} alt="Payment Verification" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                           <span className="text-[9px] font-bold text-white uppercase bg-black/70 px-1.5 py-0.5 rounded">Zoom</span>
+                         </div>
+                       </div>
+                     )}
+                     <div>
+                       <p className="text-sm font-black uppercase tracking-tight">{displayName} <span className="text-green-400 ml-2">({req.plan})</span></p>
+                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[9px] uppercase tracking-widest text-white/50 font-bold">
+                         <span>UTR: <strong className="text-white font-medium">{req.utr}</strong></span>
+                         <span>|</span>
+                         <span>{req.email || req.userEmail}</span>
+                         <span>|</span>
+                         <span className="text-green-400">APPROVED</span>
+                         {screenshot && (
+                           <>
+                             <span>|</span>
+                             <span className="text-green-400 font-bold cursor-pointer hover:underline" onClick={() => setSelectedScreenshot(screenshot)}>
+                               📸 VIEW SCREENSHOT
+                             </span>
+                           </>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                   <div className="flex gap-2 z-20">
+                     <button 
+                       onClick={() => handlePremiumStatus(req.id, 'revoked')}
+                       className="px-4 py-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50 text-[10px] font-black uppercase tracking-widest"
+                     >
+                       REVOKE
+                     </button>
                    </div>
                  </div>
-                 <div className="flex gap-2">
-                   <button 
-                     onClick={() => handlePremiumStatus(req.id, 'revoked')}
-                     className="px-4 py-2 bg-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500/50 text-[10px] font-black uppercase tracking-widest z-20"
-                   >
-                     REVOKE
-                   </button>
-                 </div>
-               </div>
-             ))
+               );
+             })
            )}
         </div>
       </div>
+
+      {/* Screenshot Zoom Modal Overlay */}
+      <AnimatePresence>
+        {selectedScreenshot && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setSelectedScreenshot(null)}
+            className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4 cursor-zoom-out backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative max-w-xl w-full bg-neutral-900 border border-white/10 rounded-2xl overflow-hidden p-6 space-y-4 cursor-default animate-scale-in"
+            >
+              <div className="flex justify-between items-center border-b border-white/10 pb-4">
+                <span className="text-xs font-black uppercase tracking-widest text-white/50">Payment Screenshot</span>
+                <button 
+                  onClick={() => setSelectedScreenshot(null)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg text-white/70 hover:text-white transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex justify-center bg-black/60 rounded-xl border border-white/5 overflow-hidden p-2 max-h-[70vh]">
+                <img 
+                  src={selectedScreenshot} 
+                  alt="Full-size Payment Verification" 
+                  className="max-w-full max-h-[60vh] object-contain rounded-lg"
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

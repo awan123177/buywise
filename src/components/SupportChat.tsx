@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageCircle, X, Mail, Phone, User, Send, Bot, Loader2, Sparkles, Headset } from 'lucide-react';
+import { MessageCircle, X, Mail, Phone, User, Send, Bot, Loader2, Sparkles, Headset, ChevronRight, HelpCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import Markdown from 'react-markdown';
 
 export default function SupportChat() {
   const { user } = useAuth();
@@ -22,13 +23,13 @@ export default function SupportChat() {
     scrollToBottom();
   }, [messages, handover, isLoading]);
 
-  const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return;
-    const userMsg = inputValue.trim();
+  const handleSend = async (textOverride?: string) => {
+    const textToSend = textOverride || inputValue.trim();
+    if (!textToSend || isLoading) return;
     
-    const updatedMessages: { sender: 'user' | 'bot'; text: string }[] = [...messages, { sender: 'user', text: userMsg }];
+    const updatedMessages: { sender: 'user' | 'bot'; text: string }[] = [...messages, { sender: 'user', text: textToSend }];
     setMessages(updatedMessages);
-    setInputValue('');
+    if (!textOverride) setInputValue('');
     setIsLoading(true);
 
     try {
@@ -54,7 +55,7 @@ export default function SupportChat() {
 
       // Trigger escalation to human if the bot suggests live support or user requests direct agent
       const lowerBotText = botText.toLowerCase();
-      if (lowerBotText.includes('live support') || lowerBotText.includes('escalate') || lowerBotText.includes('primary support agent') || lowerBotText.includes('whatsapp') || lowerBotText.includes('email') || lowerBotText.includes('awanwarsi')) {
+      if (lowerBotText.includes('live support') || lowerBotText.includes('escalate') || lowerBotText.includes('primary support agent') || lowerBotText.includes('whatsapp') || lowerBotText.includes('email') || lowerBotText.includes('awanwarsi') || lowerBotText.includes('avanvarsi')) {
         setHandover(true);
       }
     } catch (err) {
@@ -65,6 +66,13 @@ export default function SupportChat() {
       setIsLoading(false);
     }
   };
+
+  const quickReplies = [
+    "How does the price tracker work?",
+    "My premium was not approved yet.",
+    "Can you scan flights for me?",
+    "How much time will it take to approve premium?"
+  ];
 
   return (
     <>
@@ -115,11 +123,38 @@ export default function SupportChat() {
                        <Bot size={12} className="text-[#3081FF]" />
                      </div>
                    )}
-                   <div className={`max-w-[80%] rounded-xl p-3 text-sm leading-relaxed ${msg.sender === 'user' ? 'bg-[#3081FF] text-white rounded-tr-sm font-medium' : 'bg-white/10 text-white/95 rounded-tl-sm'}`}>
-                     {msg.text}
+                   <div className={`max-w-[85%] rounded-xl p-3 text-sm leading-relaxed ${msg.sender === 'user' ? 'bg-[#3081FF] text-white rounded-tr-sm font-medium' : 'bg-white/10 text-white/95 rounded-tl-sm'}`}>
+                     {msg.sender === 'bot' ? (
+                       <div className="prose prose-invert prose-p:leading-snug prose-sm max-w-none">
+                         <Markdown>{msg.text}</Markdown>
+                       </div>
+                     ) : (
+                       msg.text
+                     )}
                    </div>
                  </div>
                ))}
+
+               {messages.length === 1 && !isLoading && (
+                 <div className="flex flex-col gap-2 pt-2">
+                   <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold flex items-center gap-1 mb-1">
+                     <HelpCircle size={10} /> Suggested Questions
+                   </span>
+                   {quickReplies.map((reply, i) => (
+                     <motion.button
+                       key={i}
+                       initial={{ opacity: 0, x: -10 }}
+                       animate={{ opacity: 1, x: 0 }}
+                       transition={{ delay: i * 0.1 }}
+                       onClick={() => handleSend(reply)}
+                       className="text-left p-2.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-xs text-white/80 transition-colors flex items-center justify-between group"
+                     >
+                       {reply}
+                       <ChevronRight size={12} className="text-white/30 group-hover:text-white/80 transition-colors" />
+                     </motion.button>
+                   ))}
+                 </div>
+               )}
 
                {isLoading && (
                  <div className="flex justify-start">
@@ -147,7 +182,7 @@ export default function SupportChat() {
                            <Mail size={14} className="text-white/50 group-hover:text-green-500 transition-colors" />
                            <div className="flex flex-col">
                              <span className="text-[8px] uppercase tracking-widest font-bold text-white/50">Owner & Developer</span>
-                             <span className="text-[11px] font-medium text-white">awanwarsi</span>
+                             <span className="text-[11px] font-medium text-white">Awanwarsi</span>
                            </div>
                         </a>
                         <a href="mailto:awanwarsi790@gmail.com" className="hidden flex items-center gap-2.5 p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group block">
@@ -182,7 +217,7 @@ export default function SupportChat() {
                    disabled={isLoading}
                  />
                  <button 
-                   onClick={handleSend}
+                   onClick={() => handleSend()}
                    disabled={isLoading || !inputValue.trim()}
                    className="w-10 h-10 bg-[#3081FF] rounded-full flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-[#3081FF]/80 transition-colors"
                  >
