@@ -72,7 +72,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        
        if (unsubPremium) supabase.removeChannel(unsubPremium);
        unsubPremium = supabase.channel(`premium_updates_${sessionUser.id}_${Date.now()}`)
-         .on('postgres_changes', { event: '*', schema: 'public', table: 'premium_requests', filter: `userId=eq.${sessionUser.id}` }, () => {
+         .on('postgres_changes', { event: '*', schema: 'public', table: 'premium_requests' }, () => {
             checkPremium();
          })
          .subscribe();

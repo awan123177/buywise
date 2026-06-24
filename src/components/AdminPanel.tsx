@@ -95,9 +95,10 @@ export default function AdminPanel() {
     }
   };
   
-  const handlePremiumStatus = async (id: string, status: 'approved' | 'rejected' | 'revoked') => {
+  const handlePremiumStatus = async (id: any, status: 'approved' | 'rejected' | 'revoked') => {
      try {
-         const { error } = await supabase.from('premium_requests').update({ status }).eq('id', id);
+         const targetId = typeof id === 'string' && !isNaN(Number(id)) ? Number(id) : id;
+         const { error } = await supabase.from('premium_requests').update({ status }).eq('id', targetId);
          if (error) throw error;
          toast.success(`Request ${status}`);
      } catch (e) {

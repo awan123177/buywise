@@ -143,14 +143,14 @@ export default function SupportChat() {
                      </div>
 
                      <div className="space-y-2">
-                        <a href="mailto:mohammdsaeed24@gmail.com" className="flex items-center gap-2.5 p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group block">
+                        <a href="#" onClick={(e) => e.preventDefault()} className="flex items-center gap-2.5 p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group block">
                            <Mail size={14} className="text-white/50 group-hover:text-green-500 transition-colors" />
                            <div className="flex flex-col">
-                             <span className="text-[8px] uppercase tracking-widest font-bold text-white/50">Creator & Admin</span>
-                             <span className="text-[11px] font-medium text-white">mohammdsaeed24@gmail.com</span>
+                             <span className="text-[8px] uppercase tracking-widest font-bold text-white/50">Owner & Developer</span>
+                             <span className="text-[11px] font-medium text-white">awanwarsi</span>
                            </div>
                         </a>
-                        <a href="mailto:awanwarsi790@gmail.com" className="flex items-center gap-2.5 p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group block">
+                        <a href="mailto:awanwarsi790@gmail.com" className="hidden flex items-center gap-2.5 p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group block">
                            <Mail size={14} className="text-white/50 group-hover:text-green-500 transition-colors" />
                            <div className="flex flex-col">
                              <span className="text-[8px] uppercase tracking-widest font-bold text-white/50">Lead Engineer</span>
