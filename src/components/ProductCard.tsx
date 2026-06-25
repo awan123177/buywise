@@ -18,6 +18,7 @@ interface ProductCardProps {
     delivery?: string;
     old_price?: string;
     features?: string[];
+    isOriginalLink?: boolean;
   };
   isBest?: boolean;
   isLoading?: boolean;
@@ -189,11 +190,15 @@ export default function ProductCard({
           />
         </div>
 
-        {isBest && (
-          <div className="absolute top-0 right-0 bg-[#cc0000] text-white text-[10px] font-black uppercase px-4 py-2 border-l border-b border-white/10 shadow-lg flex items-center gap-2 z-20 pointer-events-none backdrop-blur-md rounded-bl-lg">
-            MIN_PRICE_DETECTION
+        {product.isOriginalLink ? (
+          <div className="absolute top-0 right-0 bg-amber-500 text-black text-[10px] font-black uppercase px-4 py-2 border-l border-b border-white/10 shadow-lg flex items-center gap-2 z-20 pointer-events-none backdrop-blur-md rounded-bl-lg">
+            ⚡ ORIGINAL_LINK_CHEAPEST
           </div>
-        )}
+        ) : isBest ? (
+          <div className="absolute top-0 right-0 bg-[#cc0000] text-white text-[10px] font-black uppercase px-4 py-2 border-l border-b border-white/10 shadow-lg flex items-center gap-2 z-20 pointer-events-none backdrop-blur-md rounded-bl-lg">
+            🔥 CHEAPEST_OVERALL
+          </div>
+        ) : null}
       </div>
 
       <div className="p-6 flex flex-col gap-4 flex-grow bg-black/20">

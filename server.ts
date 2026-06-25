@@ -445,16 +445,93 @@ Please feel free to ask a specific question, or select one of our suggested ques
 
   // SERP/Rapid API Search
   app.get("/api/search", async (req, res) => {
-    const { q } = req.query;
+    const { q, originalUrl } = req.query;
     const rapidApiKey = process.env.RAPID_API_KEY;
+    const queryStr = typeof q === 'string' ? q : '';
+    const origUrlStr = typeof originalUrl === 'string' ? originalUrl : '';
 
-    if (!rapidApiKey) {
-      console.warn("RAPID_API_KEY is missing, using fallback dummy data.");
+    console.log(`[API Search] Product name: "${queryStr}", originalUrl: "${origUrlStr}"`);
+
+    const urlToAnalyze = (origUrlStr.startsWith('http') ? origUrlStr : (queryStr.startsWith('http') ? queryStr : ''));
+
+    // Try Gemini Google Search Grounding first for best real-time results
+    try {
+      const aiClient = getAi();
+      let contentsPrompt = "";
+
+      if (urlToAnalyze) {
+        contentsPrompt = `You are "BuyWise INDIA Intelligence", a genius price comparison engine.
+The user provided a product URL: "${urlToAnalyze}" (Product Name/Detected query: "${queryStr}").
+
+Your tasks:
+1. Analyze or search for the product on "${urlToAnalyze}" to find its exact price, title, image, and other sellers or variants on that same page/merchant. Find the absolute cheapest option on that link.
+2. Search other major Indian e-commerce sites (such as Amazon.in, Flipkart, Croma, Reliance Digital, Vijay Sales) for the exact same product.
+3. Compare the prices. Find the absolute cheapest listings across all other websites too.
+
+Return a JSON object with a single key "shopping_results" which is an array of objects.
+The array must have 5-7 items:
+- The FIRST item in the array MUST be the cheapest seller/option found on the user's original link ("${urlToAnalyze}"). For this item, set "isOriginalLink" to true, "link" to "${urlToAnalyze}", and "source" to the retailer name (e.g., "Amazon", "Flipkart", "Croma").
+- The subsequent items must be the cheapest matching deals found on other websites for comparison. For these, set "isOriginalLink" to false.
+- Ensure all prices are in INR format with Rupee symbol, e.g., "₹24,990".
+
+Format each item exactly like this:
+{
+  "title": "Concise product title",
+  "price": "₹24,990",
+  "old_price": "₹29,990" (or null if no discount),
+  "thumbnail": "Product image URL",
+  "link": "Direct product/search link",
+  "source": "Store name (e.g. Amazon, Flipkart, Croma, Reliance Digital)",
+  "rating": 4.5,
+  "delivery": "Free delivery / ETA",
+  "isOriginalLink": true/false
+}`;
+      } else {
+        contentsPrompt = `You are "BuyWise INDIA Intelligence", a genius price comparison engine.
+The user is searching for: "${queryStr}".
+
+Your tasks:
+1. Search major Indian e-commerce websites (Amazon.in, Flipkart, Croma, Reliance Digital, Vijay Sales, etc.) for the absolute cheapest deals and variants of "${queryStr}".
+2. Compare prices and return the cheapest real-time offers.
+
+Return a JSON object with a single key "shopping_results" which is an array of 5-7 objects, sorted by price ascending (cheapest first).
+
+Format each item exactly like this:
+{
+  "title": "Concise product title",
+  "price": "₹24,990",
+  "old_price": "₹29,990" (or null if no discount),
+  "thumbnail": "Product image URL",
+  "link": "Direct product/search link",
+  "source": "Store name (e.g. Amazon, Flipkart, Croma, Reliance Digital)",
+  "rating": 4.5,
+  "delivery": "Free delivery",
+  "isOriginalLink": false
+}`;
+      }
+
+      console.log(`[API Search] Fetching real-time grounding search results for "${queryStr}"`);
+      const response = await aiClient.models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: contentsPrompt,
+        config: {
+          responseMimeType: "application/json",
+          tools: [{ googleSearch: {} }]
+        }
+      });
+
+      const parsed = JSON.parse(response.text?.trim() || "{}");
+      if (parsed && Array.isArray(parsed.shopping_results) && parsed.shopping_results.length > 0) {
+        console.log(`[API Search] Success! Gemini Grounding returned ${parsed.shopping_results.length} results.`);
+        return res.json(parsed);
+      }
+    } catch (geminiErr: any) {
+      console.error("[API Search] Gemini Grounding failed, falling back to legacy APIs:", geminiErr.message);
     }
 
+    // Traditional/Legacy fallback search starts here
     try {
       let results: any[] = [];
-      const queryStr = typeof q === 'string' ? q : '';
 
       if (rapidApiKey) {
         // Attempt Amazon API
@@ -467,7 +544,7 @@ Please feel free to ask a specific question, or select one of our suggested ques
             }
           });
           if (amazonRes.data?.results) {
-            results = [...results, ...amazonRes.data.results.map((r: any) => ({ ...r, source: "Amazon" }))];
+            results = [...results, ...amazonRes.data.results.map((r: any) => ({ ...r, source: "Amazon", isOriginalLink: false }))];
           }
         } catch (e: any) {
           console.error("Amazon RapidAPI Error:", e.message);
@@ -483,7 +560,7 @@ Please feel free to ask a specific question, or select one of our suggested ques
             }
           });
           if (flipkartRes.data?.results) {
-            results = [...results, ...flipkartRes.data.results.map((r: any) => ({ ...r, source: "Flipkart" }))];
+            results = [...results, ...flipkartRes.data.results.map((r: any) => ({ ...r, source: "Flipkart", isOriginalLink: false }))];
           }
         } catch (e: any) {
           console.error("Flipkart RapidAPI Error:", e.message);
@@ -516,7 +593,8 @@ Please feel free to ask a specific question, or select one of our suggested ques
                     }
                     return {
                         ...item,
-                        link: originalLink
+                        link: originalLink,
+                        isOriginalLink: originalLink === urlToAnalyze
                     };
                 });
               }
@@ -536,10 +614,11 @@ Please feel free to ask a specific question, or select one of our suggested ques
                   price: "₹84,999",
                   old_price: "₹99,999",
                   thumbnail: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&auto=format&fit=crop&q=60",
-                  link: "https://amazon.in",
+                  link: urlToAnalyze || "https://amazon.in",
                   source: "Amazon",
                   rating: 4.8,
-                  delivery: "Tomorrow by 9 PM"
+                  delivery: "Tomorrow by 9 PM",
+                  isOriginalLink: !!urlToAnalyze
                 },
                 {
                   title: `${queryStr} - Pro Edition`,
@@ -549,7 +628,8 @@ Please feel free to ask a specific question, or select one of our suggested ques
                   link: "https://flipkart.com",
                   source: "Flipkart",
                   rating: 4.6,
-                  delivery: "In 2 Days"
+                  delivery: "In 2 Days",
+                  isOriginalLink: false
                 },
                 {
                   title: `${queryStr} (Store Pickup Available)`,
@@ -559,7 +639,8 @@ Please feel free to ask a specific question, or select one of our suggested ques
                   link: "https://croma.com",
                   source: "Croma",
                   rating: 4.5,
-                  delivery: "Store Pickup"
+                  delivery: "Store Pickup",
+                  isOriginalLink: false
                 },
                 {
                   title: `${queryStr} Base Variant`,
@@ -569,7 +650,8 @@ Please feel free to ask a specific question, or select one of our suggested ques
                   link: "https://reliancedigital.in",
                   source: "Reliance Digital",
                   rating: 4.7,
-                  delivery: "Tomorrow"
+                  delivery: "Tomorrow",
+                  isOriginalLink: false
                 }
               ]
             });

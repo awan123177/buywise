@@ -5,9 +5,9 @@ export const api = axios.create({
   baseURL: "/api",
 });
 
-export async function searchProducts(query: string) {
+export async function searchProducts(query: string, originalUrl?: string) {
   try {
-    const response = await api.get("/search", { params: { q: query } });
+    const response = await api.get("/search", { params: { q: query, originalUrl } });
     return response.data;
   } catch (error: any) {
     console.error("API search error:", error);

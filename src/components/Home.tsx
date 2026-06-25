@@ -60,7 +60,7 @@ export default function Home() {
 
       // Extract features dynamically in parallel
       const featuresPromise = extractProductFeatures(detected);
-      const dataPromise = searchProducts(detected);
+      const dataPromise = searchProducts(detected, activeQuery);
       
       const [features, data] = await Promise.all([featuresPromise, dataPromise]);
       
@@ -86,7 +86,8 @@ export default function Home() {
              delivery: item.delivery,
              old_price: item.old_price,
              features: features,
-             brand: brand || 'UNKNOWN'
+             brand: brand || 'UNKNOWN',
+             isOriginalLink: item.isOriginalLink || false
            };
          });
          setResults(processed);
