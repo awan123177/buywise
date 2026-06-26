@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plane, Train, Hotel, Search, ArrowRightLeft, MapPin } from 'lucide-react';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 export default function Travel() {
   const [mode, setMode] = useState<'flight' | 'train' | 'hotel'>('flight');
+  const { formatPrice } = useCurrency();
   const [date, setDate] = useState('');
 
   const [origin, setOrigin] = useState('');
@@ -314,7 +316,7 @@ export default function Travel() {
                </div>
 
                <div className="w-full md:w-auto flex flex-col items-center md:items-end">
-                  <div className="text-2xl font-black text-[#3081FF]">₹{flight.price}</div>
+                  <div className="text-2xl font-black text-[#3081FF]">{formatPrice(flight.price)}</div>
                   {flight.type && <div className="text-[10px] text-green-500 uppercase tracking-widest mt-1 font-bold">{flight.type}</div>}
                   <div className="text-[10px] text-white/30 uppercase tracking-widest mt-2 group-hover:text-white transition-colors">View Deal →</div>
                </div>
@@ -356,7 +358,7 @@ export default function Travel() {
                </div>
 
                <div className="w-full md:w-auto flex flex-col items-center md:items-end">
-                  <div className="text-2xl font-black text-[#FF3B30]">₹{train.price}</div>
+                  <div className="text-2xl font-black text-[#FF3B30]">{formatPrice(train.price)}</div>
                   <div className="text-[10px] text-green-500 uppercase tracking-widest mt-1 font-bold">Predicted Available</div>
                   <button className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 text-white font-black text-[10px] uppercase tracking-widest transition-colors w-full md:w-auto">
                      Book via IRCTC

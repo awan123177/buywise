@@ -12,8 +12,11 @@ import {
 } from '../lib/api';
 import toast from 'react-hot-toast';
 
+import { useCurrency } from '../contexts/CurrencyContext';
+
 export default function DealsPage() {
   const { user, openLogin } = useAuth();
+  const { formatPrice } = useCurrency();
   const [activeTab, setActiveTab] = useState<'daily' | 'trending'>('daily');
   const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -91,7 +94,7 @@ export default function DealsPage() {
 
   useEffect(() => {
     loadProfile();
-  }, [user]);
+  }, [user?.uid]);
 
   // Deal Actions
   const handleSaveDeal = async (dealId: string) => {
@@ -127,7 +130,7 @@ export default function DealsPage() {
     try {
       await triggerDealAction(deal.id, 'share');
       // Copy to clipboard
-      await navigator.clipboard.writeText(`Check out this BuyWise Deal: ${deal.title} for only ₹${deal.newPrice} (${deal.discountPercent}% OFF!) - https://buywise.app/deals`);
+      await navigator.clipboard.writeText(`Check out this BuyWise Deal: ${deal.title} for only ${formatPrice(deal.newPrice)} (${deal.discountPercent}% OFF!) - https://buywise.app/deals`);
       toast.success("Link copied! +2 BuyWise Coins added! 📲");
       // Update share visual
       setDeals(prev => prev.map(d => d.id === deal.id ? { ...d, purchases: (d.purchases || 0) + 1 } : d));
@@ -295,9 +298,9 @@ export default function DealsPage() {
                 { id: 'all', label: '🔥 TODAY\'S BEST DEALS' },
                 { id: 'flash', label: '⚡ FLASH DEALS' },
                 { id: 'editor', label: '⭐ EDITOR\'S PICKS' },
-                { id: 'under500', label: '💸 UNDER ₹500 BUDGET' },
-                { id: 'under1000', label: '💸 UNDER ₹1,000 BUDGET' },
-                { id: 'under5000', label: '💸 UNDER ₹5,000 BUDGET' },
+                { id: 'under500', label: `💸 UNDER ${formatPrice(500)} BUDGET` },
+                { id: 'under1000', label: `💸 UNDER ${formatPrice(1000)} BUDGET` },
+                { id: 'under5000', label: `💸 UNDER ${formatPrice(5000)} BUDGET` },
               ].map(sub => (
                 <button
                   key={sub.id}
@@ -441,8 +444,8 @@ export default function DealsPage() {
                 </div>
 
                 <div className="flex items-end gap-3 font-mono">
-                  <div className="text-3xl font-black text-green-500">₹{bestDeal.newPrice.toLocaleString('en-IN')}</div>
-                  <div className="text-sm text-white/40 line-through pb-1">₹{bestDeal.oldPrice.toLocaleString('en-IN')}</div>
+                  <div className="text-3xl font-black text-green-500">{formatPrice(bestDeal.newPrice)}</div>
+                  <div className="text-sm text-white/40 line-through pb-1">{formatPrice(bestDeal.oldPrice)}</div>
                   <div className="text-xs text-[#FF3B30] font-black bg-[#FF3B30]/15 px-2 py-1 rounded border border-[#FF3B30]/20 mb-1 animate-pulse">
                     {bestDeal.discountPercent}% OFF
                   </div>
@@ -565,8 +568,8 @@ export default function DealsPage() {
                           </h4>
                           
                           <div className="flex items-end gap-2 pt-1 font-mono">
-                            <span className="text-base font-black text-green-400">₹{deal.newPrice.toLocaleString('en-IN')}</span>
-                            <span className="text-xs text-white/40 line-through">₹{deal.oldPrice.toLocaleString('en-IN')}</span>
+                            <span className="text-base font-black text-green-400">{formatPrice(deal.newPrice)}</span>
+                            <span className="text-xs text-white/40 line-through">{formatPrice(deal.oldPrice)}</span>
                             <span className="text-[9px] font-bold text-[#FF3B30] bg-[#FF3B30]/10 px-1 py-0.2 rounded">
                               -{deal.discountPercent}%
                             </span>

@@ -5,6 +5,7 @@ import Product3DViewer from "./Product3DViewer";
 import { useAuth } from "../contexts/AuthContext";
 import { doc, setDoc } from "../lib/firebase";
 import { db } from "../lib/firebase";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 interface ProductCardProps {
   product?: {
@@ -30,13 +31,17 @@ export default function ProductCard({
   isLoading,
 }: ProductCardProps) {
   const { user, openLogin } = useAuth();
+  const { formatPrice: contextFormatPrice } = useCurrency();
   const [isTracked, setIsTracked] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
   const formatPrice = (p: string) => {
     if (!p) return "N/A";
-    return p.replace("$", "₹");
+    const numMatch = p.replace(/,/g, '').match(/[\d.]+/);
+    if (!numMatch) return p.replace("$", "₹");
+    const amountInINR = parseFloat(numMatch[0]);
+    return contextFormatPrice(amountInINR);
   };
 
   const handleTrackPrice = async () => {

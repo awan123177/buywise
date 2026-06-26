@@ -1,28 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { fetchGamificationProfile } from '../lib/api';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 export default function Navbar() {
   const location = useLocation();
   const { user, openLogin, logout } = useAuth();
+  const { currency, setCurrency, rates } = useCurrency();
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [coins, setCoins] = useState<number>(0);
+  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (user?.uid) {
       fetchGamificationProfile()
         .then(profile => {
           setCoins(profile.coins);
         })
         .catch(() => {});
     }
-  }, [user, location.pathname]);
+  }, [user?.uid, location.pathname]);
 
   useEffect(() => {
     const sessionId = Math.random().toString(36).substring(2, 15);
@@ -94,9 +97,39 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-4 md:gap-8">
-          <div className="hidden lg:flex flex-col items-end border-r border-white/5 pr-8">
-            <div className="text-[9px] text-[#f5f5f5] font-black uppercase tracking-[0.2em] opacity-40 mb-1">CURRENCY / REGION</div>
-            <div className="text-xs text-[#f5f5f5] font-black tracking-widest bg-white/5 px-2 py-0.5 rounded border border-white/5">INR // IND</div>
+          <div className="hidden lg:flex flex-col items-end border-r border-white/5 pr-8 relative">
+            <div className="text-[9px] text-[#f5f5f5] font-black uppercase tracking-[0.2em] opacity-40 mb-1">CURRENCY</div>
+            <button 
+              onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
+              className="text-xs text-[#f5f5f5] font-black tracking-widest bg-white/5 px-2 py-0.5 rounded border border-white/5 hover:bg-white/10 transition-colors flex items-center gap-1 cursor-pointer"
+            >
+              {currency} <ChevronDown size={12} />
+            </button>
+            <AnimatePresence>
+              {showCurrencyDropdown && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="absolute top-full mt-2 right-8 bg-[#111111] border border-white/10 rounded-lg shadow-2xl overflow-hidden min-w-[120px] z-50"
+                >
+                  {(Object.keys(rates) as Array<keyof typeof rates>).map((c) => (
+                    <button
+                      key={c}
+                      onClick={() => {
+                        setCurrency(c);
+                        setShowCurrencyDropdown(false);
+                      }}
+                      className={`w-full text-left px-4 py-2 text-xs font-black tracking-widest transition-colors ${
+                        currency === c ? 'bg-[#FF3B30] text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
           <div className="text-right hidden md:block border-r border-white/5 pr-8">
             <div className="text-[10px] text-[#f5f5f5] uppercase tracking-widest leading-none mb-1 font-black opacity-30">Live Users</div>

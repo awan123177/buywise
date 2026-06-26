@@ -6,9 +6,11 @@ import { supabase } from '../lib/supabase';
 import { db, doc, setDoc } from '../lib/firebase';
 import toast from 'react-hot-toast';
 import QRCode from 'react-qr-code';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 export default function Premium() {
   const { user } = useAuth();
+  const { formatPrice } = useCurrency();
   const [selectedPlan, setSelectedPlan] = useState<'weekly' | 'monthly' | 'yearly' | 'lifetime'>('monthly');
   const [showPayment, setShowPayment] = useState(false);
   
@@ -86,25 +88,32 @@ export default function Premium() {
     }
   };
   
+  const planPrices = {
+    weekly: 30,
+    monthly: 100,
+    yearly: 500,
+    lifetime: 700
+  };
+
   const plans = [
     {
       id: 'weekly',
       name: 'Weekly Pass',
-      price: '₹30',
+      price: formatPrice(planPrices.weekly),
       period: '/week',
       features: ['Unlimited AI Insights', 'Price Drop Alerts', 'Flight & Train Scans']
     },
     {
       id: 'monthly',
       name: 'Monthly Elite',
-      price: '₹100',
+      price: formatPrice(planPrices.monthly),
       period: '/mo',
       features: ['All Weekly Features', 'Premium Badge', 'No Ads', 'Priority Support']
     },
     {
       id: 'yearly',
       name: 'Yearly Pro',
-      price: '₹500',
+      price: formatPrice(planPrices.yearly),
       period: '/year',
       features: [
         'All Monthly Elite Features',
@@ -116,7 +125,7 @@ export default function Premium() {
     {
       id: 'lifetime',
       name: 'Forever Founder',
-      price: '₹700',
+      price: formatPrice(planPrices.lifetime),
       period: '/forever',
       features: [
         'All Yearly Pro Features',
@@ -276,7 +285,7 @@ export default function Premium() {
             <div className="bg-black/30 p-4 border border-white/5 rounded-lg space-y-1.5">
               <h4 className="font-black uppercase text-yellow-500 text-[10px] tracking-wider">Instant Lifetime ROI</h4>
               <p className="text-white/60 leading-relaxed text-[11px]">
-                Save an estimated ₹15,000+ annually with automated real-time alerts. Zero subscription renewal fatigue ever.
+                Save an estimated {formatPrice(15000)}+ annually with automated real-time alerts. Zero subscription renewal fatigue ever.
               </p>
             </div>
             <div className="bg-black/30 p-4 border border-white/5 rounded-lg space-y-1.5">
@@ -319,7 +328,7 @@ export default function Premium() {
                </div>
                <div>
                  <p className="text-xs text-white/50 uppercase tracking-widest">Amount to Pay</p>
-                 <p className="text-xl font-black">{selectedPlan === 'monthly' ? '₹100' : selectedPlan === 'lifetime' ? '₹700' : selectedPlan === 'yearly' ? '₹500' : '₹30'}</p>
+                 <p className="text-xl font-black">{selectedPlan === 'monthly' ? formatPrice(planPrices.monthly) : selectedPlan === 'lifetime' ? formatPrice(planPrices.lifetime) : selectedPlan === 'yearly' ? formatPrice(planPrices.yearly) : formatPrice(planPrices.weekly)}</p>
                </div>
             </div>
           </div>

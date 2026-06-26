@@ -324,7 +324,7 @@ export default function Radar() {
       unsubTrack();
       unsubWishlist();
     };
-  }, [user]);
+  }, [user?.uid]);
 
   if (!user) {
     return (

@@ -65,17 +65,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        
        // Check Supabase for premium status dynamically!
        const checkPremium = async () => {
-         const { data } = await supabase.from('premium_requests')
-           .select('status')
-           .eq('userId', sessionUser.id)
-           .eq('status', 'approved');
-         
-         let hasPremium = false;
-         if (data && data.length > 0) {
-           hasPremium = true;
+         try {
+           const { data } = await supabase.from('premium_requests')
+             .select('status')
+             .eq('userId', sessionUser.id)
+             .eq('status', 'approved');
+           
+           let hasPremium = false;
+           if (data && data.length > 0) {
+             hasPremium = true;
+           }
+           
+           setUser(prev => {
+             if (prev && prev.isPremium !== hasPremium) {
+               return { ...prev, isPremium: hasPremium };
+             }
+             return prev;
+           });
+         } catch (e) {
+           console.log("Premium check failed:", e);
          }
-         
-         setUser(prev => prev ? { ...prev, isPremium: hasPremium } : null);
        };
        
        checkPremium();

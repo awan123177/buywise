@@ -15,9 +15,11 @@ import {
   fetchReviews, submitUserReview
 } from '../lib/api';
 import toast from 'react-hot-toast';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 export default function RewardsHub() {
   const { user, openLogin } = useAuth();
+  const { formatPrice } = useCurrency();
   const [profile, setProfile] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
@@ -69,12 +71,12 @@ export default function RewardsHub() {
   };
 
   useEffect(() => {
-    if (user) {
+    if (user?.uid) {
       loadData();
     } else {
       setLoading(false);
     }
-  }, [user]);
+  }, [user?.uid]);
 
   // Load Leaderboard when metric changes
   useEffect(() => {
@@ -86,10 +88,10 @@ export default function RewardsHub() {
         console.error(e);
       }
     };
-    if (user) {
+    if (user?.uid) {
       loadLboard();
     }
-  }, [leaderboardMetric, user]);
+  }, [leaderboardMetric, user?.uid]);
 
   // Copy referral link to clipboard
   const copyReferralLink = () => {
@@ -317,7 +319,7 @@ export default function RewardsHub() {
               <div className="mt-4 pt-4 border-t border-white/5 flex justify-between text-[11px] font-mono text-white/50">
                 <div>Streaks: <span className="text-green-500 font-black">{profile?.streakCount || 0} Days</span></div>
                 <div>Searches: <span className="text-blue-400 font-black">{profile?.searchesCount || 0}</span></div>
-                <div>Saved: <span className="text-yellow-500 font-black">₹{profile?.totalSaved?.toLocaleString() || 0}</span></div>
+                <div>Saved: <span className="text-yellow-500 font-black">{formatPrice(profile?.totalSaved || 0)}</span></div>
               </div>
             </div>
 
@@ -743,7 +745,7 @@ export default function RewardsHub() {
                             {leaderboardMetric === 'coins' && <span className="font-bold text-yellow-500">{u.coins} 🪙</span>}
                             {leaderboardMetric === 'referrals' && <span className="font-bold text-green-400">{u.referralsCount} Ref</span>}
                             {leaderboardMetric === 'searches' && <span className="font-bold text-blue-400">{u.searchesCount} Search</span>}
-                            {leaderboardMetric === 'savings' && <span className="font-bold text-green-400">₹{u.savingsCount.toLocaleString()}</span>}
+                            {leaderboardMetric === 'savings' && <span className="font-bold text-green-400">{formatPrice(u.savingsCount)}</span>}
                           </div>
 
                         </div>
@@ -812,7 +814,7 @@ export default function RewardsHub() {
                   rows={4}
                   value={reviewComment}
                   onChange={(e) => setReviewComment(e.target.value)}
-                  placeholder="e.g. Saved ₹2,000 on my smart TV today! Love the instant search results and clean modern UI."
+                  placeholder={`e.g. Saved ${formatPrice(2000)} on my smart TV today!`}
                   className="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-xs text-white placeholder-white/20 focus:ring-1 focus:ring-[#FF3B30] focus:border-[#FF3B30] focus:outline-none resize-none"
                 />
               </div>

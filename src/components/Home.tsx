@@ -9,6 +9,7 @@ import ProductSkeleton from './ProductSkeleton';
 import ChatAssistant from './ChatAssistant';
 import Product3DViewer from './Product3DViewer';
 import toast from 'react-hot-toast';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const REALTIME_EVENTS = [
   "aman.kapoor*** saved ₹502 comparing iPhone 15 prices",
@@ -25,6 +26,7 @@ const REALTIME_EVENTS = [
 ];
 
 export default function Home() {
+  const { formatPrice } = useCurrency();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -275,7 +277,7 @@ export default function Home() {
                   <span className="w-1.5 h-1.5 bg-[#10b981] rounded-full animate-ping"></span> LIVE CUMULATIVE USER SAVINGS
                 </div>
                 <div className="text-2xl md:text-3xl font-black font-mono text-[#10b981] drop-shadow-[0_0_12px_rgba(16,185,129,0.35)]">
-                  ₹{savingsStats.totalSavings.toLocaleString('en-IN')}
+                  {formatPrice(savingsStats.totalSavings)}
                 </div>
 
                 {/* Live Activity Ticker with AnimatePresence */}
@@ -401,7 +403,7 @@ export default function Home() {
                         {/* Price Filter */}
                         <div>
                           <div className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                            <Tag size={12} /> Price Constraints (₹)
+                            <Tag size={12} /> Price Constraints
                           </div>
                           <div className="flex items-center gap-2">
                             <input 
