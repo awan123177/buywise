@@ -12,6 +12,7 @@ import RewardsHub from './components/RewardsHub';
 import ThreeBackground from './components/ThreeBackground';
 import SupportChat from './components/SupportChat';
 import LoginModal from './components/LoginModal';
+import ScannerPage from './components/ScannerPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 
@@ -44,6 +45,7 @@ export default function App() {
                 <Route path="/premium" element={<Premium />} />
                 <Route path="/deals" element={<DealsPage />} />
                 <Route path="/rewards" element={<RewardsHub />} />
+                <Route path="/scanner" element={<ScannerPage />} />
                 <Route path="/ref/:code" element={<Home />} />
                 {/* Backward compatibility */}
                 <Route path="/wishlist" element={<Radar />} />

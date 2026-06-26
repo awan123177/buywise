@@ -87,6 +87,20 @@ export interface UserReview {
   timestamp: string;
 }
 
+export interface BarcodeScan {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  barcode: string;
+  productName: string;
+  category: string;
+  brand: string;
+  lowestPrice: number;
+  highestPrice: number;
+  timestamp: string;
+}
+
 export interface DatabaseSchema {
   profiles: { [userId: string]: UserProfile };
   transactions: CoinTransaction[];
@@ -95,6 +109,7 @@ export interface DatabaseSchema {
   publicStats: PublicStats;
   bannedUsers: string[];
   reviews?: UserReview[];
+  scans?: BarcodeScan[];
 }
 
 // High-quality real product images from Unsplash to display beautiful photos of the products
@@ -526,7 +541,35 @@ let dbData: DatabaseSchema = {
     totalSavedAmount: 1842590
   },
   bannedUsers: [],
-  reviews: [...INITIAL_REVIEWS]
+  reviews: [...INITIAL_REVIEWS],
+  scans: [
+    {
+      id: "scan_init_1",
+      userId: "user_top_1",
+      userEmail: "aman.kapoor@gmail.com",
+      userName: "Aman Kapoor",
+      barcode: "8901058002418",
+      productName: "Sony WH-1000XM5 Noise Cancelling Headphones",
+      category: "electronics",
+      brand: "Sony",
+      lowestPrice: 24990,
+      highestPrice: 29990,
+      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      id: "scan_init_2",
+      userId: "user_top_2",
+      userEmail: "priya.verma@gmail.com",
+      userName: "Priya Verma",
+      barcode: "194253388741",
+      productName: "Apple iPhone 15 Pro (128GB)",
+      category: "electronics",
+      brand: "Apple",
+      lowestPrice: 119900,
+      highestPrice: 134900,
+      timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
+    }
+  ]
 };
 
 // Load database from file
@@ -550,7 +593,8 @@ export function loadDatabase() {
         deals: mappedDeals,
         publicStats: loaded.publicStats || { ...dbData.publicStats },
         bannedUsers: loaded.bannedUsers || [],
-        reviews: loaded.reviews || [...INITIAL_REVIEWS]
+        reviews: loaded.reviews || [...INITIAL_REVIEWS],
+        scans: loaded.scans || []
       };
       console.log("Database successfully loaded from with product photos mapped,", DB_FILE);
     } else {
@@ -1192,4 +1236,40 @@ export function submitReview(userId: string, email: string, name: string, rating
     review,
     coinsAwarded: rewardCoinsAmount
   };
+}
+
+// ---------------------- BARCODE SCANS OPERATIONS ----------------------
+
+export function recordBarcodeScan(scan: Omit<BarcodeScan, "id" | "timestamp">): { coinsAwarded: number; scansCount: number } {
+  if (!dbData.scans) {
+    dbData.scans = [];
+  }
+  const profile = dbData.profiles[scan.userId];
+  const scanCount = dbData.scans.filter(s => s.userId === scan.userId).length;
+  
+  // Award coins (+2 coins for successful barcode scan)
+  const coinsAwarded = 2;
+  if (profile) {
+    awardCoins(scan.userId, coinsAwarded, `Scanned barcode ${scan.barcode}: ${scan.productName}`);
+  }
+
+  const newScan: BarcodeScan = {
+    id: `scan_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    ...scan,
+    timestamp: new Date().toISOString()
+  };
+
+  dbData.scans.unshift(newScan);
+  saveDatabase();
+
+  return { coinsAwarded, scansCount: scanCount + 1 };
+}
+
+export function getScanHistory(userId: string): BarcodeScan[] {
+  if (!dbData.scans) return [];
+  return dbData.scans.filter(s => s.userId === userId);
+}
+
+export function getAllScans(): BarcodeScan[] {
+  return dbData.scans || [];
 }

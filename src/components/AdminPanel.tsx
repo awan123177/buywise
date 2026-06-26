@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
   Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X,
-  Award, Gift, Bell, ShieldAlert, Sparkles
+  Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode
 } from 'lucide-react';
 import { fetchAdminStats, runAdminGamificationAction } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -307,6 +307,111 @@ export default function AdminPanel() {
           </div>
         </div>
       </div>
+
+      {/* Smart Barcode Scanner Telemetry Panel */}
+      {stats && stats.barcodeStats && (
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
+          
+          {/* Main Scans Telemetry Summary Header */}
+          <div className="lg:col-span-12 terminal-card p-10 bg-[#FF3B30]/5 border-brand/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-[#FF3B30]/10 border border-brand/30 flex items-center justify-center text-[#FF3B30]">
+                <Scan size={24} />
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-white tracking-wider uppercase font-display">BARCODE SCANNER METRICS PANEL</h4>
+                <p className="text-[10px] text-white/40 font-mono uppercase tracking-wider mt-0.5">Real-time scan logs, matching products and price radar captures</p>
+              </div>
+            </div>
+
+            <div className="flex gap-8 font-mono text-xs">
+              <div>
+                <span className="text-white/40 block text-[9px] tracking-wider uppercase font-bold">TOTAL SCANS:</span>
+                <span className="text-2xl font-black text-[#FF3B30]">{stats.barcodeStats.totalScans}</span>
+              </div>
+              <div className="border-l border-white/10 pl-8">
+                <span className="text-white/40 block text-[9px] tracking-wider uppercase font-bold">RADAR TRIGGERS:</span>
+                <span className="text-2xl font-black text-white">{stats.barcodeStats.priceAlertCount}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Left Block: Most Scanned Products & Categories */}
+          <div className="lg:col-span-5 space-y-12">
+            {/* Most Scanned Products */}
+            <div className="terminal-card p-10 bg-black/40 backdrop-blur-md">
+              <h4 className="text-xs font-black text-white/40 tracking-[0.3em] uppercase mb-8 flex items-center gap-2">
+                <Barcode size={16} className="text-[#FF3B30]" />
+                MOST_SCANNED_PRODUCTS
+              </h4>
+              <div className="space-y-3">
+                {stats.barcodeStats.mostScannedProducts.length === 0 ? (
+                  <p className="text-center py-6 text-white/20 text-xs font-mono uppercase tracking-widest">Awaiting scans telemetry...</p>
+                ) : (
+                  stats.barcodeStats.mostScannedProducts.map((p: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-xl text-xs">
+                      <span className="text-white font-black uppercase truncate max-w-[70%]">{p.name}</span>
+                      <span className="text-[#FF3B30] font-mono font-black">{p.count} SCANS</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Popular Categories */}
+            <div className="terminal-card p-10 bg-black/40 backdrop-blur-md">
+              <h4 className="text-xs font-black text-white/40 tracking-[0.3em] uppercase mb-8 flex items-center gap-2">
+                <Tag size={16} className="text-[#FF3B30]" />
+                POPULAR_CATEGORIES
+              </h4>
+              <div className="space-y-3">
+                {stats.barcodeStats.popularCategories.length === 0 ? (
+                  <p className="text-center py-6 text-white/20 text-xs font-mono uppercase tracking-widest">Awaiting scans telemetry...</p>
+                ) : (
+                  stats.barcodeStats.popularCategories.map((c: any, idx: number) => (
+                    <div key={idx} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-xl text-xs">
+                      <span className="text-white font-black uppercase">{c.category}</span>
+                      <span className="text-white/40 font-mono font-bold">{c.count} SCANS</span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Block: Live Scan History Stream */}
+          <div className="lg:col-span-7 terminal-card p-10 bg-black/40 backdrop-blur-md">
+            <h4 className="text-xs font-black text-white/40 tracking-[0.3em] uppercase mb-8 flex items-center gap-2">
+              <History size={16} className="text-[#FF3B30]" />
+              USER_SCAN_HISTORY
+            </h4>
+            
+            <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+              {stats.barcodeStats.recentScans.length === 0 ? (
+                <p className="text-center py-10 text-white/20 text-xs font-mono uppercase tracking-widest">No recent scans registered in the database...</p>
+              ) : (
+                stats.barcodeStats.recentScans.map((scan: any, idx: number) => (
+                  <div key={scan.id || idx} className="p-4 bg-white/5 border border-white/5 rounded-xl hover:bg-white/10 transition-colors flex justify-between items-center text-xs">
+                    <div>
+                      <h5 className="text-white font-black uppercase truncate max-w-[280px]">{scan.productName}</h5>
+                      <div className="flex gap-3 mt-1.5 text-[9px] text-white/40 uppercase font-mono tracking-wider">
+                        <span>BY: {scan.userName}</span>
+                        <span>•</span>
+                        <span>BARCODE: {scan.barcode}</span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-emerald-400 font-mono font-bold block">₹{scan.lowestPrice?.toLocaleString() || 'N/A'}</span>
+                      <span className="text-[8px] text-white/30 uppercase mt-1 block">{new Date(scan.timestamp).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+        </div>
+      )}
 
       {/* Real-time History Feed */}
       <div className="mt-12 terminal-card p-12 bg-black/40 backdrop-blur-md">

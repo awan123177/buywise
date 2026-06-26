@@ -328,3 +328,31 @@ export async function adminFetchReferrals() {
     throw e;
   }
 }
+
+// 20. Barcode Scan Processing & AI Comparison
+export async function scanBarcode(barcode: string, format?: string) {
+  try {
+    const response = await api.post("/gamification/barcode/scan", { barcode, format });
+    const { coinsAwarded } = response.data;
+    if (coinsAwarded > 0) {
+      toast.success(`Barcode Scanned! +${coinsAwarded} BuyWise Coins earned! 🪙`, { icon: "📸" });
+    }
+    return response.data;
+  } catch (e: any) {
+    const errMsg = e.response?.data?.error || "Failed to process barcode scan via AI.";
+    console.error("scanBarcode error:", e);
+    toast.error(errMsg);
+    throw e;
+  }
+}
+
+// 21. Get Barcode scan history for the user
+export async function fetchBarcodeHistory() {
+  try {
+    const response = await api.get("/gamification/barcode/history");
+    return response.data;
+  } catch (e: any) {
+    console.error("fetchBarcodeHistory error:", e);
+    throw e;
+  }
+}

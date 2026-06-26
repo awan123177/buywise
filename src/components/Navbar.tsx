@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
@@ -78,6 +78,7 @@ export default function Navbar() {
           {[
             { name: 'INDEX', path: '/' },
             { name: 'DEALS', path: '/deals' },
+            { name: 'SCANNER', path: '/scanner' },
             { name: 'RADAR', path: '/radar' },
             { name: 'TRAVEL', path: '/travel' },
             { name: 'CLUB', path: '/rewards' },
@@ -185,6 +186,7 @@ export default function Navbar() {
         {[
           { name: 'INDEX', path: '/', icon: LayoutDashboard },
           { name: 'DEALS', path: '/deals', icon: Flame },
+          { name: 'SCANNER', path: '/scanner', icon: Scan },
           { name: 'RADAR', path: '/radar', icon: Search },
           { name: 'CLUB', path: '/rewards', icon: Trophy },
           { name: 'PREMIUM', path: '/premium', icon: Diamond },

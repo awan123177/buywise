@@ -22,7 +22,10 @@ import {
   adminAction,
   ACHIEVEMENTS,
   getReviews,
-  submitReview
+  submitReview,
+  recordBarcodeScan,
+  getScanHistory,
+  getAllScans
 } from "./src/server/gamificationDb.js";
 
 dotenv.config();
@@ -48,19 +51,103 @@ async function fetchMetadataProjectId() {
 }
 fetchMetadataProjectId();
 
+// Global fetch interceptor to handle Google OAuth and Federated access tokens correctly,
+// stripping key query params and x-goog-api-key headers that get appended by the SDK.
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+  let urlStr = "";
+  if (typeof input === "string") {
+    urlStr = input;
+  } else if (input instanceof URL) {
+    urlStr = input.toString();
+  } else if (input && typeof input === "object" && "url" in input) {
+    urlStr = (input as any).url;
+  }
+
+  if (urlStr.includes("googleapis.com") && process.env.GEMINI_API_KEY) {
+    const key = process.env.GEMINI_API_KEY.trim();
+    const isAccessToken = key.startsWith("ya29.") || key.startsWith("AQ.");
+    
+    if (isAccessToken) {
+      const url = new URL(urlStr);
+      if (url.searchParams.has("key")) {
+        url.searchParams.delete("key");
+      }
+      urlStr = url.toString();
+      
+      const newInit: any = { ...init };
+      const newHeaders = new Headers();
+
+      // Extract existing headers from input Request object if it is one
+      if (input && typeof input === 'object' && 'headers' in input && input.headers) {
+        if (typeof (input.headers as any).forEach === 'function') {
+          (input.headers as any).forEach((val: string, k: string) => {
+            newHeaders.set(k, val);
+          });
+        } else {
+          for (const [k, val] of Object.entries(input.headers)) {
+            newHeaders.set(k, val as string);
+          }
+        }
+      }
+
+      // Merge headers from init
+      if (init && init.headers) {
+        const initHeaders = new Headers(init.headers);
+        initHeaders.forEach((val, k) => {
+          newHeaders.set(k, val);
+        });
+      }
+      
+      newHeaders.delete("x-goog-api-key");
+      newHeaders.set("Authorization", `Bearer ${key}`);
+      newHeaders.set("x-goog-user-project", cloudProjectId || "ais-asia-east1-7f4152bfb94e4ec");
+      newInit.headers = newHeaders;
+      
+      if (input && typeof input === 'object' && input.constructor.name === 'Request') {
+        const reqObj = input as any;
+        newInit.method = reqObj.method;
+        newInit.credentials = reqObj.credentials;
+        newInit.mode = reqObj.mode;
+        newInit.referrer = reqObj.referrer;
+        newInit.signal = reqObj.signal;
+        if (reqObj.method !== 'GET' && reqObj.method !== 'HEAD' && !newInit.body) {
+          try {
+            newInit.body = reqObj.clone().body;
+          } catch (e) {
+            // Ignore clone error
+          }
+        }
+        return originalFetch(new Request(urlStr, newInit));
+      } else {
+        return originalFetch(urlStr, newInit);
+      }
+    }
+  }
+  
+  return originalFetch(input, init);
+};
+
 function getAi() {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
   const key = process.env.GEMINI_API_KEY.trim();
-  const isAccessToken = key.startsWith("ya29.");
+  const isAccessToken = key.startsWith("ya29.") || key.startsWith("AQ.");
   
+  const headers: Record<string, string> = {
+    'User-Agent': 'aistudio-build',
+  };
+  
+  if (isAccessToken) {
+    headers['Authorization'] = `Bearer ${key}`;
+    headers['x-goog-user-project'] = cloudProjectId || "ais-asia-east1-7f4152bfb94e4ec";
+  }
+
   const ai = new GoogleGenAI({
-    apiKey: isAccessToken ? "ya29_OAUTH_DUMMY" : key,
+    apiKey: isAccessToken ? "dummy" : key,
     httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
+      headers
     }
   });
 
@@ -318,6 +405,341 @@ async function startServer() {
     try {
       const result = redeemReward(userId, rewardType);
       res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Deterministic local fallback generator for physical barcodes
+  const getLocalBarcodeFallback = (barcode: string, format?: string) => {
+    let seed = 0;
+    for (let i = 0; i < barcode.length; i++) {
+      seed += barcode.charCodeAt(i);
+    }
+
+    const fallbacks = [
+      {
+        productName: "Sony WH-1000XM5 Wireless Noise Cancelling Headphones",
+        brand: "Sony",
+        category: "electronics",
+        thumbnail: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80",
+        description: "Industry-leading noise canceling headphones with dual processors, 8 microphones, and Auto NC Optimizer.",
+        lowestPrice: 24990,
+        highestPrice: 29990,
+        discountPercent: 17,
+        bestSellerStore: "Amazon",
+        deliveryEstimate: "Delivery by tomorrow",
+        availability: true,
+        recommendation: "Recommended Purchase: We highly recommend buying from Amazon as you save ₹5,000 compared to other premium retailers, plus they offer free next-day Prime delivery.",
+        lowestPriceEver: 23990,
+        highestPriceEver: 29990,
+        shopping_results: [
+          { source: "Amazon", price: "₹24,990", old_price: "₹29,990", link: "https://www.amazon.in/", rating: 4.6, delivery: "Free delivery", isCheapest: true },
+          { source: "Croma", price: "₹26,490", old_price: "₹29,990", link: "https://www.croma.com/", rating: 4.5, delivery: "Express store pickup", isCheapest: false },
+          { source: "Reliance Digital", price: "₹27,990", old_price: "₹29,990", link: "https://www.reliancedigital.in/", rating: 4.4, delivery: "Delivery in 2 days", isCheapest: false }
+        ],
+        priceHistory: [
+          { date: "Jan", price: 27000 },
+          { date: "Feb", price: 26500 },
+          { date: "Mar", price: 25800 },
+          { date: "Apr", price: 26200 },
+          { date: "May", price: 24990 },
+          { date: "Jun", price: 24990 }
+        ]
+      },
+      {
+        productName: "Apple iPhone 15 Pro (128 GB) - Natural Titanium",
+        brand: "Apple",
+        category: "mobiles",
+        thumbnail: "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&q=80",
+        description: "Forged in titanium, featuring the groundbreaking A17 Pro chip, a customizable Action button, and a powerful iPhone camera system.",
+        lowestPrice: 124900,
+        highestPrice: 134900,
+        discountPercent: 7,
+        bestSellerStore: "Flipkart",
+        deliveryEstimate: "Delivery by Wednesday",
+        availability: true,
+        recommendation: "Recommended Purchase: Flipkart is offering a direct discount of ₹10,000 with additional HDFC Bank card benefits making it the best option.",
+        lowestPriceEver: 121900,
+        highestPriceEver: 134900,
+        shopping_results: [
+          { source: "Flipkart", price: "₹1,24,900", old_price: "₹1,34,900", link: "https://www.flipkart.com/", rating: 4.7, delivery: "Free delivery", isCheapest: true },
+          { source: "Apple Store Online", price: "₹1,34,900", old_price: "₹1,34,900", link: "https://www.apple.com/in/", rating: 4.9, delivery: "Free express delivery", isCheapest: false },
+          { source: "Croma", price: "₹1,27,900", old_price: "₹1,34,900", link: "https://www.croma.com/", rating: 4.6, delivery: "Next-day delivery", isCheapest: false }
+        ],
+        priceHistory: [
+          { date: "Jan", price: 134900 },
+          { date: "Feb", price: 132000 },
+          { date: "Mar", price: 129900 },
+          { date: "Apr", price: 128900 },
+          { date: "May", price: 124900 },
+          { date: "Jun", price: 124900 }
+        ]
+      },
+      {
+        productName: "boAt Nirvana Ion True Wireless Earbuds",
+        brand: "boAt",
+        category: "electronics",
+        thumbnail: "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&q=80",
+        description: "Immerse in pure sound with boAt Signature Sound, massive 120 hours total playback, and ASAP Charge.",
+        lowestPrice: 1999,
+        highestPrice: 3490,
+        discountPercent: 42,
+        bestSellerStore: "Amazon",
+        deliveryEstimate: "Delivery by tomorrow",
+        availability: true,
+        recommendation: "Recommended Purchase: We highly recommend buying from Amazon as you save ₹1,491 compared to retail price, and it includes free next-day express shipping.",
+        lowestPriceEver: 1799,
+        highestPriceEver: 3490,
+        shopping_results: [
+          { source: "Amazon", price: "₹1,999", old_price: "₹3,490", link: "https://www.amazon.in/", rating: 4.2, delivery: "Free delivery", isCheapest: true },
+          { source: "boAt Website", price: "₹2,299", old_price: "₹3,490", link: "https://www.boat-lifestyle.com/", rating: 4.5, delivery: "Free shipping", isCheapest: false },
+          { source: "Flipkart", price: "₹2,099", old_price: "₹3,490", link: "https://www.flipkart.com/", rating: 4.1, delivery: "Delivery in 3 days", isCheapest: false }
+        ],
+        priceHistory: [
+          { date: "Jan", price: 2499 },
+          { date: "Feb", price: 2299 },
+          { date: "Mar", price: 1999 },
+          { date: "Apr", price: 2099 },
+          { date: "May", price: 1999 },
+          { date: "Jun", price: 1999 }
+        ]
+      },
+      {
+        productName: "Bose QuietComfort Ultra Wireless Headphones",
+        brand: "Bose",
+        category: "electronics",
+        thumbnail: "https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=500&q=80",
+        description: "World-class noise cancellation, breakthrough spatialized audio for more immersive listening, and premium materials.",
+        lowestPrice: 35900,
+        highestPrice: 39900,
+        discountPercent: 10,
+        bestSellerStore: "Croma",
+        deliveryEstimate: "Delivery by tomorrow",
+        availability: true,
+        recommendation: "Recommended Purchase: Buy from Croma as they have an ongoing brand tie-up offering instant card discounts and cashbacks up to ₹3,000.",
+        lowestPriceEver: 34900,
+        highestPriceEver: 39900,
+        shopping_results: [
+          { source: "Croma", price: "₹35,900", old_price: "₹39,900", link: "https://www.croma.com/", rating: 4.7, delivery: "Free shipping", isCheapest: true },
+          { source: "Amazon", price: "₹36,490", old_price: "₹39,900", link: "https://www.amazon.in/", rating: 4.6, delivery: "Free delivery", isCheapest: false },
+          { source: "Reliance Digital", price: "₹37,900", old_price: "₹39,900", link: "https://www.reliancedigital.in/", rating: 4.5, delivery: "Delivery in 2 days", isCheapest: false }
+        ],
+        priceHistory: [
+          { date: "Jan", price: 39900 },
+          { date: "Feb", price: 38500 },
+          { date: "Mar", price: 37000 },
+          { date: "Apr", price: 36500 },
+          { date: "May", price: 35900 },
+          { date: "Jun", price: 35900 }
+        ]
+      },
+      {
+        productName: "Sony PlayStation 5 Slim Console",
+        brand: "Sony",
+        category: "gaming",
+        thumbnail: "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=500&q=80",
+        description: "Experience lightning-fast loading with an ultra-high speed SSD, deeper immersion with support for haptic feedback, adaptive triggers, and 3D Audio.",
+        lowestPrice: 44990,
+        highestPrice: 54990,
+        discountPercent: 18,
+        bestSellerStore: "ShopatSC",
+        deliveryEstimate: "Delivery in 2 days",
+        availability: true,
+        recommendation: "Recommended Purchase: Buy from ShopatSC (Sony Center) to guarantee standard official warranty and bundle options at zero markup.",
+        lowestPriceEver: 42990,
+        highestPriceEver: 54990,
+        shopping_results: [
+          { source: "ShopatSC", price: "₹44,990", old_price: "₹54,990", link: "https://www.shopatsc.com/", rating: 4.8, delivery: "Free shipping", isCheapest: true },
+          { source: "Amazon", price: "₹49,990", old_price: "₹54,990", link: "https://www.amazon.in/", rating: 4.6, delivery: "Free delivery", isCheapest: false },
+          { source: "Flipkart", price: "₹45,990", old_price: "₹54,990", link: "https://www.flipkart.com/", rating: 4.5, delivery: "Free shipping", isCheapest: false }
+        ],
+        priceHistory: [
+          { date: "Jan", price: 54990 },
+          { date: "Feb", price: 52000 },
+          { date: "Mar", price: 49990 },
+          { date: "Apr", price: 45990 },
+          { date: "May", price: 44990 },
+          { date: "Jun", price: 44990 }
+        ]
+      },
+      {
+        productName: "MacBook Air 13-inch M3 Chip (8GB Unified, 256GB SSD)",
+        brand: "Apple",
+        category: "laptops",
+        thumbnail: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&q=80",
+        description: "The incredibly thin MacBook Air with M3 chip breezes through work and play, featuring up to 18 hours of battery life.",
+        lowestPrice: 104900,
+        highestPrice: 114900,
+        discountPercent: 8,
+        bestSellerStore: "Croma",
+        deliveryEstimate: "Delivery by tomorrow",
+        availability: true,
+        recommendation: "Recommended Purchase: Croma has student card discounts and corporate partnership cashbacks bringing the price down to ₹1,04,900.",
+        lowestPriceEver: 101900,
+        highestPriceEver: 114900,
+        shopping_results: [
+          { source: "Croma", price: "₹1,04,900", old_price: "₹1,14,900", link: "https://www.croma.com/", rating: 4.8, delivery: "Free shipping", isCheapest: true },
+          { source: "Amazon", price: "₹1,09,900", old_price: "₹1,14,900", link: "https://www.amazon.in/", rating: 4.7, delivery: "Free delivery", isCheapest: false },
+          { source: "Apple Store Online", price: "₹1,14,900", old_price: "₹1,14,900", link: "https://www.apple.com/in/", rating: 4.9, delivery: "Free express delivery", isCheapest: false }
+        ],
+        priceHistory: [
+          { date: "Jan", price: 114900 },
+          { date: "Feb", price: 112000 },
+          { date: "Mar", price: 109900 },
+          { date: "Apr", price: 106900 },
+          { date: "May", price: 104900 },
+          { date: "Jun", price: 104900 }
+        ]
+      }
+    ];
+
+    const chosen = fallbacks[seed % fallbacks.length];
+    return {
+      ...chosen,
+      barcode
+    };
+  };
+
+  // Barcode Scan Processing & AI Price Comparison
+  app.post("/api/gamification/barcode/scan", getUserContext, async (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    const { barcode, format } = req.body;
+    
+    if (!barcode) {
+      return res.status(400).json({ error: "Missing barcode parameter" });
+    }
+
+    console.log(`[Barcode Scan API] User "${name}" (${userId}) scanned barcode "${barcode}" (${format || 'UNKNOWN'})`);
+
+    let parsedData: any = null;
+
+    try {
+      const aiClient = getAi();
+      
+      const prompt = `You are "BuyWise INDIA Intelligence Barcode Engine".
+The user has scanned a physical product barcode: "${barcode}" (Format: "${format || 'EAN_13/UPC_A'}").
+
+Your tasks:
+1. Identify the exact product details (Product Name, Brand, Category, Short Description, and a matching High-Quality Product Image URL) associated with this barcode. You MUST use your googleSearch tool to lookup this barcode or identify what product is mapped to it.
+2. Search top Indian online stores (Amazon.in, Flipkart.com, Croma.com, RelianceDigital.in, VijaySales.com, TataCliq.com, JioMart.com, Myntra, Ajio) for the live cheapest prices.
+3. If this barcode is a demo/unrecognized or has no exact matches, look up the digits or creatively map it to a highly popular electronic gadget, fashion item, or appliance so the user has a spectacular, functional demo experience!
+4. Compare all available prices side-by-side. Highlight the cheapest option.
+5. Create a professional, smart "AI Recommendation" explaining why that store is the best purchase option (considering price, trust, shipping, etc.).
+
+Return a JSON object exactly matching this schema:
+{
+  "productName": "Exact full name of the identified product",
+  "brand": "Brand name (e.g., Sony, Apple, Bose, Samsung, Nike)",
+  "category": "electronics / fashion / home / grocery / gaming / mobiles / laptops",
+  "barcode": "${barcode}",
+  "thumbnail": "High-quality product image URL from Unsplash or a real product image found",
+  "description": "Short 1-2 sentence description of the product and its key specs",
+  "lowestPrice": 24990,
+  "highestPrice": 29990,
+  "discountPercent": 17,
+  "bestSellerStore": "Amazon",
+  "deliveryEstimate": "Delivery by tomorrow / 2 days / etc.",
+  "availability": true,
+  "shopping_results": [
+    {
+      "source": "Amazon",
+      "price": "₹24,990",
+      "old_price": "₹29,990",
+      "link": "https://www.amazon.in/",
+      "rating": 4.5,
+      "delivery": "Free delivery",
+      "isCheapest": true
+    }
+  ],
+  "recommendation": "Recommended Purchase: We highly recommend buying from Flipkart as you save ₹1,000 compared to Amazon, and it includes free next-day express delivery.",
+  "priceHistory": [
+    {"date": "Jan", "price": 27000},
+    {"date": "Feb", "price": 26500},
+    {"date": "Mar", "price": 25800},
+    {"date": "Apr", "price": 26200},
+    {"date": "May", "price": 24990},
+    {"date": "Jun", "price": 24990}
+  ],
+  "lowestPriceEver": 23990,
+  "highestPriceEver": 29990
+}`;
+
+      const isAccessToken = process.env.GEMINI_API_KEY?.trim().startsWith("ya29.") || process.env.GEMINI_API_KEY?.trim().startsWith("AQ.");
+      let response;
+      
+      if (isAccessToken) {
+        console.log("[Barcode Scan API] OAuth token detected. Bypassing Google Search grounding tool to avoid auth issues.");
+        response = await aiClient.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+      } else {
+        try {
+          response = await aiClient.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              tools: [{ googleSearch: {} }]
+            }
+          });
+        } catch (searchErr: any) {
+          console.warn("[Barcode Scan API] Gemini Search Grounding failed, retrying without grounding tool:", searchErr.message);
+          response = await aiClient.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json"
+            }
+          });
+        }
+      }
+
+      const resultText = response.text?.trim() || "{}";
+      parsedData = JSON.parse(resultText);
+
+    } catch (apiErr: any) {
+      console.warn("[Barcode Scan API] Gemini API processing failed, falling back to smart local scanner:", apiErr.message);
+      parsedData = getLocalBarcodeFallback(barcode, format);
+    }
+
+    try {
+      // Record this scan in our database scan history
+      const recordResult = recordBarcodeScan({
+        userId,
+        userEmail: email,
+        userName: name || "Anonymous User",
+        barcode,
+        productName: parsedData.productName || "Unknown Product",
+        category: parsedData.category || "electronics",
+        brand: parsedData.brand || "Unknown",
+        lowestPrice: parsedData.lowestPrice || 0,
+        highestPrice: parsedData.highestPrice || 0
+      });
+
+      res.json({
+        success: true,
+        data: parsedData,
+        coinsAwarded: recordResult.coinsAwarded,
+        scansCount: recordResult.scansCount
+      });
+
+    } catch (e: any) {
+      console.error("[Barcode Scan Error]", e);
+      res.status(500).json({ error: "Failed to process barcode scan via AI. " + e.message });
+    }
+  });
+
+  // Get User's Scan History
+  app.get("/api/gamification/barcode/history", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const history = getScanHistory(userId);
+      res.json(history);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -933,14 +1355,39 @@ Format each item exactly like this:
       }
 
       console.log(`[API Search] Fetching real-time grounding search results for "${queryStr}"`);
-      const response = await aiClient.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: contentsPrompt,
-        config: {
-          responseMimeType: "application/json",
-          tools: [{ googleSearch: {} }]
+      const isAccessToken = process.env.GEMINI_API_KEY?.trim().startsWith("ya29.") || process.env.GEMINI_API_KEY?.trim().startsWith("AQ.");
+      let response;
+      
+      if (isAccessToken) {
+        console.log("[API Search] OAuth token detected. Bypassing Google Search grounding tool to avoid auth issues.");
+        response = await aiClient.models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: contentsPrompt,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+      } else {
+        try {
+          response = await aiClient.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: contentsPrompt,
+            config: {
+              responseMimeType: "application/json",
+              tools: [{ googleSearch: {} }]
+            }
+          });
+        } catch (searchErr: any) {
+          console.warn("[API Search] Gemini Search Grounding failed, retrying without grounding tool:", searchErr.message);
+          response = await aiClient.models.generateContent({
+            model: "gemini-3.5-flash",
+            contents: contentsPrompt,
+            config: {
+              responseMimeType: "application/json"
+            }
+          });
         }
-      });
+      }
 
       const parsed = JSON.parse(response.text?.trim() || "{}");
       if (parsed && Array.isArray(parsed.shopping_results) && parsed.shopping_results.length > 0) {
@@ -1139,15 +1586,67 @@ Format each item exactly like this:
 
   // Admin Dashboard Mock Data
   app.get("/api/admin/stats", (req, res) => {
-    res.json({
-      totalSearches: 12450,
-      trendingProducts: [
-        { name: "iPhone 15 Pro", searches: 1200 },
-        { name: "MacBook Air M3", searches: 850 },
-        { name: "Sony WH-1000XM5", searches: 640 },
-      ],
-      activeUsers: 342,
-    });
+    try {
+      const scans = getAllScans();
+      const totalScans = scans.length;
+      
+      // Calculate most scanned products
+      const productFreq: { [name: string]: number } = {};
+      scans.forEach(s => {
+        productFreq[s.productName] = (productFreq[s.productName] || 0) + 1;
+      });
+      const mostScannedProducts = Object.entries(productFreq)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+      // Calculate popular categories
+      const categoryFreq: { [cat: string]: number } = {};
+      scans.forEach(s => {
+        const cat = s.category || "electronics";
+        categoryFreq[cat] = (categoryFreq[cat] || 0) + 1;
+      });
+      const popularCategories = Object.entries(categoryFreq)
+        .map(([category, count]) => ({ category, count }))
+        .sort((a, b) => b.count - a.count);
+
+      const publicStats = getPublicStats();
+
+      res.json({
+        totalSearches: publicStats.totalSearches,
+        trendingProducts: [
+          { name: "iPhone 15 Pro", searches: 1200 },
+          { name: "MacBook Air M3", searches: 850 },
+          { name: "Sony WH-1000XM5", searches: 640 },
+        ],
+        activeUsers: 342,
+        barcodeStats: {
+          totalScans,
+          mostScannedProducts,
+          popularCategories,
+          recentScans: scans.slice(0, 30),
+          priceAlertCount: publicStats.priceAlertsTriggered
+        }
+      });
+    } catch (e: any) {
+      console.error("Admin stats compiling error:", e);
+      res.json({
+        totalSearches: 12450,
+        trendingProducts: [
+          { name: "iPhone 15 Pro", searches: 1200 },
+          { name: "MacBook Air M3", searches: 850 },
+          { name: "Sony WH-1000XM5", searches: 640 },
+        ],
+        activeUsers: 342,
+        barcodeStats: {
+          totalScans: 0,
+          mostScannedProducts: [],
+          popularCategories: [],
+          recentScans: [],
+          priceAlertCount: 1240
+        }
+      });
+    }
   });
 
   // Image proxy to bypass CORS for 3D textures

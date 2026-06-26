@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, Loader2, Sparkles, Diamond, ArrowRight, Camera, Mic, Volume2, Filter, SlidersHorizontal, ChevronDown, Check, Star, Tag, Zap } from 'lucide-react';
+import { Search, Loader2, Sparkles, Diamond, ArrowRight, Camera, Mic, Volume2, Filter, SlidersHorizontal, ChevronDown, Check, Star, Tag, Zap, Scan } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { searchProducts, logSearchAction, fetchPublicSavingsStats, submitReferral } from '../lib/api';
 import { detectProduct, extractProductFeatures } from '../lib/gemini';
@@ -324,6 +324,13 @@ export default function Home() {
               />
             </div>
             <div className="flex h-16 md:h-24">
+              <button 
+                onClick={() => navigate('/scanner')}
+                className="w-16 md:w-24 flex items-center justify-center border-r border-white/10 text-white/70 transition-all hover:bg-white/10 hover:text-white"
+                title="Smart Barcode Scanner"
+              >
+                <Scan size={24} className="w-5 h-5 md:w-6 md:h-6" />
+              </button>
               <button 
                 onClick={startVoiceSearch}
                 className={`w-16 md:w-24 flex items-center justify-center border-r border-white/10 transition-all hover:bg-white/10 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/70'}`}
