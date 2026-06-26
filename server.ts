@@ -9,6 +9,7 @@ import fs from "fs";
 import {
   getOrCreateProfile,
   awardCoins,
+  transferCoins,
   getTransactions,
   checkLoginStreak,
   recordSearch,
@@ -169,6 +170,22 @@ async function startServer() {
         }
       }
       res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Transfer Coins
+  app.post("/api/gamification/transfer", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    const { toUserId, amount } = req.body;
+    try {
+      const result = transferCoins(userId, toUserId, amount);
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json({ error: result.message });
+      }
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

@@ -671,6 +671,42 @@ export function awardCoins(userId: string, amount: number, reason: string): { co
   return { coins: profile.coins, gained: amount, transaction };
 }
 
+// Transfer Coins
+export function transferCoins(fromUserId: string, toUserId: string, amount: number): { success: boolean; message: string } {
+  const fromProfile = dbData.profiles[fromUserId];
+  const toProfile = dbData.profiles[toUserId];
+
+  if (!fromProfile) return { success: false, message: "Sender profile not found" };
+  if (!toProfile) return { success: false, message: "Recipient profile not found" };
+
+  if (amount <= 0) return { success: false, message: "Transfer amount must be positive" };
+  if (fromProfile.coins < amount) return { success: false, message: "Insufficient coins" };
+
+  fromProfile.coins -= amount;
+  toProfile.coins += amount;
+
+  const txnId = `txn_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+
+  dbData.transactions.unshift({
+    id: `${txnId}_out`,
+    userId: fromUserId,
+    amount: -amount,
+    reason: `Transferred ${amount} coins to ${toProfile.name}`,
+    timestamp: new Date().toISOString()
+  });
+
+  dbData.transactions.unshift({
+    id: `${txnId}_in`,
+    userId: toUserId,
+    amount: amount,
+    reason: `Received ${amount} coins from ${fromProfile.name}`,
+    timestamp: new Date().toISOString()
+  });
+
+  saveDatabase();
+  return { success: true, message: `Successfully transferred ${amount} coins to ${toProfile.name}` };
+}
+
 // Get Transactions List for User
 export function getTransactions(userId: string): CoinTransaction[] {
   return dbData.transactions.filter(t => t.userId === userId);

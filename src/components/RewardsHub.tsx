@@ -12,7 +12,7 @@ import {
   fetchCoinTransactions, fetchAchievements, 
   submitReferral, fetchReferralsDashboard, 
   fetchLeaderboard, redeemCoinReward, logSocialShare, logReviewAction,
-  fetchReviews, submitUserReview
+  fetchReviews, submitUserReview, transferCoins
 } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -34,6 +34,8 @@ export default function RewardsHub() {
   // Input states
   const [refCodeInput, setRefCodeInput] = useState<string>('');
   const [claiming, setClaiming] = useState<string | null>(null);
+  const [tippingUserId, setTippingUserId] = useState<string | null>(null);
+  const [tipAmount, setTipAmount] = useState<string>('50');
 
   // Coins animation trigger
   const [particles, setParticles] = useState<any[]>([]);
@@ -161,6 +163,32 @@ export default function RewardsHub() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const handleTipUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tippingUserId) return;
+    
+    const amount = parseInt(tipAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount.");
+      return;
+    }
+
+    try {
+      setClaiming(tippingUserId);
+      const result = await transferCoins(tippingUserId, amount);
+      if (result.success) {
+        triggerCoinsRain();
+        setTippingUserId(null);
+        setTipAmount('50');
+        loadData();
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setClaiming(null);
     }
   };
 
@@ -711,15 +739,15 @@ export default function RewardsHub() {
                     leaderboard.map((u, idx) => {
                       const isMe = u.userId === user?.uid;
                       return (
-                        <div 
-                          key={u.userId} 
-                          className={`p-3 rounded-lg border flex items-center justify-between text-xs transition-colors ${
-                            isMe 
-                              ? 'bg-yellow-500/10 border-yellow-500/30 font-bold' 
-                              : 'bg-white/[0.01] border-white/5 hover:bg-white/5'
-                          }`}
-                        >
-                          <div className="flex items-center gap-3">
+                        <div key={u.userId} className="flex flex-col">
+                          <div 
+                            className={`p-3 rounded-lg border flex items-center justify-between text-xs transition-colors ${
+                              isMe 
+                                ? 'bg-yellow-500/10 border-yellow-500/30 font-bold' 
+                                : 'bg-white/[0.01] border-white/5 hover:bg-white/5'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
                             {/* Rank Column */}
                             <span className="font-mono font-black text-white/40 w-6 text-center">{u.rank}</span>
                             
@@ -741,15 +769,58 @@ export default function RewardsHub() {
                           </div>
 
                           {/* Leaderboard Values */}
-                          <div className="text-right font-mono">
-                            {leaderboardMetric === 'coins' && <span className="font-bold text-yellow-500">{u.coins} 🪙</span>}
-                            {leaderboardMetric === 'referrals' && <span className="font-bold text-green-400">{u.referralsCount} Ref</span>}
-                            {leaderboardMetric === 'searches' && <span className="font-bold text-blue-400">{u.searchesCount} Search</span>}
-                            {leaderboardMetric === 'savings' && <span className="font-bold text-green-400">{formatPrice(u.savingsCount)}</span>}
+                          <div className="flex items-center gap-4">
+                            <div className="text-right font-mono">
+                              {leaderboardMetric === 'coins' && <span className="font-bold text-yellow-500">{u.coins} 🪙</span>}
+                              {leaderboardMetric === 'referrals' && <span className="font-bold text-green-400">{u.referralsCount} Ref</span>}
+                              {leaderboardMetric === 'searches' && <span className="font-bold text-blue-400">{u.searchesCount} Search</span>}
+                              {leaderboardMetric === 'savings' && <span className="font-bold text-green-400">{formatPrice(u.savingsCount)}</span>}
+                            </div>
+                            
+                            {!isMe && (
+                              <button
+                                onClick={() => setTippingUserId(tippingUserId === u.userId ? null : u.userId)}
+                                className="px-2 py-1 text-[10px] bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 border border-yellow-500/20 rounded font-bold transition-colors"
+                              >
+                                Tip 🪙
+                              </button>
+                            )}
                           </div>
-
                         </div>
-                      );
+                        
+                        {/* Tip Form Dropdown */}
+                        <AnimatePresence>
+                          {tippingUserId === u.userId && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden"
+                            >
+                              <form onSubmit={handleTipUser} className="bg-black/30 p-3 flex items-center justify-between gap-3 border-t border-white/5">
+                                <div className="text-[10px] text-white/50">Send Coins to <span className="text-white">{u.name}</span></div>
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    type="number" 
+                                    value={tipAmount}
+                                    onChange={(e) => setTipAmount(e.target.value)}
+                                    className="w-16 bg-black border border-white/10 rounded px-2 py-1 text-xs text-white text-center font-mono"
+                                    min="1"
+                                  />
+                                  <button 
+                                    type="submit"
+                                    disabled={claiming === u.userId}
+                                    className="px-3 py-1 bg-yellow-500 text-black font-black text-[10px] uppercase rounded hover:bg-yellow-400 transition-colors disabled:opacity-50"
+                                  >
+                                    {claiming === u.userId ? 'Sending...' : 'Send'}
+                                  </button>
+                                </div>
+                              </form>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    );
                     })
                   )}
                 </div>

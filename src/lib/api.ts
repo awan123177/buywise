@@ -227,6 +227,24 @@ export async function redeemCoinReward(rewardType: "discount" | "trial" | "deal"
   }
 }
 
+// 12.5. Transfer Coins
+export async function transferCoins(toUserId: string, amount: number) {
+  try {
+    const response = await api.post("/gamification/transfer", { toUserId, amount });
+    const { success, message } = response.data;
+    if (success) {
+      toast.success(message);
+    } else {
+      toast.error(message || "Failed to transfer coins.");
+    }
+    return response.data;
+  } catch (e: any) {
+    const errMsg = e.response?.data?.error || "Failed to transfer coins.";
+    toast.error(errMsg);
+    throw e;
+  }
+}
+
 // 13. Public Savings Counter (Smooth Dynamic Live Counter)
 export async function fetchPublicSavingsStats() {
   try {
