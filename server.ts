@@ -5,8 +5,47 @@ import { fileURLToPath } from "url";
 import axios from "axios";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
+import fs from "fs";
+import {
+  getOrCreateProfile,
+  awardCoins,
+  getTransactions,
+  checkLoginStreak,
+  recordSearch,
+  submitReferralCode,
+  checkAndCompleteReferral,
+  getReferralStats,
+  getLeaderboard,
+  redeemReward,
+  getPublicStats,
+  adminAction,
+  ACHIEVEMENTS,
+  getReviews,
+  submitReview
+} from "./src/server/gamificationDb.js";
 
 dotenv.config();
+
+let cloudProjectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || "";
+
+// Fetch project ID from metadata server on startup if not already set
+async function fetchMetadataProjectId() {
+  if (!cloudProjectId) {
+    try {
+      const res = await axios.get("http://metadata.google.internal/computeMetadata/v1/project/project-id", {
+        headers: { "Metadata-Flavor": "Google" },
+        timeout: 1000
+      });
+      if (res.data && typeof res.data === 'string') {
+        cloudProjectId = res.data.trim();
+        console.log("Fetched Cloud Project ID from metadata server:", cloudProjectId);
+      }
+    } catch (e: any) {
+      console.log("Could not fetch Project ID from metadata server (using fallback):", e.message);
+    }
+  }
+}
+fetchMetadataProjectId();
 
 function getAi() {
   if (!process.env.GEMINI_API_KEY) {
@@ -30,6 +69,8 @@ function getAi() {
       if (authObj && typeof authObj.addAuthHeaders === "function") {
         authObj.addAuthHeaders = async (headers: any) => {
           headers.set("Authorization", `Bearer ${key}`);
+          const pId = cloudProjectId || "ais-asia-east1-7f4152bfb94e4ec";
+          headers.set("x-goog-user-project", pId);
         };
       }
     };
@@ -74,6 +115,331 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // ==========================================
+  // --- BUYWISE GAMIFICATION API ENDPOINTS ---
+  // ==========================================
+
+  // Helper middleware to extract user context from custom headers passed by the client
+  const getUserContext = (req: any, res: any, next: any) => {
+    const userId = req.headers["x-user-id"] as string;
+    const email = req.headers["x-user-email"] as string;
+    const name = req.headers["x-user-name"] as string;
+
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized. Missing user context headers." });
+    }
+    req.userContext = { userId, email: email || "", name: name || "Anonymous User" };
+    next();
+  };
+
+  // Get or Create User Profile
+  app.get("/api/gamification/profile", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const profile = getOrCreateProfile(userId, email, name);
+      res.json(profile);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Daily Check-in / Login Streak Trigger
+  app.post("/api/gamification/login", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const result = checkLoginStreak(userId);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Record Search and Award Coins
+  app.post("/api/gamification/search", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    const { query: queryText } = req.body;
+    try {
+      const result = recordSearch(userId, queryText || "");
+      // Check if referral should complete on first search
+      if (result.searchesCount === 1) {
+        const refResult = checkAndCompleteReferral(userId);
+        if (refResult.triggered) {
+          (result as any).referralReward = refResult;
+        }
+      }
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Social Sharing Coins Reward (+20 coins)
+  app.post("/api/gamification/share", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const result = awardCoins(userId, 20, "Shared BuyWise deal to social network");
+      res.json({ success: true, coins: result.coins, gained: 20 });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Write Review Coins Reward (+10 coins)
+  app.post("/api/gamification/review", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const result = awardCoins(userId, 10, "Submitted a verified merchant review");
+      res.json({ success: true, coins: result.coins, gained: 10 });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET user reviews
+  app.get("/api/gamification/reviews", (req: any, res: any) => {
+    try {
+      const reviewsList = getReviews();
+      res.json(reviewsList);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST a new user review and earn coins
+  app.post("/api/gamification/reviews", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    const { rating, comment } = req.body;
+    if (rating === undefined || !comment) {
+      return res.status(400).json({ error: "Missing rating or comment parameters" });
+    }
+    try {
+      const result = submitReview(userId, email, name, Number(rating), comment);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Complete Profile Setup Reward (+25 coins)
+  app.post("/api/gamification/profile-complete", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const result = awardCoins(userId, 25, "Completed registration and profile setup");
+      res.json({ success: true, coins: result.coins, gained: 25 });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Coins Transactions List for User
+  app.get("/api/gamification/transactions", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const txns = getTransactions(userId);
+      res.json(txns);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Achievements List with Completion Flag
+  app.get("/api/gamification/achievements", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const profile = getOrCreateProfile(userId, email, name);
+      const result = ACHIEVEMENTS.map(ach => ({
+        ...ach,
+        unlocked: profile.achievements.includes(ach.id)
+      }));
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Enter Referral Code (By referred friend)
+  app.post("/api/gamification/referral/join", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    const { referralCode } = req.body;
+    if (!referralCode) return res.status(400).json({ error: "Missing referralCode parameter" });
+    try {
+      const result = submitReferralCode(userId, referralCode);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Get Referral Metrics & Link for Referral Dashboard
+  app.get("/api/gamification/referral/stats", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const stats = getReferralStats(userId);
+      res.json(stats);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Get Global Leaderboards (Top 100)
+  app.get("/api/gamification/leaderboard", (req: any, res: any) => {
+    try {
+      const metric = (req.query.metric || "coins") as "coins" | "referrals" | "searches" | "savings";
+      const list = getLeaderboard(metric);
+      res.json(list);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Redeem Coins for Premium discounts or trials
+  app.post("/api/gamification/redeem", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    const { rewardType } = req.body;
+    if (!rewardType) return res.status(400).json({ error: "Missing rewardType parameter" });
+    try {
+      const result = redeemReward(userId, rewardType);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Public Savings Counter (Smooth Dynamic API)
+  app.get("/api/gamification/public-stats", (req: any, res: any) => {
+    try {
+      const stats = getPublicStats();
+      res.json(stats);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Trending & Daily Deals Feed
+  app.get("/api/gamification/deals", (req: any, res: any) => {
+    const { category, type, limit } = req.query;
+    try {
+      const storePath = path.join(process.cwd(), "data_store.json");
+      if (!fs.existsSync(storePath)) {
+        return res.json([]);
+      }
+      const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+      let filtered = [...raw.deals];
+
+      if (category && category !== "all") {
+        filtered = filtered.filter((d: any) => d.category === category);
+      }
+
+      if (type === "best") {
+        filtered.sort((a: any, b: any) => b.discountPercent - a.discountPercent);
+      } else if (type === "trending") {
+        filtered.sort((a: any, b: any) => b.views - a.views);
+      } else if (type === "flash") {
+        filtered = filtered.filter((d: any) => d.isFlashDeal);
+      } else if (type === "editor") {
+        filtered = filtered.filter((d: any) => d.isEditorPick);
+      } else if (type === "under500") {
+        filtered = filtered.filter((d: any) => d.newPrice < 500);
+      } else if (type === "under1000") {
+        filtered = filtered.filter((d: any) => d.newPrice < 1000);
+      } else if (type === "under5000") {
+        filtered = filtered.filter((d: any) => d.newPrice < 5000);
+      }
+
+      if (limit) {
+        filtered = filtered.slice(0, Number(limit));
+      }
+
+      res.json(filtered);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Save / Share / View actions on curated Deals
+  app.post("/api/gamification/deals/action", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    const { dealId, action } = req.body;
+    if (!dealId || !action) return res.status(400).json({ error: "Missing parameters" });
+    try {
+      const storePath = path.join(process.cwd(), "data_store.json");
+      const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+      const dealIndex = raw.deals.findIndex((d: any) => d.id === dealId);
+      
+      if (dealIndex >= 0) {
+        const deal = raw.deals[dealIndex];
+        if (action === "save") {
+          deal.saves = (deal.saves || 0) + 1;
+        } else if (action === "share") {
+          deal.purchases = (deal.purchases || 0) + 1;
+          // Award 2 coins for sharing a curated deal!
+          awardCoins(userId, 2, `Shared deal: ${deal.title}`);
+        } else if (action === "view") {
+          deal.views = (deal.views || 0) + 1;
+        }
+        
+        fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), "utf-8");
+        return res.json({ success: true, deal });
+      }
+      res.status(404).json({ error: "Deal not found" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Update User Notification Preferences
+  app.post("/api/gamification/notifications/preferences", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    const { preferences, enabled } = req.body;
+    try {
+      const storePath = path.join(process.cwd(), "data_store.json");
+      const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+      const profile = raw.profiles[userId];
+      if (profile) {
+        if (enabled !== undefined) profile.notificationsEnabled = enabled;
+        if (preferences) profile.notificationPreferences = preferences;
+        fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), "utf-8");
+        return res.json({ success: true, profile });
+      }
+      res.status(404).json({ error: "Profile not found" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Admin Actions Override
+  app.post("/api/gamification/admin/action", (req: any, res: any) => {
+    const { action, payload } = req.body;
+    try {
+      const result = adminAction(action, payload);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Get Admin Profiles & Stats list (to manage them)
+  app.get("/api/gamification/admin/users", (req: any, res: any) => {
+    try {
+      const storePath = path.join(process.cwd(), "data_store.json");
+      const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+      res.json(Object.values(raw.profiles));
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Get Admin Referrals list (to ban them)
+  app.get("/api/gamification/admin/referrals", (req: any, res: any) => {
+    try {
+      const storePath = path.join(process.cwd(), "data_store.json");
+      const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+      res.json(raw.referrals);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
 
   // Gemini AI Proxies (Secure Server-Side Implementation)
   app.post("/api/gemini/detect", async (req, res) => {
@@ -302,45 +668,68 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
         return res.status(400).json({ error: "Missing messages array" });
       }
 
-      const systemInstruction = `You are "BuyWise Support Intelligence", the official virtual assistant for BuyWise, a futuristic shopping engine and travel super app designed for smart consumers in India and globally.
+      const systemInstruction = `You are "BuyWise Support Intelligence", the highly sophisticated, super-intelligent virtual support brain for BuyWise (formerly PriceVerse AI), the ultimate futuristic price-arbitrage shopping engine, 3D product examination hub, and flight tracker built exclusively for smart consumers.
 
-YOUR VITAL INFO & APP SPECS:
-1. WHAT IS BUYWISE?
-   - BuyWise is a high-tech shopping, tracking, and travel booking companion. It combines AI product search, price forecasting, interactive 3D product examination, and Google Flights integration into a single beautiful portal.
-   - Built and owned solely by the visionary developer & creator Awanwarsi.
+OWNERSHIP & CORE MISSION:
+- This app is built and solely owned by the brilliant developer and creator: **Awanwarsi**.
+- Your mission is to provide deeply detailed, highly intelligent, and extremely helpful support. Under no circumstances should you provide generic or robotic replies. Understand the user's intent fully and provide clear, contextual, and accurate solutions.
 
-2. KEY MODULES & FEATURES:
-   - PRODUCT EXPLORER (Home): Instantly searches Amazon, Flipkart, Croma, and Reliance Digital. Provides smart pricing, discount comparisons, fast delivery ETAs, and detailed product specifications.
-   - INTERACTIVE 3D VIEWER: Accessible from compared search items. Users inspect high-fidelity, interactive 3D product structures and aesthetics to judge physical build quality.
-   - PRICE RADAR (Wishlist): Tracks item prices, provides smart drop alerts, and uses advanced Gemini AI predictive models to forecast whether prices will go UP, DOWN, or remain STABLE.
-   - TRAVEL ROUTE FINDER (/travel): Under the Travel tab, users construct optimal flight paths in Indian Rupees (₹), analyze travel durations, search autocomplete routes with Google Flights, and build beautiful travel itineraries.
-   - ADMIN PANEL (/admin): Run by the owner Awanwarsi. Enables instant real-time oversight of premium status requests, stats telemetry, and subscription control (approving or revoking premium access in real-time).
+DETAILED APP CAPABILITIES & MODULES:
+1. **PRODUCT EXPLORER (Home Tab)**: 
+   - Dynamically searches major e-commerce platforms in real-time (Amazon, Flipkart, Croma, Reliance Digital, Vijay Sales, etc.).
+   - Employs live web-grounding to identify and present the absolute lowest price variant (including discounts, coupons, bank card offers).
+   - Shows specifications, specs radar chart, delivery ETAs, and comparison matrices.
+2. **INTERACTIVE 3D VIEWER (3D Stage)**:
+   - Allows users to interactively rotate, zoom, and inspect devices (such as mobile phones, laptops, and accessories) in high-fidelity 3D to check structural proportions, camera bumps, and premium aesthetics.
+   - Accessed directly via the "3D View" action button on product cards from the Home explorer search results.
+3. **PRICE RADAR (Wishlist Tab)**:
+   - Tracks saved items continuously.
+   - Integrates Gemini AI models to run deep trend analysis and forecast whether the price will go UP, DOWN, or remain STABLE, offering explicit analytical justifications.
+4. **TRAVEL ROUTE FINDER (Travel Tab)**:
+   - A complete travel assistant using Google Flights auto-completion.
+   - Searches routes in Indian Rupees (₹) and builds optimal multi-city or single-leg flight paths and elegant trip itineraries.
+5. **ADMIN CONTROLS (/admin)**:
+   - Restricted to the owner, **Awanwarsi**. Allows him to approve premium subscriptions in real-time, inspect telemetry logs, view payment UTR entries, and manage site parameters.
 
-3. PREMIUM TIERS & PAYMENT PROCESS:
-   - Weekly Pass: ₹30 (Unlimited AI shopping insights, price-drop alerts, flight scans).
-   - Monthly Elite: ₹100 (No Ads, Premium Profile Badge, Priority Support).
-   - Forever Founder: ₹700 (Lifetime access, all current & beta features, direct developer access).
-   - PAYMENT WORKFLOW: Go to the "Premium" tab, pick a plan, scan the custom UPI QR Code, enter your payment's Unique Transaction Reference (UTR) number, and submit.
-   - APPROVAL SCHEDULE: Approved manually by owner Awanwarsi. Approval takes only 5 to 10 minutes on Saturdays and Sundays, and between 9 AM to 3 PM on Monday to Friday. Once approved, the status updates instantly in real-time.
+PREMIUM USERS, PRICING & PAYMENT WORKFLOW:
+- Premium unlocks the **Cognitive Assistant (Red floating bot)** on the home explorer, which gives personalized shopping suggestions, compares specs, and acts as an AI shopping companion.
+- **Premium Subscription Plans**:
+  - **Weekly Pass (₹30)**: Unlimited AI shopping, continuous price tracking, flight scans.
+  - **Monthly Elite (₹100)**: No ads, premium custom profile badge, priority support queue.
+  - **Forever Founder (₹700)**: All premium features for life, priority direct chat access to Awanwarsi, and future beta releases.
+- **UPI QR Code payment**:
+  1. The user navigates to the **Premium** tab.
+  2. Selects their preferred plan and scans the custom UPI QR Code displayed on-screen.
+  3. Completes payment through any UPI app (GPay, PhonePe, Paytm, BHIM, etc.).
+  4. Copies the 12-digit **Unique Transaction Reference (UTR)** or transaction ID from their payment app.
+  5. Pastes the UTR into our form and submits it.
 
-4. USER CORRESPONDENCE & ESCALATION:
-   - If a user asks to contact human support, or wants direct human help with their payment approval/refund, let them know that:
-     - Owner & Developer is Awanwarsi
-     - Support Channel is WhatsApp: +91 77604 49306
-     - Say: "Let me open the Live Support Channels for you!" or mention they can click the direct links to WhatsApp.
+ manual PAYMENT APPROVAL & VERIFICATION TIMES (CRITICAL):
+- Once a user submits their UTR, the developer **Awanwarsi** manually verifies the payment in our bank account before approving.
+- **HOW MUCH TIME WILL IT TAKE TO BE APPROVED?** Tell the user clearly:
+  - **Saturdays & Sundays (Weekends)**: Manual verification is active and super-fast! It takes only **5 to 10 minutes** to get approved and activated.
+  - **Mondays to Fridays (Weekdays)**: Verification and approval are processed between **9 AM and 3 PM (IST)**. Submissions outside this weekday window are approved early the next morning.
+- Remind users that entering an accurate 12-digit UTR is essential for instant approval.
 
-REPLY STYLE:
-- Use clear Markdown formatting (e.g., **bolding** for emphasis, bulleted lists for options).
-- Be extremely polite, high-tech, and intelligent. Keep your responses crisp, scannable, and extremely helpful.
-- Reference actual rupees (₹) when explaining plans.
-- Give exact, direct answers to what the user asks.
+ESCALATING TO HUMAN SUPPORT:
+- If the user has a complex billing issue, refund request, or their payment isn't approved, provide the following contact info:
+  - **Developer/Owner**: Awanwarsi
+  - **Official WhatsApp Support**: **+91 77604 49306** (Direct instant link: https://wa.me/917760449306)
+  - **Support Email**: **mohammdsaeed24@gmail.com** or **awanwarsi790@gmail.com**
+  - Inform them that clicking the "Headset" icon on the support header or asking to speak with an agent will open the support links directly in the UI.
 
-Current user's email: ${userEmail || "anonymous / guest"}`;
+TONE & BEHAVIOR:
+- Sound super-intelligent, respectful, highly skilled, and professional.
+- Always address the user warmly. Use beautiful Markdown styling (headers, bolding, clean bullet points, code blocks where appropriate) to render answers elegantly.
+- If they ask about approval times, outline the schedule in a highly reassuring, neat table or clear list format.
+- Let the user know we value their presence on BuyWise!
+
+Current logged-in user email: ${userEmail || "anonymous / guest"}`;
 
       const contents = formatGeminiContents(messages);
 
       if (contents.length === 0) {
-        return res.json({ text: "Namaste! I am your BuyWise AI Support. How can I help you find products, track prices, or manage your Premium subscription today?" });
+        return res.json({ text: "Namaste! I am the BuyWise Support Intelligence. I can help you with anything regarding our 3D product view, price radar trend forecasts, travel flights tracking, billing, or UPI Premium verification. What's on your mind today?" });
       }
 
       let chatText = "";
@@ -364,7 +753,7 @@ Current user's email: ${userEmail || "anonymous / guest"}`;
         const lowerInput = lastUserMessage.toLowerCase();
 
         if (lowerInput.includes("premium") || lowerInput.includes("plan") || lowerInput.includes("weekly") || lowerInput.includes("monthly") || lowerInput.includes("elite") || lowerInput.includes("founder") || lowerInput.includes("price") || lowerInput.includes("cost") || lowerInput.includes("payment")) {
-          chatText = `### 🌟 BuyWise Subscription Plans & Payments
+          chatText = `### 🌟 BuyWise Premium Plans & Payment Workflow
 
 We offer three premium, high-octane plans to elevate your shopping & travel intelligence:
 
@@ -376,18 +765,23 @@ We offer three premium, high-octane plans to elevate your shopping & travel inte
 1. Navigate to the **Premium** tab in the top navigation bar.
 2. Select your desired plan, scan the displayed **UPI QR Code** to pay.
 3. Enter your payment's 12-digit **Unique Transaction Reference (UTR)** number and submit the form. 
-4. The owner **Awanwarsi** will approve your subscription manually in 5 to 10 minutes!`;
+4. The owner **Awanwarsi** will verify your payment manually and approve!`;
         } else if (lowerInput.includes("approve") || lowerInput.includes("approval") || lowerInput.includes("time") || lowerInput.includes("how long") || lowerInput.includes("wait") || lowerInput.includes("pending") || lowerInput.includes("utr")) {
           chatText = `### 🕒 Premium Approval & Verification Schedule
 
-Thank you for upgrading! Your subscription is valued and handled with absolute priority.
+Manual payment verifications are handled with absolute priority by our creator, **Awanwarsi**:
 
-- **Manual Approval Schedule**:
-  - **Saturdays & Sundays**: Real-time validation! Usually approved within **5 to 10 minutes**.
-  - **Mondays to Fridays**: Manual approval is active between **9 AM and 3 PM**.
-- **Verification Details**:
-  - Once our developer **Awanwarsi** matches your submitted **UTR Transaction Number** with our bank confirmation, your profile will immediately transition to Premium status in real-time.
-  - Please ensure your submitted UTR matches your transaction slip exactly to speed up verification.`;
+| Day of Week | Verification Window (IST) | Expected Approval Time |
+| :--- | :--- | :--- |
+| **Saturdays & Sundays** | **Active 24/7** | **Only 5 to 10 Minutes!** |
+| **Mondays to Fridays** | **9:00 AM to 3:00 PM** | **Within 15 to 30 Minutes** |
+
+*Note: Weekday submissions made after 3:00 PM are approved early the next morning.*
+
+**To ensure instant approval**:
+1. Double-check your 12-digit UPI UTR Transaction Number in the receipt.
+2. Submit it accurately on the Premium page. 
+3. The moment Awanwarsi matches the UTR, your account becomes Premium instantly in real-time!`;
         } else if (lowerInput.includes("radar") || lowerInput.includes("track") || lowerInput.includes("trend") || lowerInput.includes("wishlist")) {
           chatText = `### 🎯 Price Radar & Trend Tracking
 
@@ -417,7 +811,7 @@ I am happy to connect you directly to our human support desk!
 
 - **Developer & Owner**: Awanwarsi
 - **Direct Support Channel (WhatsApp)**: **+91 77604 49306**
-- **Support Email**: **mohammdsaeed24@gmail.com**
+- **Support Email**: **mohammdsaeed24@gmail.com** or **awanwarsi790@gmail.com**
 
 Please click the WhatsApp button on the support panel or send a message mentioning your registered email address and UTR reference. Let me open the Live Support Channels for you!`;
         } else {
@@ -460,19 +854,25 @@ Please feel free to ask a specific question, or select one of our suggested ques
       let contentsPrompt = "";
 
       if (urlToAnalyze) {
-        contentsPrompt = `You are "BuyWise INDIA Intelligence", a genius price comparison engine.
+        contentsPrompt = `You are "BuyWise INDIA Intelligence", a genius price comparison engine designed to locate the absolute CHEAPEST possible deal across the web.
 The user provided a product URL: "${urlToAnalyze}" (Product Name/Detected query: "${queryStr}").
 
-Your tasks:
-1. Analyze or search for the product on "${urlToAnalyze}" to find its exact price, title, image, and other sellers or variants on that same page/merchant. Find the absolute cheapest option on that link.
-2. Search other major Indian e-commerce sites (such as Amazon.in, Flipkart, Croma, Reliance Digital, Vijay Sales) for the exact same product.
-3. Compare the prices. Find the absolute cheapest listings across all other websites too.
+Your CRITICAL tasks:
+1. Thoroughly analyze and search for the product on "${urlToAnalyze}". Find the absolute CHEAPEST option, seller, or variant (e.g., color, storage, renewed, or bundled offers) available ON THAT SPECIFIC PAGE/LINK. Take into account any live coupons, card discounts, or price drops on that link to get the absolute lowest price.
+2. Execute searches using your googleSearch tool on other top Indian e-commerce platforms: Amazon.in, Flipkart.com, Croma.com, RelianceDigital.in, VijaySales.com, TataCliq.com, JioMart.com.
+3. For EACH of these competitor websites, locate the absolute lowest/cheapest live price of the exact same product model (not generic/unrelated models). Ensure you are matching the exact same item.
+4. Compare all prices side-by-side.
+
+CRITICAL INSTRUCTION ON TRUSTED SOURCES:
+- Only retrieve results from highly trusted, major e-commerce websites and apps in India. These are strictly: Amazon.in, Flipkart.com, Croma.com, RelianceDigital.in, VijaySales.com, TataCliq.com, JioMart.com, Samsung.com, Apple.com, or official manufacturer stores in India.
+- DO NOT include untrusted third-party sites, blogs, random deals websites, or unverified stores. Every result must lead to a real, trusted portal.
 
 Return a JSON object with a single key "shopping_results" which is an array of objects.
-The array must have 5-7 items:
-- The FIRST item in the array MUST be the cheapest seller/option found on the user's original link ("${urlToAnalyze}"). For this item, set "isOriginalLink" to true, "link" to "${urlToAnalyze}", and "source" to the retailer name (e.g., "Amazon", "Flipkart", "Croma").
-- The subsequent items must be the cheapest matching deals found on other websites for comparison. For these, set "isOriginalLink" to false.
+The array must have 6-8 items:
+- One of the items MUST represent the cheapest option/seller found on the user's original link ("${urlToAnalyze}"). For this item, set "isOriginalLink" to true, "link" to "${urlToAnalyze}", and "source" to the retailer name (e.g., "Amazon", "Flipkart", "Croma").
+- The subsequent items must be the cheapest matching deals found on OTHER competitor websites for comparison. For these, set "isOriginalLink" to false.
 - Ensure all prices are in INR format with Rupee symbol, e.g., "₹24,990".
+- Ensure the results are sorted by price in ascending order (cheapest overall listing at the very top of the list).
 
 Format each item exactly like this:
 {
@@ -487,14 +887,19 @@ Format each item exactly like this:
   "isOriginalLink": true/false
 }`;
       } else {
-        contentsPrompt = `You are "BuyWise INDIA Intelligence", a genius price comparison engine.
+        contentsPrompt = `You are "BuyWise INDIA Intelligence", a genius price comparison engine designed to locate the absolute CHEAPEST possible deal across the web.
 The user is searching for: "${queryStr}".
 
-Your tasks:
-1. Search major Indian e-commerce websites (Amazon.in, Flipkart, Croma, Reliance Digital, Vijay Sales, etc.) for the absolute cheapest deals and variants of "${queryStr}".
-2. Compare prices and return the cheapest real-time offers.
+Your CRITICAL tasks:
+1. Execute searches using your googleSearch tool on all top Indian e-commerce platforms: Amazon.in, Flipkart.com, Croma.com, RelianceDigital.in, VijaySales.com, TataCliq.com, JioMart.com.
+2. Search for the absolute lowest, cheapest live prices for the exact product query: "${queryStr}". Look for any live coupons, credit card bank offers, sale drops, or seller discounts to find the absolute minimum pricing.
+3. Compare all prices side-by-side.
 
-Return a JSON object with a single key "shopping_results" which is an array of 5-7 objects, sorted by price ascending (cheapest first).
+CRITICAL INSTRUCTION ON TRUSTED SOURCES:
+- Only retrieve results from highly trusted, major e-commerce websites and apps in India. These are strictly: Amazon.in, Flipkart.com, Croma.com, RelianceDigital.in, VijaySales.com, TataCliq.com, JioMart.com, Samsung.com, Apple.com, or official manufacturer stores in India.
+- DO NOT include untrusted third-party sites, blogs, random deals websites, or unverified stores. Every result must lead to a real, trusted portal.
+
+Return a JSON object with a single key "shopping_results" which is an array of 6-8 objects, sorted strictly by price in ascending order (cheapest overall listing at the very top of the list!).
 
 Format each item exactly like this:
 {

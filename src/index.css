@@ -18,6 +18,33 @@
     --brand-glow: rgba(255, 59, 48, 0.15);
   }
 
+  html {
+    scroll-behavior: smooth;
+    scrollbar-color: #222222 #050505;
+    scrollbar-width: thin;
+  }
+
+  /* Custom Sleek Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #050505;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #222222;
+    border-radius: 3px;
+    border: 1px solid #050505;
+    transition: background 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #FF3B30;
+  }
+
   body {
     @apply antialiased text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-white font-sans relative;
     background-color: #050505;

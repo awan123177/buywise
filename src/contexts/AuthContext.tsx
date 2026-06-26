@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { supabase } from '../lib/supabase';
+import { api, triggerDailyCheckIn } from '../lib/api';
 
 export interface BuyWiseUser {
   uid: string;
@@ -54,6 +55,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        };
        setUser(baseUser);
        
+       // Configure Axios default headers for gamification session tracking
+       api.defaults.headers.common["x-user-id"] = sessionUser.id;
+       api.defaults.headers.common["x-user-email"] = sessionUser.email || "";
+       api.defaults.headers.common["x-user-name"] = sessionUser.user_metadata?.full_name || sessionUser.email?.split("@")[0] || "Anonymous User";
+
+       // Trigger daily check-in streak reward
+       triggerDailyCheckIn().catch((err) => console.log("Daily check-in skipped:", err.message));
+       
        // Check Supabase for premium status dynamically!
        const checkPremium = async () => {
          const { data } = await supabase.from('premium_requests')
@@ -99,6 +108,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         if(unsubPremium) supabase.removeChannel(unsubPremium);
         if (fallbackInterval) clearInterval(fallbackInterval);
+        
+        // Clear headers upon logout
+        delete api.defaults.headers.common["x-user-id"];
+        delete api.defaults.headers.common["x-user-email"];
+        delete api.defaults.headers.common["x-user-name"];
+        
         setUser(null);
         setAccessToken(null);
       }

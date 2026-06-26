@@ -7,6 +7,8 @@ import AdminPanel from './components/AdminPanel';
 import Radar from './components/Radar';
 import Travel from './components/Travel';
 import Premium from './components/Premium';
+import DealsPage from './components/DealsPage';
+import RewardsHub from './components/RewardsHub';
 import ThreeBackground from './components/ThreeBackground';
 import SupportChat from './components/SupportChat';
 import LoginModal from './components/LoginModal';
@@ -38,6 +40,9 @@ export default function App() {
                 <Route path="/radar" element={<Radar />} />
                 <Route path="/travel" element={<Travel />} />
                 <Route path="/premium" element={<Premium />} />
+                <Route path="/deals" element={<DealsPage />} />
+                <Route path="/rewards" element={<RewardsHub />} />
+                <Route path="/ref/:code" element={<Home />} />
                 {/* Backward compatibility */}
                 <Route path="/wishlist" element={<Radar />} />
               </Routes>

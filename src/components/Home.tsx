@@ -1,12 +1,28 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Loader2, Sparkles, Diamond, ArrowRight, Camera, Mic, Volume2, Filter, SlidersHorizontal, ChevronDown, Check, Star, Tag, Zap } from 'lucide-react';
-import { searchProducts } from '../lib/api';
+import { useParams, useNavigate } from 'react-router-dom';
+import { searchProducts, logSearchAction, fetchPublicSavingsStats, submitReferral } from '../lib/api';
 import { detectProduct, extractProductFeatures } from '../lib/gemini';
 import ProductCard from './ProductCard';
 import ProductSkeleton from './ProductSkeleton';
 import ChatAssistant from './ChatAssistant';
 import Product3DViewer from './Product3DViewer';
+import toast from 'react-hot-toast';
+
+const REALTIME_EVENTS = [
+  "aman.kapoor*** saved ₹502 comparing iPhone 15 prices",
+  "priya.verma*** compared Sony WH-1000XM5 in Mumbai",
+  "ritesh.sh*** claimed secret premium 50% discount",
+  "neha.goel*** earned +15 coins for app feedback review",
+  "anonymous*** compared flight DEL → BLR on MakeMyTrip",
+  "vikram.singh*** unlocked streak milestone: 7 days 🔥",
+  "ryan.db*** invited 2 friends using referral link 🤝",
+  "kashish.m*** saved ₹1,200 on Adidas Samba sneakers",
+  "arjun.s*** compared flight pricing from Delhi to Goa",
+  "deepak_11*** created a price drop alert for OnePlus 12R",
+  "tanvi.j*** redeemed 100 coins for secret exclusive deals"
+];
 
 export default function Home() {
   const [query, setQuery] = useState('');
@@ -14,6 +30,65 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [searchingStatus, setSearchingStatus] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const { code } = useParams();
+  const navigate = useNavigate();
+  const [savingsStats, setSavingsStats] = useState<any>({ totalSavings: 4578140, totalUsers: 14502 });
+  const [eventIndex, setEventIndex] = useState(0);
+
+  useEffect(() => {
+    if (code) {
+      localStorage.setItem('buywise_referral_code', code);
+      submitReferral(code)
+        .then(() => {})
+        .catch(() => {
+          toast.success(`Referral code "${code}" captured! It will be automatically applied on your first product comparison search. 🤝`, { duration: 6000 });
+        })
+        .finally(() => {
+          navigate('/', { replace: true });
+        });
+    }
+  }, [code]);
+
+  useEffect(() => {
+    // Initial fetch
+    fetchPublicSavingsStats()
+      .then(stats => {
+        if (stats && stats.totalSavings) {
+          setSavingsStats(stats);
+        }
+      })
+      .catch(() => {});
+
+    // Fast ticking odometer interval (simulate busy India-wide community)
+    const tickInterval = setInterval(() => {
+      setSavingsStats((prev: any) => ({
+        ...prev,
+        totalSavings: prev.totalSavings + Math.floor(Math.random() * 8) + 2
+      }));
+    }, 4500);
+
+    // Occasional server synchronization
+    const syncInterval = setInterval(() => {
+      fetchPublicSavingsStats()
+        .then(stats => {
+          if (stats && stats.totalSavings) {
+            setSavingsStats(stats);
+          }
+        })
+        .catch(() => {});
+    }, 15000);
+
+    // Live Activity Ticker interval
+    const eventInterval = setInterval(() => {
+      setEventIndex((prev) => (prev + 1) % REALTIME_EVENTS.length);
+    }, 3500);
+
+    return () => {
+      clearInterval(tickInterval);
+      clearInterval(syncInterval);
+      clearInterval(eventInterval);
+    };
+  }, []);
 
   // Advanced Filters State
   const [showFilters, setShowFilters] = useState(false);
@@ -91,6 +166,20 @@ export default function Home() {
            };
          });
          setResults(processed);
+
+         // Log search action with server to award coins
+         logSearchAction(activeQuery);
+         
+         // Submit cached referral code if present
+         const savedCode = localStorage.getItem('buywise_referral_code');
+         if (savedCode) {
+           submitReferral(savedCode)
+             .then(() => {
+               localStorage.removeItem('buywise_referral_code');
+             })
+             .catch(() => {});
+         }
+
          // Reset filters
          setShowFilters(false);
          setMinPrice('');
@@ -137,6 +226,14 @@ export default function Home() {
      });
   }, [results, minPrice, maxPrice, selectedBrands, selectedRating, selectedSpecs]);
 
+  const sortedFilteredResults = useMemo(() => {
+     return [...filteredResults].sort((a, b) => {
+        const priceA = parseFloat(a.price.replace(/[^0-9]/g, '')) || 0;
+        const priceB = parseFloat(b.price.replace(/[^0-9]/g, '')) || 0;
+        return priceA - priceB;
+     });
+  }, [filteredResults]);
+
   return (
     <div className="min-h-screen pt-32 md:pt-44 pb-32 px-4 md:px-12 bg-transparent">
       <div className="max-w-[1400px] mx-auto">
@@ -170,6 +267,36 @@ export default function Home() {
               <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
                 <div className="w-12 h-[2px] bg-[#FF3B30]" />
                 AUTONOMOUS RETRIEVAL ACTIVE
+              </div>
+
+              {/* Public Live Savings Counter Odometer Widget */}
+              <div className="bg-gradient-to-r from-[#10b981]/10 to-transparent border-l-2 border-[#10b981] p-4 rounded-r-lg max-w-md mt-2 space-y-2">
+                <div className="text-[9px] uppercase font-black text-[#10b981] tracking-widest flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 bg-[#10b981] rounded-full animate-ping"></span> LIVE CUMULATIVE USER SAVINGS
+                </div>
+                <div className="text-2xl md:text-3xl font-black font-mono text-[#10b981] drop-shadow-[0_0_12px_rgba(16,185,129,0.35)]">
+                  ₹{savingsStats.totalSavings.toLocaleString('en-IN')}
+                </div>
+
+                {/* Live Activity Ticker with AnimatePresence */}
+                <div className="h-6 overflow-hidden flex items-center border-t border-white/5 pt-1 mt-1">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={eventIndex}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-[9px] sm:text-[10px] text-emerald-400 font-mono tracking-tight flex items-center gap-1.5 whitespace-nowrap truncate"
+                    >
+                      <span className="text-emerald-500 font-black">✦</span> {REALTIME_EVENTS[eventIndex]}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
+                <div className="text-[9px] text-white/30">
+                  Comparing index prices across <span className="text-white/60 font-bold">{savingsStats.totalUsers.toLocaleString()}</span> active nodes.
+                </div>
               </div>
             </motion.div>
           </div>
@@ -361,7 +488,7 @@ export default function Home() {
                 </AnimatePresence>
               </div>
 
-              {filteredResults.length === 0 ? (
+              {sortedFilteredResults.length === 0 ? (
                 <div className="py-20 text-center border dashed border-white/20 rounded-xl">
                   <p className="text-white/40 uppercase font-black tracking-widest text-sm">NO RESULTS MATCH FILTERS</p>
                   <button onClick={() => {
@@ -372,7 +499,7 @@ export default function Home() {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  {filteredResults.map((item, idx) => (
+                  {sortedFilteredResults.map((item, idx) => (
                     <ProductCard key={idx} product={item} isBest={idx === 0} />
                   ))}
                 </div>
@@ -393,7 +520,7 @@ export default function Home() {
         </AnimatePresence>
       </div>
 
-      <ChatAssistant results={filteredResults} />
+      <ChatAssistant results={sortedFilteredResults} />
 
       <footer className="w-full h-auto py-4 md:h-16 md:py-0 border-t border-white/10 px-4 md:px-16 flex flex-col md:flex-row items-center justify-between text-[8px] md:text-[10px] text-white font-black uppercase tracking-[0.2em] bg-[#050505] relative z-[100] gap-2 md:gap-0 mt-20">
         <div>&copy; 2024 BUY_WISE_INTEL_HUB.</div>

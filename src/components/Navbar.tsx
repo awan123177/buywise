@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
+import { fetchGamificationProfile } from '../lib/api';
 
 export default function Navbar() {
   const location = useLocation();
   const { user, openLogin, logout } = useAuth();
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [coins, setCoins] = useState<number>(0);
+
+  useEffect(() => {
+    if (user) {
+      fetchGamificationProfile()
+        .then(profile => {
+          setCoins(profile.coins);
+        })
+        .catch(() => {});
+    }
+  }, [user, location.pathname]);
 
   useEffect(() => {
     const sessionId = Math.random().toString(36).substring(2, 15);
@@ -62,15 +74,17 @@ export default function Navbar() {
         <div className="hidden lg:flex items-center space-x-0 border-l border-r border-white/5 h-full overflow-x-auto">
           {[
             { name: 'INDEX', path: '/' },
+            { name: 'DEALS', path: '/deals' },
             { name: 'RADAR', path: '/radar' },
             { name: 'TRAVEL', path: '/travel' },
+            { name: 'CLUB', path: '/rewards' },
             { name: 'PREMIUM', path: '/premium' },
             { name: 'ADMIN', path: '/admin' },
           ].map((item) => (
             <Link
               key={item.name}
               to={item.path}
-              className={`px-6 xl:px-10 h-full flex items-center text-[11px] font-black tracking-[0.2em] transition-all hover:bg-white/5 border-r border-white/5 last:border-r-0 ${
+              className={`px-4 xl:px-6 h-full flex items-center text-[10px] font-black tracking-[0.2em] transition-all hover:bg-white/5 border-r border-white/5 last:border-r-0 ${
                 location.pathname === item.path ? 'bg-gradient-to-b from-[#FF3B30]/10 to-transparent text-[#FF3B30] border-b-2 border-b-[#FF3B30]' : 'text-[#f5f5f5]'
               }`}
             >
@@ -97,6 +111,9 @@ export default function Navbar() {
           </div>
           {user ? (
             <div className="flex justify-center items-center gap-3">
+               <Link to="/rewards" className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-yellow-500/20 bg-yellow-500/5 text-yellow-500 text-xs font-black font-mono shadow-[0_0_10px_rgba(234,179,8,0.05)] hover:border-yellow-500/50 transition-colors cursor-pointer">
+                 🪙 {coins} <span className="text-[9px] font-medium text-white/40">COINS</span>
+               </Link>
                {user.isPremium && (
                   <div title="Premium Member" className="hidden sm:flex items-center justify-center p-2 rounded-full border border-yellow-500/50 bg-yellow-500/10 text-yellow-500">
                      <ShieldCheck size={16} />
@@ -134,10 +151,10 @@ export default function Navbar() {
       <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#050505]/90 backdrop-blur-xl border-t border-white/10 z-[100] flex items-center justify-around px-2">
         {[
           { name: 'INDEX', path: '/', icon: LayoutDashboard },
+          { name: 'DEALS', path: '/deals', icon: Flame },
           { name: 'RADAR', path: '/radar', icon: Search },
-          { name: 'TRAVEL', path: '/travel', icon: Plane },
+          { name: 'CLUB', path: '/rewards', icon: Trophy },
           { name: 'PREMIUM', path: '/premium', icon: Diamond },
-          { name: 'ADMIN', path: '/admin', icon: ShieldCheck },
         ].map((item) => (
           <Link
             key={item.name}

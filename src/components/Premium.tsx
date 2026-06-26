@@ -9,7 +9,7 @@ import QRCode from 'react-qr-code';
 
 export default function Premium() {
   const { user } = useAuth();
-  const [selectedPlan, setSelectedPlan] = useState<'weekly' | 'monthly' | 'lifetime'>('monthly');
+  const [selectedPlan, setSelectedPlan] = useState<'weekly' | 'monthly' | 'yearly' | 'lifetime'>('monthly');
   const [showPayment, setShowPayment] = useState(false);
   
   const [name, setName] = useState('');
@@ -102,11 +102,31 @@ export default function Premium() {
       features: ['All Weekly Features', 'Premium Badge', 'No Ads', 'Priority Support']
     },
     {
+      id: 'yearly',
+      name: 'Yearly Pro',
+      price: '₹500',
+      period: '/year',
+      features: [
+        'All Monthly Elite Features',
+        'Early Alpha & Beta Feature Access',
+        '1.5x Daily Check-in Coin Multiplier 🪙',
+        'Zero Commission Flight tracking',
+      ]
+    },
+    {
       id: 'lifetime',
       name: 'Forever Founder',
       price: '₹700',
       period: '/forever',
-      features: ['All Monthly Features', 'Early Access', 'Lifetime Premium Support']
+      features: [
+        'All Yearly Pro Features',
+        'Super Premium Verified Badge 👑',
+        '2x Daily Check-in Coin Multiplier 🪙',
+        'Exclusive VIP Liquidation Drops',
+        'Unlimited AI Multi-model Insights',
+        'Lifetime Referral Boost (+100 Coins/user)',
+        'Zero Commission Flight bookings & tracking'
+      ]
     }
   ];
 
@@ -147,7 +167,7 @@ export default function Premium() {
   };
 
   return (
-    <div className="pt-32 px-6 max-w-5xl mx-auto min-h-screen text-white flex flex-col gap-12">
+    <div className="pt-32 px-6 max-w-7xl mx-auto min-h-screen text-white flex flex-col gap-12">
       <div className="text-center">
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-4"><span className="text-[#FF3B30]">BuyWise</span> Premium</h1>
         <p className="text-white/50 tracking-widest uppercase text-xs">Unlock Unparalleled Market Intelligence</p>
@@ -155,31 +175,60 @@ export default function Premium() {
 
       {!showPayment ? (
         <>
-          <div className="grid md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {plans.map((plan) => (
             <motion.div 
               key={plan.id}
               whileHover={{ scale: 1.02 }}
               onClick={() => setSelectedPlan(plan.id as any)}
-              className={`p-8 border cursor-pointer transition-all duration-300 ${selectedPlan === plan.id ? 'border-[#FF3B30] bg-[#FF3B30]/10' : 'border-white/10 bg-white/5'}`}
+              className={`p-6 md:p-8 border cursor-pointer transition-all duration-300 relative rounded-xl overflow-hidden flex flex-col justify-between ${
+                selectedPlan === plan.id 
+                  ? 'border-[#FF3B30] bg-[#FF3B30]/10 shadow-[0_0_25px_rgba(255,59,48,0.15)]' 
+                  : plan.id === 'lifetime'
+                    ? 'border-yellow-500/20 bg-yellow-500/[0.02] shadow-[0_0_20px_rgba(234,179,8,0.05)] hover:border-yellow-500/40'
+                    : 'border-white/10 bg-white/5'
+              }`}
             >
-              <div className="flex justify-between items-start mb-8">
-                <div>
-                  <h3 className="text-2xl font-black uppercase tracking-tight">{plan.name}</h3>
-                  <div className="text-3xl font-black text-[#FF3B30] mt-2">{plan.price}<span className="text-sm text-white/50">{plan.period}</span></div>
+              <div>
+                {plan.id === 'lifetime' && (
+                  <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[8px] font-black tracking-widest px-3 py-1 rounded-bl uppercase">
+                    👑 SUPER PREMIUM
+                  </div>
+                )}
+                {plan.id === 'yearly' && (
+                  <div className="absolute top-0 right-0 bg-[#FF3B30] text-white text-[8px] font-black tracking-widest px-3 py-1 rounded-bl uppercase">
+                    ⭐ POPULAR
+                  </div>
+                )}
+                <div className="flex justify-between items-start mb-6 md:mb-8">
+                  <div>
+                    <h3 className={`text-xl md:text-2xl font-black uppercase tracking-tight ${plan.id === 'lifetime' ? 'text-yellow-500' : 'text-white'}`}>{plan.name}</h3>
+                    <div className="text-3xl font-black text-[#FF3B30] mt-2">
+                      {plan.price}
+                      <span className="text-xs text-white/50 lowercase font-normal">{plan.period}</span>
+                    </div>
+                  </div>
+                  {selectedPlan === plan.id && (
+                    <ShieldCheck className={plan.id === 'lifetime' ? 'text-yellow-500' : 'text-[#FF3B30]'} size={32} />
+                  )}
                 </div>
-                {selectedPlan === plan.id && <ShieldCheck className="text-[#FF3B30]" size={32} />}
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((f, i) => (
+                    <li key={i} className="flex gap-2.5 text-xs font-bold text-white/70 leading-normal">
+                      <Check size={14} className={plan.id === 'lifetime' ? 'text-yellow-500' : 'text-[#FF3B30]'} /> {f}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-4 mb-8">
-                {plan.features.map((f, i) => (
-                  <li key={i} className="flex gap-3 text-sm font-bold text-white/70">
-                    <Check size={18} className="text-[#FF3B30]" /> {f}
-                  </li>
-                ))}
-              </ul>
               <button 
                 onClick={() => setShowPayment(true)}
-                className={`w-full py-4 text-xs font-black uppercase tracking-[0.2em] transition-colors ${selectedPlan === plan.id ? 'bg-[#FF3B30] text-white hover:bg-red-600' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                className={`w-full py-3.5 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded ${
+                  selectedPlan === plan.id 
+                    ? plan.id === 'lifetime' 
+                      ? 'bg-yellow-500 text-black hover:bg-yellow-600' 
+                      : 'bg-[#FF3B30] text-white hover:bg-red-600' 
+                    : 'bg-white/10 text-white hover:bg-white/20'
+                }`}
               >
                 Select Plan
               </button>
@@ -217,6 +266,33 @@ export default function Premium() {
             ℹ️ Once our developer matches your submitted <strong className="text-white font-medium">UTR Transaction Number</strong>, your profile immediately transitions to Premium status.
           </p>
         </div>
+
+        {/* Why Choose Forever Founder Promo Section */}
+        <div className="max-w-2xl mx-auto w-full border border-yellow-500/10 bg-yellow-500/[0.01] p-6 rounded-xl space-y-4">
+          <div className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-yellow-500 font-mono">
+            <span>👑</span> WHY_CHOOSE_FOREVER_FOUNDER?
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+            <div className="bg-black/30 p-4 border border-white/5 rounded-lg space-y-1.5">
+              <h4 className="font-black uppercase text-yellow-500 text-[10px] tracking-wider">Instant Lifetime ROI</h4>
+              <p className="text-white/60 leading-relaxed text-[11px]">
+                Save an estimated ₹15,000+ annually with automated real-time alerts. Zero subscription renewal fatigue ever.
+              </p>
+            </div>
+            <div className="bg-black/30 p-4 border border-white/5 rounded-lg space-y-1.5">
+              <h4 className="font-black uppercase text-yellow-500 text-[10px] tracking-wider">Double Coins Perk</h4>
+              <p className="text-white/60 leading-relaxed text-[11px]">
+                Unlock a massive 2x coin multiplier on Daily Check-ins, refer-a-friend bonuses, and community feedback stories!
+              </p>
+            </div>
+            <div className="bg-black/30 p-4 border border-white/5 rounded-lg space-y-1.5">
+              <h4 className="font-black uppercase text-yellow-500 text-[10px] tracking-wider">VIP Support Circle</h4>
+              <p className="text-white/60 leading-relaxed text-[11px]">
+                Direct priority communication loop with Awanwarsi for immediate deal verification and troubleshooting.
+              </p>
+            </div>
+          </div>
+        </div>
         </>
       ) : (
         <motion.div 
@@ -230,7 +306,7 @@ export default function Premium() {
           <div className="flex flex-col md:flex-row gap-8 items-center bg-white/5 p-6 rounded-xl border border-white/10 mb-8">
             <div className="w-48 h-48 bg-white p-2 rounded-xl flex items-center justify-center">
                <QRCode 
-                 value={`upi://pay?pa=7760449306@nyes&pn=BuyWise&am=${selectedPlan === 'monthly' ? '100' : selectedPlan === 'lifetime' ? '700' : '30'}&cu=INR`} 
+                 value={`upi://pay?pa=7760449306@nyes&pn=BuyWise&am=${selectedPlan === 'monthly' ? '100' : selectedPlan === 'lifetime' ? '700' : selectedPlan === 'yearly' ? '500' : '30'}&cu=INR`} 
                  size={160}
                  level="H" 
                  className="w-full h-full"
@@ -243,7 +319,7 @@ export default function Premium() {
                </div>
                <div>
                  <p className="text-xs text-white/50 uppercase tracking-widest">Amount to Pay</p>
-                 <p className="text-xl font-black">{selectedPlan === 'monthly' ? '₹100' : selectedPlan === 'lifetime' ? '₹700' : '₹30'}</p>
+                 <p className="text-xl font-black">{selectedPlan === 'monthly' ? '₹100' : selectedPlan === 'lifetime' ? '₹700' : selectedPlan === 'yearly' ? '₹500' : '₹30'}</p>
                </div>
             </div>
           </div>

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
-  Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X
+  Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X,
+  Award, Gift, Bell, ShieldAlert, Sparkles
 } from 'lucide-react';
-import { fetchAdminStats } from '../lib/api';
+import { fetchAdminStats, runAdminGamificationAction } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot, updateDoc } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
@@ -21,6 +22,28 @@ export default function AdminPanel() {
   const [wishLogs, setWishLogs] = useState<any[]>([]);
   const [premiumRequests, setPremiumRequests] = useState<any[]>([]);
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
+
+  // Gamification admin states
+  const [adminUserEmail, setAdminUserEmail] = useState('');
+  const [adminCoinsAmount, setAdminCoinsAmount] = useState<number>(50);
+  const [adminCoinsReason, setAdminCoinsReason] = useState('Admin manual adjustments');
+  
+  const [adminBanEmail, setAdminBanEmail] = useState('');
+  
+  const [adminSavingsInc, setAdminSavingsInc] = useState<number>(5000);
+
+  // Featured Deal Form States
+  const [dealTitle, setDealTitle] = useState('');
+  const [dealOldPrice, setDealOldPrice] = useState<number>(499);
+  const [dealNewPrice, setDealNewPrice] = useState<number>(299);
+  const [dealDiscount, setDealDiscount] = useState<number>(40);
+  const [dealSource, setDealSource] = useState('Amazon');
+  const [dealCategory, setDealCategory] = useState('electronics');
+  const [dealThumbnail, setDealThumbnail] = useState('https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=150');
+
+  // Push Broadcast
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
 
   const parseNameField = (nameStr: string) => {
     if (!nameStr) return { displayName: 'Unknown', screenshot: null };
@@ -507,6 +530,267 @@ export default function AdminPanel() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* GAMIFICATION OPERATIONAL DESK */}
+      <div className="mt-12 terminal-card p-12 bg-black/40 backdrop-blur-md mb-20">
+        <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-6">
+          <div className="flex items-center gap-3">
+             <Sparkles className="text-yellow-500" size={24} />
+             <h4 className="text-xs font-black text-white/80 tracking-[0.3em] uppercase font-mono">GAMIFICATION_COMMAND_DESK</h4>
+          </div>
+          <span className="text-[10px] text-yellow-500 font-black uppercase tracking-widest bg-yellow-500/20 px-3 py-1 rounded-sm border border-yellow-500/50">OPERATIVE</span>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-xs">
+          
+          {/* Section 1: User Coins Modifier */}
+          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-xl space-y-4">
+            <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <Gift size={14} className="text-[#FF3B30]" /> REWARD COINS MANAGER
+            </h5>
+            <p className="text-[10px] text-white/40 leading-relaxed">
+              Manually add or remove BuyWise Coins from active member accounts. Enter negative balances to penalize/debit.
+            </p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!adminUserEmail.trim()) return;
+              try {
+                const res = await runAdminGamificationAction('coins', { email: adminUserEmail.trim(), coins: adminCoinsAmount, note: adminCoinsReason });
+                if (res && res.success) {
+                  toast.success(`Successfully updated user coins!`);
+                  setAdminUserEmail('');
+                }
+              } catch(err) {
+                toast.error("Operation failed");
+              }
+            }} className="space-y-3">
+              <input
+                type="email"
+                placeholder="USER_EMAIL_OR_ID"
+                value={adminUserEmail}
+                onChange={(e) => setAdminUserEmail(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-white/20 uppercase font-mono"
+              />
+              <div className="flex gap-3">
+                <input
+                  type="number"
+                  placeholder="AMOUNT"
+                  value={adminCoinsAmount}
+                  onChange={(e) => setAdminCoinsAmount(parseInt(e.target.value) || 0)}
+                  className="w-1/3 bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-white/20 font-mono"
+                />
+                <input
+                  type="text"
+                  placeholder="REASON / ADJUSTMENT NOTE"
+                  value={adminCoinsReason}
+                  onChange={(e) => setAdminCoinsReason(e.target.value)}
+                  className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-white/20 uppercase"
+                />
+              </div>
+              <button type="submit" className="w-full py-2 bg-[#FF3B30] text-white font-black uppercase tracking-widest text-[10px] rounded hover:bg-red-600 transition-colors cursor-pointer">
+                APPLY_COIN_DELTA
+              </button>
+            </form>
+          </div>
+
+          {/* Section 2: Referral Protection & Savings index */}
+          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-xl space-y-6">
+            <div className="space-y-3">
+              <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <ShieldAlert size={14} className="text-yellow-500" /> REFERRAL PROTECTION BAN
+              </h5>
+              <form onSubmit={async (e) => {
+                e.preventDefault();
+                if (!adminBanEmail.trim()) return;
+                try {
+                  const res = await runAdminGamificationAction('ban', { email: adminBanEmail.trim() });
+                  if (res && res.success) {
+                    toast.success(`User banned from referrals successfully!`);
+                    setAdminBanEmail('');
+                  }
+                } catch(err) {
+                  toast.error("Ban failed");
+                }
+              }} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="CODE / INVITE_EMAIL"
+                  value={adminBanEmail}
+                  onChange={(e) => setAdminBanEmail(e.target.value)}
+                  className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-white/20 uppercase font-mono"
+                />
+                <button type="submit" className="px-4 py-2 bg-yellow-500 text-black font-black uppercase tracking-widest text-[10px] rounded hover:bg-yellow-600 transition-colors cursor-pointer">
+                  BAN_MEMBER
+                </button>
+              </form>
+            </div>
+
+            <div className="space-y-3 pt-3 border-t border-white/5">
+              <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <BarChart3 size={14} className="text-green-500" /> PUBLIC SAVINGS MANUAL OVERRIDE
+              </h5>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  placeholder="INCREMENT INR"
+                  value={adminSavingsInc}
+                  onChange={(e) => setAdminSavingsInc(parseInt(e.target.value) || 0)}
+                  className="flex-1 bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-white/20 font-mono"
+                />
+                <button 
+                  onClick={async () => {
+                    try {
+                      const res = await runAdminGamificationAction('savings', { amount: adminSavingsInc });
+                      if (res && res.success) {
+                        toast.success("Public savings database incremented!");
+                      }
+                    } catch(err) {
+                      toast.error("Override failed");
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-500 text-black font-black uppercase tracking-widest text-[10px] rounded hover:bg-green-600 transition-colors cursor-pointer"
+                >
+                  ADD_SAVINGS
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Feature Liquidations */}
+          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-xl space-y-4 lg:col-span-1">
+            <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <Plus size={14} className="text-[#FF3B30]" /> POST LIQUIDATION DEALS
+            </h5>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!dealTitle.trim()) return;
+              try {
+                const res = await runAdminGamificationAction('feature_deal', {
+                  title: dealTitle.trim(),
+                  oldPrice: dealOldPrice,
+                  newPrice: dealNewPrice,
+                  discountPercent: dealDiscount,
+                  source: dealSource,
+                  category: dealCategory,
+                  thumbnail: dealThumbnail
+                });
+                if (res && res.success) {
+                  toast.success("Deal published successfully!");
+                  setDealTitle('');
+                }
+              } catch(err) {
+                toast.error("Deal publication failed");
+              }
+            }} className="space-y-3">
+              <input
+                type="text"
+                placeholder="DEAL_PRODUCT_TITLE"
+                value={dealTitle}
+                onChange={(e) => setDealTitle(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-white/20 uppercase"
+              />
+              <div className="grid grid-cols-3 gap-2">
+                <input
+                  type="number"
+                  placeholder="OLD PRICE"
+                  value={dealOldPrice}
+                  onChange={(e) => setDealOldPrice(parseInt(e.target.value) || 0)}
+                  className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white font-mono"
+                />
+                <input
+                  type="number"
+                  placeholder="NEW PRICE"
+                  value={dealNewPrice}
+                  onChange={(e) => setDealNewPrice(parseInt(e.target.value) || 0)}
+                  className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white font-mono"
+                />
+                <input
+                  type="number"
+                  placeholder="DISCOUNT %"
+                  value={dealDiscount}
+                  onChange={(e) => setDealDiscount(parseInt(e.target.value) || 0)}
+                  className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white font-mono"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  placeholder="MERCHANT (e.g. Amazon)"
+                  value={dealSource}
+                  onChange={(e) => setDealSource(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white uppercase"
+                />
+                <select
+                  value={dealCategory}
+                  onChange={(e) => setDealCategory(e.target.value)}
+                  className="bg-white/5 border border-white/10 rounded px-3 py-2 text-white uppercase bg-neutral-900"
+                >
+                  <option value="electronics">Electronics</option>
+                  <option value="mobiles">Mobiles</option>
+                  <option value="laptops">Laptops</option>
+                  <option value="gaming">Gaming</option>
+                  <option value="fashion">Fashion</option>
+                  <option value="home">Home</option>
+                  <option value="grocery">Grocery</option>
+                </select>
+              </div>
+              <input
+                type="text"
+                placeholder="THUMBNAIL_URL"
+                value={dealThumbnail}
+                onChange={(e) => setDealThumbnail(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white font-mono text-[10px]"
+              />
+              <button type="submit" className="w-full py-2 bg-[#FF3B30] text-white font-black uppercase tracking-widest text-[10px] rounded hover:bg-red-600 transition-colors cursor-pointer">
+                POST_FEATURED_DEAL
+              </button>
+            </form>
+          </div>
+
+          {/* Section 4: Push Notification Broadcaster */}
+          <div className="bg-white/[0.02] border border-white/5 p-6 rounded-xl space-y-4 lg:col-span-1">
+            <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <Bell size={14} className="text-[#FF3B30]" /> PUSH NOTIFICATION BROADCASTER
+            </h5>
+            <p className="text-[10px] text-white/40 leading-relaxed">
+              Send immediate pricing announcements, alerts, and discount passes to all browser and Android listeners.
+            </p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!broadcastTitle.trim() || !broadcastBody.trim()) return;
+              try {
+                const res = await runAdminGamificationAction('broadcast_notification', { title: broadcastTitle.trim(), body: broadcastBody.trim() });
+                if (res && res.success) {
+                  toast.success(`Broadcasting initiated successfully!`);
+                  setBroadcastTitle('');
+                  setBroadcastBody('');
+                }
+              } catch(err) {
+                toast.error("Broadcast failed");
+              }
+            }} className="space-y-3">
+              <input
+                type="text"
+                placeholder="ALERT HEADER (e.g. FLASH DEAL DROPPED)"
+                value={broadcastTitle}
+                onChange={(e) => setBroadcastTitle(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-white/20 uppercase"
+              />
+              <textarea
+                placeholder="ALERT DETAILED TEXT BODY"
+                rows={2}
+                value={broadcastBody}
+                onChange={(e) => setBroadcastBody(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-white placeholder-white/20 uppercase font-sans"
+              />
+              <button type="submit" className="w-full py-2 bg-indigo-600 text-white font-black uppercase tracking-widest text-[10px] rounded hover:bg-indigo-700 transition-colors cursor-pointer shadow-lg shadow-indigo-600/20">
+                BROADCAST_SYSTEM_WIDE
+              </button>
+            </form>
+          </div>
+
+        </div>
+      </div>
 
     </div>
   );
