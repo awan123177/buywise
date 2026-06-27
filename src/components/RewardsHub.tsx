@@ -931,8 +931,14 @@ export default function RewardsHub() {
                     No reviews posted yet. Be the first to tell your story!
                   </div>
                 ) : (
-                  reviews.map((rev) => (
-                    <div key={rev.id} className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-2 relative overflow-hidden group">
+                  reviews.map((rev, idx) => (
+                    <motion.div 
+                      key={rev.id} 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: (idx % 10) * 0.05, duration: 0.3 }}
+                      className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-2 relative overflow-hidden group"
+                    >
                       {/* Top row */}
                       <div className="flex justify-between items-start gap-4">
                         <div className="flex items-center gap-2.5">
@@ -973,7 +979,7 @@ export default function RewardsHub() {
                         <span className="text-white/30">Verified Sourcing Node</span>
                         <span className="text-yellow-500 font-bold bg-yellow-500/5 px-1.5 py-0.5 rounded border border-yellow-500/10">Rewarded: +{rev.coinsEarned} 🪙</span>
                       </div>
-                    </div>
+                    </motion.div>
                   ))
                 )}
               </div>
