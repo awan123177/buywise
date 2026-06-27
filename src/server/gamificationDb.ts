@@ -164,259 +164,23 @@ export const PRODUCT_IMAGES: { [id: string]: string } = {
 // Initial Mock Deals
 const INITIAL_DEALS: Deal[] = [
   {
-    id: "deal_iphone_15",
-    title: "Apple iPhone 15 (128 GB) - Black",
+    id: "deal_samsung_s24_ultra",
+    title: "Samsung S24 Ultra",
     category: "mobiles",
-    oldPrice: 79900,
-    newPrice: 65999,
-    discountPercent: 17,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=iphone15",
+    oldPrice: 129999,
+    newPrice: 99999,
+    discountPercent: 23,
+    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=samsungs24",
     source: "Amazon.in",
-    link: "https://amazon.in/dp/B0CHX1W18X",
+    link: "https://amazon.in/dp/B0CSYF8Z98",
     isBestSeller: true,
-    isEditorPick: false,
-    isFlashDeal: true,
-    views: 1840,
-    saves: 345,
-    purchases: 120,
-    createdAt: new Date().toISOString(),
-    timeRemaining: "05h 12m"
-  },
-  {
-    id: "deal_macbook_air",
-    title: "Apple MacBook Air Laptop M3 (13.6-inch, 8GB RAM, 256GB SSD)",
-    category: "laptops",
-    oldPrice: 114900,
-    newPrice: 94990,
-    discountPercent: 17,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=macbookm3",
-    source: "Flipkart.com",
-    link: "https://flipkart.com",
-    isBestSeller: false,
-    isEditorPick: true,
-    isFlashDeal: false,
-    views: 1250,
-    saves: 420,
-    purchases: 85,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_sony_xm5",
-    title: "Sony WH-1000XM5 Wireless Active Noise Cancelling Headphones",
-    category: "electronics",
-    oldPrice: 34990,
-    newPrice: 25990,
-    discountPercent: 26,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=sonyxm5",
-    source: "Croma.com",
-    link: "https://croma.com",
-    isBestSeller: true,
-    isEditorPick: true,
-    isFlashDeal: false,
-    views: 920,
-    saves: 185,
-    purchases: 54,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_rog_ally",
-    title: "ASUS ROG Ally RC71L Handheld Gaming Console (AMD Ryzen Z1)",
-    category: "gaming",
-    oldPrice: 69990,
-    newPrice: 44990,
-    discountPercent: 36,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=rogally",
-    source: "VijaySales.com",
-    link: "https://vijaysales.com",
-    isBestSeller: false,
     isEditorPick: true,
     isFlashDeal: true,
-    views: 1480,
-    saves: 310,
-    purchases: 72,
-    createdAt: new Date().toISOString(),
-    timeRemaining: "02h 45m"
-  },
-  {
-    id: "deal_oneplus_ce4",
-    title: "OnePlus Nord CE4 (8GB RAM, 128GB Storage)",
-    category: "mobiles",
-    oldPrice: 24990,
-    newPrice: 21999,
-    discountPercent: 12,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=nordce4",
-    source: "RelianceDigital.in",
-    link: "https://reliancedigital.in",
-    isBestSeller: true,
-    isEditorPick: false,
-    isFlashDeal: false,
-    views: 2200,
-    saves: 560,
-    purchases: 198,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_nike_air",
-    title: "Nike Air Max Pulse Mens Running Shoes/Sneakers",
-    category: "fashion",
-    oldPrice: 13995,
-    newPrice: 8990,
-    discountPercent: 36,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=nikepulse",
-    source: "TataCliq.com",
-    link: "https://tatacliq.com",
-    isBestSeller: false,
-    isEditorPick: false,
-    isFlashDeal: false,
-    views: 750,
-    saves: 112,
-    purchases: 43,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_boat_ion",
-    title: "boAt Nirvana Ion True Wireless Earbuds with 120H Playback",
-    category: "electronics",
-    oldPrice: 7990,
-    newPrice: 1999,
-    discountPercent: 75,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=boation",
-    source: "Amazon.in",
-    link: "https://amazon.in",
-    isBestSeller: true,
-    isEditorPick: false,
-    isFlashDeal: true,
-    views: 3100,
-    saves: 850,
-    purchases: 450,
-    createdAt: new Date().toISOString(),
-    timeRemaining: "11h 05m"
-  },
-  {
-    id: "deal_dyson_v12",
-    title: "Dyson V12 Detect Slim Cordless Vacuum Cleaner",
-    category: "home",
-    oldPrice: 55900,
-    newPrice: 45900,
-    discountPercent: 18,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=dysonv12",
-    source: "Croma.com",
-    link: "https://croma.com",
-    isBestSeller: false,
-    isEditorPick: true,
-    isFlashDeal: false,
-    views: 610,
-    saves: 95,
-    purchases: 28,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_prestige_kettle",
-    title: "Prestige Electric Kettle PKOSS 1.5 Litre 1500W",
-    category: "home",
-    oldPrice: 1895,
-    newPrice: 899,
-    discountPercent: 52,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=prestigekettle",
-    source: "Flipkart.com",
-    link: "https://flipkart.com",
-    isBestSeller: true,
-    isEditorPick: false,
-    isFlashDeal: false,
-    views: 1100,
-    saves: 190,
-    purchases: 135,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_tea_gold",
-    title: "Tata Tea Gold Leaf Premium Black Tea (1kg)",
-    category: "grocery",
-    oldPrice: 620,
-    newPrice: 489,
-    discountPercent: 21,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=tatateagold",
-    source: "JioMart.com",
-    link: "https://jiomart.com",
-    isBestSeller: false,
-    isEditorPick: false,
-    isFlashDeal: false,
-    views: 450,
+    views: 125,
     saves: 45,
-    purchases: 62,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_ps5_slim",
-    title: "Sony PlayStation 5 Slim (PS5) Disc Edition Console",
-    category: "gaming",
-    oldPrice: 54990,
-    newPrice: 49490,
-    discountPercent: 10,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=ps5slim",
-    source: "Amazon.in",
-    link: "https://amazon.in",
-    isBestSeller: true,
-    isEditorPick: false,
-    isFlashDeal: false,
-    views: 1950,
-    saves: 480,
-    purchases: 105,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_casio_watch",
-    title: "Casio Vintage Digital Dial Unisex Metal Watch - A158WA",
-    category: "fashion",
-    oldPrice: 1695,
-    newPrice: 1355,
-    discountPercent: 20,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=casiowatch",
-    source: "Flipkart.com",
-    link: "https://flipkart.com",
-    isBestSeller: false,
-    isEditorPick: true,
-    isFlashDeal: false,
-    views: 840,
-    saves: 120,
-    purchases: 45,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_under_500_bottle",
-    title: "Milton Thermosteel Duo Deluxe 500ml Water Bottle",
-    category: "home",
-    oldPrice: 790,
-    newPrice: 449,
-    discountPercent: 43,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=miltonduo",
-    source: "Amazon.in",
-    link: "https://amazon.in",
-    isBestSeller: true,
-    isEditorPick: false,
-    isFlashDeal: false,
-    views: 1200,
-    saves: 220,
-    purchases: 154,
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "deal_under_1000_tshirt",
-    title: "Puma Classic Regular Fit Men's Sports Polo T-Shirt",
-    category: "fashion",
-    oldPrice: 1999,
-    newPrice: 949,
-    discountPercent: 53,
-    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=pumatshirt",
-    source: "Myntra.com",
-    link: "https://myntra.com",
-    isBestSeller: false,
-    isEditorPick: true,
-    isFlashDeal: false,
-    views: 640,
-    saves: 95,
-    purchases: 32,
-    createdAt: new Date().toISOString()
+    purchases: 12,
+    createdAt: new Date().toISOString(),
+    timeRemaining: "12h 00m"
   }
 ];
 
@@ -949,14 +713,14 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
     }
   }
 
-  // Auto-grant 3 days premium trial to kavyashreeshetty39@gmail.com
-  if (email === "kavyashreeshetty39@gmail.com" && !profile.isPremium) {
+  // Auto-grant 3 days premium trial to all users
+  if (!profile.isPremium && !profile.premiumExpiry) {
     profile.isPremium = true;
     const now = new Date();
     now.setDate(now.getDate() + 3); // 3 days trial
     profile.premiumExpiry = now.toISOString();
     saveDatabase();
-    console.log("Granted 3-day premium trial to kavyashreeshetty39@gmail.com");
+    console.log(`Granted 3-day premium trial to ${email}`);
   }
 
   return profile;
@@ -1593,8 +1357,8 @@ export function getDefaultAffiliateSettings(): AffiliateSettings {
 
 export function getDefaultTelegramConfig(): TelegramConfig {
   return {
-    channelUsername: process.env.TELEGRAM_CHANNEL_USERNAME || "@buywise_deals",
-    botToken: process.env.TELEGRAM_BOT_TOKEN || "",
+    channelUsername: process.env.TELEGRAM_CHANNEL_USERNAME || "@buywiseofficial",
+    botToken: process.env.TELEGRAM_BOT_TOKEN || "8654463361:AAG1zaFwPSn6EgRupkTAMROdQcnzg3CCMU8b",
     enabled: true
   };
 }

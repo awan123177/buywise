@@ -44,7 +44,6 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/admin" element={<AdminPanel />} />
                 <Route path="/radar" element={<Radar />} />
-                <Route path="/shopper" element={<PersonalShopper />} />
                 <Route path="/travel" element={<Travel />} />
                 <Route path="/premium" element={<Premium />} />
                 <Route path="/deals" element={<DealsPage />} />

@@ -77,7 +77,27 @@ export function AffiliateProvider({ children }: { children: React.ReactNode }) {
       clearInterval(progressInterval);
       setProgress(100);
 
-      const finalUrl = data.affiliateUrl || url;
+      let finalUrl = data.affiliateUrl || url;
+
+      // Ensure Amazon tag is always applied consistently via the context provider as a secure fallback
+      if (store.toLowerCase() === "amazon" || finalUrl.includes("amazon.in") || finalUrl.includes("amazon.com")) {
+        const amzTag = "buywiseind0f8-21";
+        try {
+          const u = new URL(finalUrl);
+          if (!u.searchParams.has("tag")) {
+            u.searchParams.set("tag", amzTag);
+            finalUrl = u.toString();
+          } else if (u.searchParams.get("tag") !== amzTag) {
+            u.searchParams.set("tag", amzTag);
+            finalUrl = u.toString();
+          }
+        } catch {
+          if (!finalUrl.includes("tag=")) {
+            const separator = finalUrl.includes("?") ? "&" : "?";
+            finalUrl = `${finalUrl}${separator}tag=${amzTag}`;
+          }
+        }
+      }
 
       // Small delay for loading finish feel
       setTimeout(() => {
@@ -88,9 +108,22 @@ export function AffiliateProvider({ children }: { children: React.ReactNode }) {
       console.error("Affiliate redirect generation failed:", err);
       clearInterval(progressInterval);
       setProgress(100);
+      let fallbackUrl = url;
+      if (store.toLowerCase() === "amazon" || fallbackUrl.includes("amazon.in") || fallbackUrl.includes("amazon.com")) {
+        const amzTag = "buywiseind0f8-21";
+        try {
+          const u = new URL(fallbackUrl);
+          u.searchParams.set("tag", amzTag);
+          fallbackUrl = u.toString();
+        } catch {
+          const separator = fallbackUrl.includes("?") ? "&" : "?";
+          fallbackUrl = `${fallbackUrl}${separator}tag=${amzTag}`;
+        }
+      }
+
       setTimeout(() => {
         setIsRedirecting(false);
-        window.open(url, "_blank", "noopener,noreferrer");
+        window.open(fallbackUrl, "_blank", "noopener,noreferrer");
       }, 400);
     }
   };

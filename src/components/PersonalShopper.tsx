@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bot, Send, Sparkles, TrendingDown, Target, ShoppingBag, ExternalLink, RefreshCw, BookmarkPlus, ShoppingCart, Info, Star } from 'lucide-react';
+import { Bot, Send, Sparkles, TrendingDown, Target, ShoppingBag, ExternalLink, RefreshCw, BookmarkPlus, ShoppingCart, Info, Star, Lock, Diamond } from 'lucide-react';
 import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,9 +38,29 @@ export default function PersonalShopper() {
   const { user, openLogin } = useAuth();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (user && !user.isPremium) {
+      const timer = setTimeout(() => {
+         toast.error('AI Personal Shopper requires Premium access.');
+         navigate('/premium');
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, navigate]);
+
   const handleGeneratePlan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
+    
+    if (!user) {
+      toast.error('Please login to use AI Personal Shopper.');
+      return openLogin();
+    }
+    
+    if (!user.isPremium) {
+       navigate('/premium');
+       return;
+    }
     
     setLoading(true);
     try {
@@ -93,42 +113,62 @@ export default function PersonalShopper() {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-3xl mx-auto mb-16"
+        className="max-w-3xl mx-auto mb-16 relative"
       >
-        <form onSubmit={handleGeneratePlan} className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-[#FF3B30] to-orange-500 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
-          <div className="relative flex items-center bg-[#0A0A0A] border border-white/10 rounded-2xl p-2 shadow-2xl">
-            <div className="p-3 text-[#FF3B30]">
-              <Bot size={24} />
+        {!user?.isPremium && (
+          <div className="absolute inset-0 z-20 backdrop-blur-sm bg-black/40 rounded-2xl flex flex-col items-center justify-center border border-[#FF3B30]/30 shadow-[0_0_50px_rgba(255,59,48,0.1)]">
+            <div className="bg-[#FF3B30] text-white p-3 rounded-full mb-4 shadow-lg shadow-[#FF3B30]/20">
+              <Lock size={24} />
             </div>
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="e.g. I have ₹50,000. Build me a complete home office setup..."
-              className="flex-1 bg-transparent border-none text-white placeholder-white/20 px-2 py-4 focus:outline-none focus:ring-0 text-sm md:text-base font-medium"
-            />
-            <button
-              type="submit"
-              disabled={loading || !query.trim()}
-              className="bg-[#FF3B30] hover:bg-red-600 text-white px-6 py-4 rounded-xl font-black tracking-wider uppercase text-xs transition-all disabled:opacity-50 flex items-center gap-2"
+            <h3 className="text-xl font-black text-white uppercase tracking-wider mb-2">Premium Feature</h3>
+            <p className="text-white/60 text-sm font-mono text-center max-w-sm mb-6">
+              Unlock the AI Personal Shopper to curate custom shopping plans and maximize your savings.
+            </p>
+            <button 
+              onClick={() => navigate('/premium')}
+              className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-[#FF3B30] text-white px-8 py-3 rounded-full font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform"
             >
-              {loading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
-              <span className="hidden sm:inline">{loading ? 'Curating...' : 'Generate Plan'}</span>
+              <Diamond size={16} /> Upgrade to Premium
             </button>
           </div>
-        </form>
-        
-        <div className="flex flex-wrap gap-2 mt-4 justify-center">
-          {["Gaming PC under ₹80k", "College Essentials", "Smart Kitchen Setup", "Wedding Gift Ideas"].map((suggestion) => (
-            <button 
-              key={suggestion}
-              onClick={() => setQuery(`I need a ${suggestion}`)}
-              className="text-[10px] uppercase font-mono tracking-wider px-3 py-1.5 rounded-full border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition-colors"
-            >
-              {suggestion}
-            </button>
-          ))}
+        )}
+
+        <div className={`transition-all duration-300 ${!user?.isPremium ? 'opacity-30 pointer-events-none filter blur-sm select-none' : ''}`}>
+          <form onSubmit={handleGeneratePlan} className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-[#FF3B30] to-orange-500 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+            <div className="relative flex items-center bg-[#0A0A0A] border border-white/10 rounded-2xl p-2 shadow-2xl">
+              <div className="p-3 text-[#FF3B30]">
+                <Bot size={24} />
+              </div>
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="e.g. I have ₹50,000. Build me a complete home office setup..."
+                className="flex-1 bg-transparent border-none text-white placeholder-white/20 px-2 py-4 focus:outline-none focus:ring-0 text-sm md:text-base font-medium"
+              />
+              <button
+                type="submit"
+                disabled={loading || !query.trim()}
+                className="bg-[#FF3B30] hover:bg-red-600 text-white px-6 py-4 rounded-xl font-black tracking-wider uppercase text-xs transition-all disabled:opacity-50 flex items-center gap-2"
+              >
+                {loading ? <RefreshCw size={18} className="animate-spin" /> : <Send size={18} />}
+                <span className="hidden sm:inline">{loading ? 'Curating...' : 'Generate Plan'}</span>
+              </button>
+            </div>
+          </form>
+          
+          <div className="flex flex-wrap gap-2 mt-4 justify-center">
+            {["Gaming PC under ₹80k", "College Essentials", "Smart Kitchen Setup", "Wedding Gift Ideas"].map((suggestion) => (
+              <button 
+                key={suggestion}
+                onClick={() => setQuery(`I need a ${suggestion}`)}
+                className="text-[10px] uppercase font-mono tracking-wider px-3 py-1.5 rounded-full border border-white/10 text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
       </motion.div>
 

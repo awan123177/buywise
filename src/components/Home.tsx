@@ -300,6 +300,22 @@ export default function Home() {
                   Comparing index prices across <span className="text-white/60 font-bold">{savingsStats.totalUsers.toLocaleString()}</span> active nodes.
                 </div>
               </div>
+
+              {/* Telegram Community Button */}
+              <a 
+                href="https://t.me/buywiseofficial" 
+                target="_blank" 
+                rel="noreferrer"
+                className="mt-4 flex items-center gap-3 bg-[#0088cc]/10 hover:bg-[#0088cc]/20 border border-[#0088cc]/30 w-fit px-6 py-3 rounded-xl transition-all group"
+              >
+                <div className="w-6 h-6 bg-[#0088cc] rounded-full flex items-center justify-center text-white">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.45 6.67 7.239-2.083-4.103-11.114 13.641-5z"/></svg>
+                </div>
+                <div>
+                   <div className="text-[10px] uppercase font-black tracking-widest text-[#0088cc] group-hover:text-white transition-colors">Join our Telegram</div>
+                   <div className="text-[8px] uppercase font-mono text-white/50">@buywiseofficial</div>
+                </div>
+              </a>
             </motion.div>
           </div>
         </header>

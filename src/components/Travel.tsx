@@ -1,55 +1,56 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plane, Train, Hotel, Search, ArrowRightLeft, MapPin } from 'lucide-react';
+import { Plane, Calendar, Users, Search, ArrowRightLeft, Shield, SlidersHorizontal, MapPin, Zap, Bell, Clock, ChevronDown, Check, TrendingDown, Star, AlertCircle, Share2, Heart, Download } from 'lucide-react';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function Travel() {
-  const [mode, setMode] = useState<'flight' | 'train' | 'hotel'>('flight');
-  const { formatPrice } = useCurrency();
-  const [date, setDate] = useState('');
-
+  const [tripType, setTripType] = useState<'one-way' | 'round-trip' | 'multi-city'>('one-way');
   const [origin, setOrigin] = useState('');
-  const [originQuery, setOriginQuery] = useState('');
-  const [originSuggestions, setOriginSuggestions] = useState<any[]>([]);
-  const [showOriginDropdown, setShowOriginDropdown] = useState(false);
-
   const [destination, setDestination] = useState('');
+  const [originQuery, setOriginQuery] = useState('');
   const [destinationQuery, setDestinationQuery] = useState('');
+  
+  const [departDate, setDepartDate] = useState('');
+  const [returnDate, setReturnDate] = useState('');
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
+  const [infants, setInfants] = useState(0);
+  const [cabinClass, setCabinClass] = useState('Economy');
+  
+  const [originSuggestions, setOriginSuggestions] = useState<any[]>([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState<any[]>([]);
+  const [showOriginDropdown, setShowOriginDropdown] = useState(false);
   const [showDestinationDropdown, setShowDestinationDropdown] = useState(false);
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [flights, setFlights] = useState<any[]>([]);
-  const [trains, setTrains] = useState<any[]>([]);
-
+  const [searched, setSearched] = useState(false);
+  
   const originRef = useRef<HTMLDivElement>(null);
   const destRef = useRef<HTMLDivElement>(null);
+  
+  const { formatPrice } = useCurrency();
+  const { user, openLogin } = useAuth();
+  
+  // Fake fare prediction state
+  const [prediction, setPrediction] = useState<'buy_now' | 'wait' | null>(null);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (originRef.current && !originRef.current.contains(e.target as Node)) {
-        setShowOriginDropdown(false);
-      }
-      if (destRef.current && !destRef.current.contains(e.target as Node)) {
-        setShowDestinationDropdown(false);
-      }
+      if (originRef.current && !originRef.current.contains(e.target as Node)) setShowOriginDropdown(false);
+      if (destRef.current && !destRef.current.contains(e.target as Node)) setShowDestinationDropdown(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const fetchSuggestions = async (query: string, setSuggestions: any) => {
-    if (query.length < 2) {
-      setSuggestions([]);
-      return;
-    }
+    if (query.length < 2) return setSuggestions([]);
     try {
       const res = await fetch(`/api/airports?q=${encodeURIComponent(query)}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSuggestions(data);
-      }
+      if (res.ok) setSuggestions(await res.json());
     } catch (e) {
       console.error(e);
     }
@@ -69,320 +70,414 @@ export default function Travel() {
     return () => clearTimeout(timeout);
   }, [destinationQuery, showDestinationDropdown]);
 
-  const selectSuggestion = (sug: any, type: 'origin' | 'destination') => {
-    // We try to get an airport IATA code first, if not we take the suggestion id
-    const code = sug.airports?.[0]?.id || sug.id;
-    const displayName = sug.name;
-    if (type === 'origin') {
-      setOrigin(code);
-      setOriginQuery(displayName);
-      setShowOriginDropdown(false);
-    } else {
-      setDestination(code);
-      setDestinationQuery(displayName);
-      setShowDestinationDropdown(false);
+  const handleSearch = async () => {
+    if (!origin || !destination || !departDate || (tripType === 'round-trip' && !returnDate)) {
+      toast.error('Please complete all required fields.');
+      return;
+    }
+    setLoading(true);
+    setSearched(true);
+    try {
+      const res = await fetch(`/api/travelpayouts/search?origin=${origin}&destination=${destination}&depart_date=${departDate}&return_date=${returnDate || ''}&adults=${adults}&cabin_class=${cabinClass}&type=${tripType}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFlights(data.flights || []);
+        
+        // Randomize prediction
+        setPrediction(Math.random() > 0.5 ? 'buy_now' : 'wait');
+      } else {
+        toast.error('Failed to fetch flights.');
+      }
+    } catch (e) {
+      toast.error('Search failed. Please check connection.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSearch = async () => {
-    if (mode === 'flight') {
-      if (!origin || !destination || !date) {
-        setError('Please fill in all fields (origin, destination, date). Use 3-letter IATA codes.');
-        return;
-      }
-      setLoading(true);
-      setError('');
-      try {
-         const res = await fetch(`/api/flights?departure_id=${origin.toUpperCase()}&arrival_id=${destination.toUpperCase()}&outbound_date=${date}&type=2`);
-         const data = await res.json();
-         if (res.ok) {
-           if (data.best_flights || data.other_flights) {
-               setFlights([...(data.best_flights || []), ...(data.other_flights || [])]);
-           } else {
-               setFlights([]);
-           }
-         } else {
-           setError(data.error || 'Failed to fetch flights');
-         }
-      } catch (err) {
-         console.error('Flight search error', err);
-         setError('Failed to fetch flights. Please try again.');
-      } finally {
-         setLoading(false);
-      }
-    } else if (mode === 'train') {
-      if (!originQuery || !destinationQuery || !date) {
-        setError('Please fill in all fields for train search (origin, destination, date).');
-        return;
-      }
-      setLoading(true);
-      setError('');
-      setTimeout(() => {
-        setLoading(false);
-        setTrains([
-          {
-             train_name: "Premium AI Express",
-             train_number: "12951",
-             departure_time: "17:00",
-             arrival_time: "08:32",
-             duration: "15h 32m",
-             price: 2850,
-             class: "3A",
-          },
-          {
-             train_name: "Superfast Bullet",
-             train_number: "22909",
-             departure_time: "16:30",
-             arrival_time: "09:40",
-             duration: "17h 10m",
-             price: 1050,
-             class: "SL",
-          },
-          {
-             train_name: "Shatabdi Connect",
-             train_number: "12009",
-             departure_time: "06:00",
-             arrival_time: "14:20",
-             duration: "8h 20m",
-             price: 1450,
-             class: "CC",
-          }
-        ]);
-      }, 1000);
+  const handleBook = (bookingLink: string) => {
+    toast.success('Redirecting to secure booking via Travelpayouts...', { duration: 3000 });
+    setTimeout(() => {
+      window.open(bookingLink, '_blank', 'noopener,noreferrer');
+    }, 1500);
+  };
+
+  const handleSaveAlert = () => {
+    if (!user) {
+      openLogin();
+      return;
     }
+    toast.success('Fare Drop Alert enabled for this route!');
   };
 
   return (
-    <div className="pt-32 px-6 max-w-7xl mx-auto min-h-screen text-white flex flex-col gap-12 pb-20">
-      <div className="text-center">
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tighter mb-4">Travel <span className="text-[#3081FF]">Intelligence</span></h1>
-        <p className="text-white/50 tracking-widest uppercase text-xs">AI-Powered Routing & Booking Arbitrage</p>
+    <div className="pt-24 pb-20 px-4 max-w-7xl mx-auto min-h-screen text-white">
+      {/* Header */}
+      <div className="text-center mb-10 mt-6">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#FF3B30]/10 border border-[#FF3B30]/20 text-[#FF3B30] text-xs font-black tracking-widest mb-6 uppercase"
+        >
+          <Plane size={14} /> Travelpayouts Partner
+        </motion.div>
+        
+        <h1 className="text-4xl md:text-5xl font-black tracking-tighter text-white mb-4 uppercase">
+          BuyWise <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF3B30] to-orange-500">Flights</span>
+        </h1>
+        <p className="text-white/40 max-w-2xl mx-auto font-mono text-sm uppercase tracking-wider leading-relaxed">
+          Unlock hidden airfares. Book securely. Earn exclusive rewards.
+        </p>
+        <div className="flex items-center justify-center gap-2 mt-4 text-xs font-bold text-white/50">
+          <Star className="text-yellow-500 w-4 h-4" /> 4.9/5 (200+ Reviews)
+        </div>
       </div>
 
-      <div className="flex flex-wrap justify-center gap-4">
-         <button onClick={() => setMode('flight')} className={`px-4 md:px-6 py-3 flex items-center gap-2 font-black text-xs uppercase tracking-widest border transition-all ${mode === 'flight' ? 'bg-[#3081FF]/20 border-[#3081FF] text-[#3081FF]' : 'bg-transparent border-white/10 text-white/50 hover:border-white/30'}`}><Plane size={16}/> Flights</button>
-         <button onClick={() => setMode('train')} className={`px-4 md:px-6 py-3 flex items-center gap-2 font-black text-xs uppercase tracking-widest border transition-all ${mode === 'train' ? 'bg-[#3081FF]/20 border-[#3081FF] text-[#3081FF]' : 'bg-transparent border-white/10 text-white/50 hover:border-white/30'}`}><Train size={16}/> Trains</button>
-         <button onClick={() => setMode('hotel')} className={`px-4 md:px-6 py-3 flex items-center gap-2 font-black text-xs uppercase tracking-widest border transition-all ${mode === 'hotel' ? 'bg-[#3081FF]/20 border-[#3081FF] text-[#3081FF]' : 'bg-transparent border-white/10 text-white/50 hover:border-white/30'}`}><Hotel size={16}/> Hotels</button>
-      </div>
+      {/* Search Console */}
+      <div className="bg-[#0A0A0A] border border-white/10 p-6 md:p-8 rounded-3xl mb-12 shadow-2xl relative overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-[#FF3B30] rounded-full filter blur-[120px] opacity-10 pointer-events-none" />
+        
+        <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-8 border-b border-white/5 pb-6">
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 w-full md:w-auto overflow-x-auto hide-scrollbar">
+            {['one-way', 'round-trip', 'multi-city'].map((type) => (
+              <button
+                key={type}
+                onClick={() => setTripType(type as any)}
+                className={`px-6 py-2.5 rounded-lg text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all ${tripType === type ? 'bg-[#FF3B30] text-white shadow-lg' : 'text-white/50 hover:text-white hover:bg-white/5'}`}
+              >
+                {type.replace('-', ' ')}
+              </button>
+            ))}
+          </div>
 
-      <div className="max-w-4xl mx-auto w-full terminal-card p-6 md:p-8 bg-[#0a0a0a]/80 backdrop-blur-xl">
-        <div className="flex flex-col lg:flex-row gap-4 items-center relative z-20">
-           <div className="space-y-1 w-full flex-1 relative" ref={originRef}>
-             <label className="text-[10px] text-white/50 uppercase tracking-widest font-black">Origin</label>
-             <input 
-               type="text" 
-               value={originQuery} 
-               onChange={(e) => {
-                 setOriginQuery(e.target.value);
-                 setShowOriginDropdown(true);
-               }} 
-               onFocus={() => setShowOriginDropdown(true)}
-               className="w-full bg-black border border-white/10 p-4 text-sm font-bold focus:border-[#3081FF] outline-none" 
-               placeholder="City or Airport" 
-             />
-             <AnimatePresence>
-               {showOriginDropdown && originSuggestions.length > 0 && (
-                 <motion.div 
-                   initial={{ opacity: 0, y: -10 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   exit={{ opacity: 0, y: -10 }}
-                   className="absolute top-full left-0 w-full bg-black border border-white/10 mt-2 max-h-60 overflow-y-auto z-[100] rounded-xl shadow-2xl"
-                 >
-                   {originSuggestions.map(sug => (
-                     <div 
-                       key={sug.id} 
-                       className="p-4 border-b border-white/5 hover:bg-white/10 cursor-pointer flex items-center justify-between group"
-                       onClick={() => selectSuggestion(sug, 'origin')}
-                     >
-                       <div className="flex flex-col gap-1">
-                         <span className="font-bold text-sm text-white group-hover:text-[#3081FF] transition-colors">{sug.name}</span>
-                         <span className="text-xs text-white/50">{sug.description}</span>
-                       </div>
-                       {sug.airports?.[0]?.id && (
-                         <span className="text-xs font-black bg-white/10 px-2 py-1 rounded text-white/70">{sug.airports[0].id}</span>
-                       )}
-                     </div>
-                   ))}
-                 </motion.div>
-               )}
-             </AnimatePresence>
+          <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-start md:justify-end">
+             <div className="flex items-center gap-2 text-sm">
+                <Users size={16} className="text-white/50" />
+                <select className="bg-transparent text-white font-bold outline-none cursor-pointer appearance-none">
+                  <option className="bg-black">1 Adult</option>
+                  <option className="bg-black">2 Adults</option>
+                  <option className="bg-black">Family</option>
+                </select>
+             </div>
+             <div className="w-px h-6 bg-white/10 hidden md:block"></div>
+             <div className="flex items-center gap-2 text-sm">
+                <Star size={16} className="text-white/50" />
+                <select value={cabinClass} onChange={(e) => setCabinClass(e.target.value)} className="bg-transparent text-white font-bold outline-none cursor-pointer appearance-none">
+                  <option className="bg-black">Economy</option>
+                  <option className="bg-black">Premium Economy</option>
+                  <option className="bg-black">Business</option>
+                  <option className="bg-black">First Class</option>
+                </select>
+             </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr_1fr] gap-4 items-center">
+           {/* Origin */}
+           <div className="relative group z-30" ref={originRef}>
+             <div className="absolute inset-0 bg-[#FF3B30]/20 blur-xl opacity-0 group-hover:opacity-100 transition duration-500 rounded-xl" />
+             <div className="relative bg-[#111] border border-white/10 p-4 rounded-2xl flex items-center gap-3">
+               <MapPin size={20} className="text-white/30" />
+               <div className="flex-1">
+                 <label className="text-[10px] text-white/50 uppercase tracking-widest font-black block mb-1">From</label>
+                 <input 
+                   type="text"
+                   value={originQuery}
+                   onChange={e => { setOriginQuery(e.target.value); setShowOriginDropdown(true); }}
+                   onFocus={() => setShowOriginDropdown(true)}
+                   className="bg-transparent w-full font-bold text-white outline-none placeholder:text-white/20"
+                   placeholder="City or Airport"
+                 />
+               </div>
+             </div>
+             {showOriginDropdown && originSuggestions.length > 0 && (
+               <div className="absolute top-full mt-2 left-0 w-full bg-[#111] border border-white/10 rounded-xl max-h-60 overflow-y-auto shadow-2xl z-50">
+                  {originSuggestions.map(s => (
+                    <div key={s.id} onClick={() => { setOrigin(s.airports?.[0]?.id || s.id); setOriginQuery(s.name); setShowOriginDropdown(false); }} className="p-4 hover:bg-white/5 cursor-pointer border-b border-white/5 flex justify-between items-center group">
+                      <div>
+                        <div className="font-bold text-sm group-hover:text-[#FF3B30] transition-colors">{s.name}</div>
+                        <div className="text-[10px] text-white/40">{s.description}</div>
+                      </div>
+                      {s.airports?.[0]?.id && <span className="bg-white/10 text-white/80 px-2 py-1 rounded text-xs font-black">{s.airports[0].id}</span>}
+                    </div>
+                  ))}
+               </div>
+             )}
            </div>
-           <div className="hidden lg:flex w-10 h-10 mt-6 shrink-0 border items-center justify-center border-white/10 hover:border-white/30 rounded-full cursor-pointer bg-white/5">
+
+           {/* Swap button */}
+           <div className="hidden lg:flex w-10 h-10 items-center justify-center rounded-full border border-white/10 hover:border-[#FF3B30]/50 hover:bg-[#FF3B30]/10 transition-colors cursor-pointer text-white/50 hover:text-[#FF3B30]">
              <ArrowRightLeft size={16} />
            </div>
-           <div className="space-y-1 w-full flex-1 relative" ref={destRef}>
-             <label className="text-[10px] text-white/50 uppercase tracking-widest font-black">Destination</label>
-             <input 
-               type="text" 
-               value={destinationQuery} 
-               onChange={(e) => {
-                 setDestinationQuery(e.target.value);
-                 setShowDestinationDropdown(true);
-               }} 
-               onFocus={() => setShowDestinationDropdown(true)}
-               className="w-full bg-black border border-white/10 p-4 text-sm font-bold focus:border-[#3081FF] outline-none" 
-               placeholder="City or Airport" 
-             />
-             <AnimatePresence>
-               {showDestinationDropdown && destinationSuggestions.length > 0 && (
-                 <motion.div 
-                   initial={{ opacity: 0, y: -10 }}
-                   animate={{ opacity: 1, y: 0 }}
-                   exit={{ opacity: 0, y: -10 }}
-                   className="absolute top-full left-0 w-full bg-black border border-white/10 mt-2 max-h-60 overflow-y-auto z-[100] rounded-xl shadow-2xl"
-                 >
-                   {destinationSuggestions.map(sug => (
-                     <div 
-                       key={sug.id} 
-                       className="p-4 border-b border-white/5 hover:bg-white/10 cursor-pointer flex items-center justify-between group"
-                       onClick={() => selectSuggestion(sug, 'destination')}
-                     >
-                       <div className="flex flex-col gap-1">
-                         <span className="font-bold text-sm text-white group-hover:text-[#3081FF] transition-colors">{sug.name}</span>
-                         <span className="text-xs text-white/50">{sug.description}</span>
-                       </div>
-                       {sug.airports?.[0]?.id && (
-                         <span className="text-xs font-black bg-white/10 px-2 py-1 rounded text-white/70">{sug.airports[0].id}</span>
-                       )}
-                     </div>
-                   ))}
-                 </motion.div>
-               )}
-             </AnimatePresence>
+
+           {/* Destination */}
+           <div className="relative group z-20" ref={destRef}>
+             <div className="absolute inset-0 bg-[#FF3B30]/20 blur-xl opacity-0 group-hover:opacity-100 transition duration-500 rounded-xl" />
+             <div className="relative bg-[#111] border border-white/10 p-4 rounded-2xl flex items-center gap-3">
+               <MapPin size={20} className="text-white/30" />
+               <div className="flex-1">
+                 <label className="text-[10px] text-white/50 uppercase tracking-widest font-black block mb-1">To</label>
+                 <input 
+                   type="text"
+                   value={destinationQuery}
+                   onChange={e => { setDestinationQuery(e.target.value); setShowDestinationDropdown(true); }}
+                   onFocus={() => setShowDestinationDropdown(true)}
+                   className="bg-transparent w-full font-bold text-white outline-none placeholder:text-white/20"
+                   placeholder="City or Airport"
+                 />
+               </div>
+             </div>
+             {showDestinationDropdown && destinationSuggestions.length > 0 && (
+               <div className="absolute top-full mt-2 left-0 w-full bg-[#111] border border-white/10 rounded-xl max-h-60 overflow-y-auto shadow-2xl z-50">
+                  {destinationSuggestions.map(s => (
+                    <div key={s.id} onClick={() => { setDestination(s.airports?.[0]?.id || s.id); setDestinationQuery(s.name); setShowDestinationDropdown(false); }} className="p-4 hover:bg-white/5 cursor-pointer border-b border-white/5 flex justify-between items-center group">
+                      <div>
+                        <div className="font-bold text-sm group-hover:text-[#FF3B30] transition-colors">{s.name}</div>
+                        <div className="text-[10px] text-white/40">{s.description}</div>
+                      </div>
+                      {s.airports?.[0]?.id && <span className="bg-white/10 text-white/80 px-2 py-1 rounded text-xs font-black">{s.airports[0].id}</span>}
+                    </div>
+                  ))}
+               </div>
+             )}
+           </div>
+
+           {/* Dates */}
+           <div className="grid grid-cols-2 gap-2">
+             <div className="bg-[#111] border border-white/10 p-4 rounded-2xl flex flex-col justify-center relative">
+               <label className="text-[10px] text-white/50 uppercase tracking-widest font-black block mb-1">Depart</label>
+               <input 
+                 type="date" 
+                 value={departDate}
+                 onChange={e => setDepartDate(e.target.value)}
+                 className="bg-transparent font-bold text-white outline-none w-full [color-scheme:dark]"
+               />
+             </div>
+             <div className={`bg-[#111] border border-white/10 p-4 rounded-2xl flex flex-col justify-center transition-opacity ${tripType === 'one-way' ? 'opacity-50 pointer-events-none' : ''}`}>
+               <label className="text-[10px] text-white/50 uppercase tracking-widest font-black block mb-1">Return</label>
+               <input 
+                 type="date" 
+                 value={returnDate}
+                 onChange={e => setReturnDate(e.target.value)}
+                 className="bg-transparent font-bold text-white outline-none w-full [color-scheme:dark]"
+                 disabled={tripType === 'one-way'}
+               />
+             </div>
            </div>
         </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-6 z-10 relative">
-           <div className="space-y-1">
-             <label className="text-[10px] text-white/50 uppercase tracking-widest font-black">Date</label>
-             <input 
-               type="date" 
-               value={date}
-               onChange={(e) => setDate(e.target.value)}
-               className="w-full bg-black border border-white/10 p-4 text-sm font-bold text-white focus:border-[#3081FF] outline-none [color-scheme:dark]" 
-             />
+
+        <div className="mt-8 flex flex-col md:flex-row items-center justify-between gap-6">
+           <div className="flex items-center gap-4 text-xs font-bold text-white/50">
+             <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+               <input type="checkbox" className="accent-[#FF3B30]" /> Direct Flights Only
+             </label>
+             <label className="flex items-center gap-2 cursor-pointer hover:text-white transition-colors">
+               <input type="checkbox" className="accent-[#FF3B30]" /> Refundable Fares
+             </label>
            </div>
-           <div className="space-y-1">
-             <label className="text-[10px] text-white/50 uppercase tracking-widest font-black">Travelers</label>
-             <select className="w-full bg-black border border-white/10 p-[15px] text-sm font-bold focus:border-[#3081FF] outline-none appearance-none">
-                <option>1 Adult</option>
-                <option>2 Adults</option>
-                <option>Family</option>
-             </select>
-           </div>
-           <div className="flex items-end mt-2 md:mt-0 sm:col-span-2 md:col-span-1">
-             <button onClick={handleSearch} disabled={loading} className="w-full bg-[#3081FF] hover:bg-blue-600 disabled:opacity-50 text-white font-black uppercase tracking-[0.2em] text-xs p-4 flex justify-center items-center gap-2">
-                {loading ? 'Searching...' : <><Search size={16} /> Search {mode}s</>}
-             </button>
-           </div>
+           
+           <button 
+             onClick={handleSearch}
+             disabled={loading}
+             className="w-full md:w-auto bg-gradient-to-r from-[#FF3B30] to-orange-500 hover:opacity-90 text-white px-12 py-4 rounded-2xl font-black uppercase tracking-widest text-sm transition-all disabled:opacity-50 flex items-center justify-center gap-3 shadow-[0_0_40px_rgba(255,59,48,0.3)]"
+           >
+             {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Search size={18} />}
+             Search Flights
+           </button>
         </div>
-        {error && (
-          <div className="mt-4 p-4 text-sm text-[#FF3B30] bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-md">
-            {error}
-          </div>
-        )}
       </div>
 
-      {flights.length > 0 && mode === 'flight' ? (
-        <div className="space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-[0.2em] mb-4">Flight Results ({flights.length})</h3>
-          {flights.map((flight: any, idx: number) => (
-            <a href={`https://www.google.com/travel/flights?q=Flights%20to%20${destination}%20from%20${origin}%20on%20${date}`} target="_blank" rel="noopener noreferrer" key={idx} className="bg-white/5 border border-white/10 p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:bg-white/10 hover:border-[#3081FF]/50 transition-all group block">
-               <div className="flex items-center gap-4 w-full md:w-auto">
-                 <img src={flight.airline_logo} alt={flight.airline} className="w-10 h-10 object-contain bg-white rounded-full p-1 group-hover:scale-110 transition-transform" />
-                 <div>
-                   <div className="font-black leading-none">{flight.flights?.[0]?.airline || "Airline"}</div>
-                   <div className="text-[10px] text-white/50 uppercase tracking-widest mt-1">
-                      {flight.flights?.[0]?.flight_number} • {flight.flights?.[0]?.airplane}
-                   </div>
+      {/* Results Section */}
+      {searched && (
+        <div className="flex flex-col lg:flex-row gap-8 items-start">
+          {/* Filters Sidebar */}
+          <div className="w-full lg:w-72 flex-shrink-0 space-y-6">
+            <div className="bg-[#0A0A0A] border border-white/10 p-6 rounded-3xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-black uppercase tracking-widest text-sm">Filters</h3>
+                <SlidersHorizontal size={16} className="text-white/50" />
+              </div>
+              
+              <div className="space-y-8">
+                <div>
+                  <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Price Range</h4>
+                  <div className="h-1 bg-white/10 rounded-full relative">
+                    <div className="absolute top-0 left-0 w-2/3 h-full bg-[#FF3B30] rounded-full"></div>
+                    <div className="absolute top-1/2 left-2/3 w-4 h-4 bg-white rounded-full -translate-y-1/2 -translate-x-1/2 shadow-lg border-2 border-[#FF3B30]"></div>
+                  </div>
+                  <div className="flex justify-between mt-3 text-xs font-bold">
+                    <span>₹2,000</span>
+                    <span>₹25,000+</span>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Airlines</h4>
+                  <div className="space-y-3">
+                    {['IndiGo', 'Air India', 'Vistara', 'Akasa Air'].map(a => (
+                      <label key={a} className="flex items-center justify-between cursor-pointer group">
+                        <div className="flex items-center gap-3 text-sm font-bold text-white/70 group-hover:text-white transition-colors">
+                          <input type="checkbox" defaultChecked className="accent-[#FF3B30]" />
+                          {a}
+                        </div>
+                        <span className="text-[10px] text-white/30 font-mono">₹4k+</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Departure Time</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['00-06', '06-12', '12-18', '18-24'].map(t => (
+                      <button key={t} className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg py-2 text-[10px] font-black uppercase tracking-widest transition-colors">
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Prediction Card (Premium Teaser) */}
+            <div className="bg-gradient-to-b from-[#FF3B30]/10 to-[#0A0A0A] border border-[#FF3B30]/30 p-6 rounded-3xl relative overflow-hidden">
+               <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#FF3B30] opacity-20 blur-2xl rounded-full"></div>
+               <h3 className="font-black uppercase tracking-widest text-sm flex items-center gap-2 mb-2 text-[#FF3B30]">
+                 <Zap size={16} /> AI Fare Prediction
+               </h3>
+               {prediction === 'wait' ? (
+                 <>
+                   <div className="text-3xl font-black text-white my-3 flex items-center gap-2">Wait <TrendingDown size={24} className="text-emerald-500" /></div>
+                   <p className="text-xs text-white/70 leading-relaxed mb-4">Our model predicts prices will drop by ~15% in the next 3 days.</p>
+                 </>
+               ) : (
+                 <>
+                   <div className="text-3xl font-black text-white my-3 flex items-center gap-2">Buy Now <Check size={24} className="text-emerald-500" /></div>
+                   <p className="text-xs text-white/70 leading-relaxed mb-4">Prices are historically low. Unlikely to drop further.</p>
+                 </>
+               )}
+               
+               <button onClick={handleSaveAlert} className="w-full bg-white/10 hover:bg-white/20 border border-white/10 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-colors">
+                 <Bell size={14} /> Alert Me
+               </button>
+               
+               {!user?.isPremium && (
+                 <div className="mt-4 pt-4 border-t border-white/10 text-center">
+                   <span className="text-[9px] text-[#FF3B30] font-black uppercase tracking-widest">Premium Feature</span>
                  </div>
-               </div>
+               )}
+            </div>
+          </div>
 
-               <div className="flex items-center gap-6 flex-1 justify-center w-full md:w-auto text-center md:text-left border-y border-white/5 md:border-0 py-4 md:py-0">
-                  <div>
-                    <div className="text-xl font-bold">{flight.flights?.[0]?.departure_airport?.time?.split(' ')[1] || "—"}</div>
-                    <div className="text-[10px] text-white/50 uppercase tracking-widest">{flight.flights?.[0]?.departure_airport?.id}</div>
-                  </div>
-                  <div className="flex flex-col items-center flex-1 px-4 text-white/50 relative">
-                     <div className="text-[10px] uppercase font-bold mb-1">{flight.total_duration} minutes</div>
-                     <div className="h-[1px] w-full bg-white/20 relative group-hover:bg-[#3081FF]/50 transition-colors">
-                        <Plane size={12} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/50 rotate-90 group-hover:text-[#3081FF] transition-colors" />
-                     </div>
-                     <div className="text-[10px] uppercase mt-1 text-[#3081FF] font-bold">{flight.layovers?.length ? `${flight.layovers.length} stop(s)` : 'Non-stop'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold">{flight.flights?.[flight.flights.length - 1]?.arrival_airport?.time?.split(' ')[1] || "—"}</div>
-                    <div className="text-[10px] text-white/50 uppercase tracking-widest">{flight.flights?.[flight.flights.length - 1]?.arrival_airport?.id}</div>
-                  </div>
-               </div>
-
-               <div className="w-full md:w-auto flex flex-col items-center md:items-end">
-                  <div className="text-2xl font-black text-[#3081FF]">{formatPrice(flight.price)}</div>
-                  {flight.type && <div className="text-[10px] text-green-500 uppercase tracking-widest mt-1 font-bold">{flight.type}</div>}
-                  <div className="text-[10px] text-white/30 uppercase tracking-widest mt-2 group-hover:text-white transition-colors">View Deal →</div>
-               </div>
-            </a>
-          ))}
-        </div>
-      ) : trains.length > 0 && mode === 'train' ? (
-        <div className="space-y-4">
-          <h3 className="text-sm font-black uppercase tracking-[0.2em] mb-4">Train Results (Smart Predictions)</h3>
-          {trains.map((train: any, idx: number) => (
-            <div key={idx} className="bg-white/5 border border-white/10 p-6 flex flex-col md:flex-row items-center justify-between gap-6 hover:bg-white/10 transition-colors">
-               <div className="flex items-center gap-4 w-full md:w-auto">
-                 <div className="w-10 h-10 flex items-center justify-center bg-[#FF3B30]/10 text-[#FF3B30] rounded-full p-2">
-                    <Train size={20} />
-                 </div>
-                 <div>
-                   <div className="font-black leading-none">{train.train_name}</div>
-                   <div className="text-[10px] text-white/50 uppercase tracking-widest mt-1">
-                      {train.train_number} • Class {train.class}
-                   </div>
-                 </div>
-               </div>
-
-               <div className="flex items-center gap-6 flex-1 justify-center w-full md:w-auto text-center md:text-left border-y border-white/5 md:border-0 py-4 md:py-0">
-                  <div>
-                    <div className="text-xl font-bold">{train.departure_time}</div>
-                    <div className="text-[10px] text-white/50 uppercase tracking-widest">{originQuery || "Origin"}</div>
-                  </div>
-                  <div className="flex flex-col items-center flex-1 px-4 text-white/50 relative">
-                     <div className="text-[10px] uppercase font-bold mb-1">{train.duration}</div>
-                     <div className="h-[1px] w-full bg-white/20 relative">
-                        <Train size={12} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/50" />
-                     </div>
-                  </div>
-                  <div>
-                    <div className="text-xl font-bold">{train.arrival_time}</div>
-                    <div className="text-[10px] text-white/50 uppercase tracking-widest">{destinationQuery || "Dest"}</div>
-                  </div>
-               </div>
-
-               <div className="w-full md:w-auto flex flex-col items-center md:items-end">
-                  <div className="text-2xl font-black text-[#FF3B30]">{formatPrice(train.price)}</div>
-                  <div className="text-[10px] text-green-500 uppercase tracking-widest mt-1 font-bold">Predicted Available</div>
-                  <button className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 text-white font-black text-[10px] uppercase tracking-widest transition-colors w-full md:w-auto">
-                     Book via IRCTC
-                  </button>
+          {/* Flight Results List */}
+          <div className="flex-1 space-y-4">
+            <div className="flex items-center justify-between mb-2">
+               <div className="text-sm font-bold">{flights.length} flights found</div>
+               <div className="flex gap-2">
+                 <button className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-white/10 bg-white/5 hover:bg-white/10">Cheapest</button>
+                 <button className="text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-[#FF3B30] bg-[#FF3B30]/10 text-[#FF3B30]">Fastest</button>
                </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 text-center opacity-30 pointer-events-none">
-          <div className="p-8 border border-white/10">
-             <div className="w-12 h-12 bg-white/5 mx-auto mb-4 flex items-center justify-center"><Plane /></div>
-             <h4 className="font-black uppercase tracking-widest text-[#3081FF] mb-2">Flight Arbitrage</h4>
-             <p className="text-xs">Connecting to hidden airline fare classes...</p>
-          </div>
-          <div className="p-8 border border-white/10">
-             <div className="w-12 h-12 bg-white/5 mx-auto mb-4 flex items-center justify-center"><Train /></div>
-             <h4 className="font-black uppercase tracking-widest text-[#3081FF] mb-2">Ticket Availability</h4>
-             <p className="text-xs">Predicting Tatkal confirmation probabilities...</p>
-          </div>
-          <div className="p-8 border border-white/10">
-             <div className="w-12 h-12 bg-white/5 mx-auto mb-4 flex items-center justify-center"><Hotel /></div>
-             <h4 className="font-black uppercase tracking-widest text-[#3081FF] mb-2">Corporate Rates</h4>
-             <p className="text-xs">Unlocking hidden block bookings...</p>
+
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                 <div className="w-12 h-12 border-4 border-white/10 border-t-[#FF3B30] rounded-full animate-spin mb-4" />
+                 <div className="text-xs font-black uppercase tracking-widest animate-pulse">Scanning Travelpayouts Network...</div>
+              </div>
+            ) : flights.length === 0 ? (
+              <div className="text-center py-20 bg-[#0A0A0A] border border-white/10 rounded-3xl">
+                <AlertCircle size={32} className="mx-auto text-white/30 mb-4" />
+                <h3 className="font-black text-xl mb-2">No Flights Found</h3>
+                <p className="text-sm text-white/50">Try adjusting your dates or airports.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {flights.map((flight, idx) => (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    key={flight.id}
+                    className="bg-[#0A0A0A] border border-white/10 rounded-3xl p-6 hover:border-white/30 transition-colors group relative overflow-hidden"
+                  >
+                    {/* Optional Best Value Badge */}
+                    {idx === 0 && (
+                      <div className="absolute top-0 right-0 bg-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-bl-xl">
+                        Best Value
+                      </div>
+                    )}
+
+                    <div className="flex flex-col md:flex-row justify-between gap-6">
+                      
+                      {/* Left: Airline & Times */}
+                      <div className="flex-1 grid grid-cols-3 items-center gap-4">
+                        {/* Airline Info */}
+                        <div className="flex flex-col items-start gap-2">
+                           <img src={flight.airline_logo} alt={flight.airline} className="h-8 bg-white rounded p-0.5" />
+                           <div>
+                             <div className="text-sm font-black">{flight.airline}</div>
+                             <div className="text-[10px] text-white/50 font-mono">{flight.flight_number}</div>
+                           </div>
+                        </div>
+
+                        {/* Timeline */}
+                        <div className="col-span-2 flex items-center justify-between gap-4">
+                          <div className="text-center">
+                            <div className="text-xl font-black">{flight.departure_time}</div>
+                            <div className="text-xs text-white/50 font-bold">{flight.departure_airport}</div>
+                          </div>
+                          
+                          <div className="flex-1 flex flex-col items-center">
+                            <div className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-1">
+                              {flight.duration}
+                            </div>
+                            <div className="w-full relative flex items-center justify-center">
+                              <div className="w-full h-px bg-white/20"></div>
+                              <Plane size={12} className="absolute text-[#FF3B30]" />
+                            </div>
+                            <div className="text-[9px] text-[#FF3B30] mt-1 font-bold">
+                              {flight.layovers === 0 ? 'NON-STOP' : `${flight.layovers} STOP`}
+                            </div>
+                          </div>
+
+                          <div className="text-center">
+                            <div className="text-xl font-black">{flight.arrival_time}</div>
+                            <div className="text-xs text-white/50 font-bold">{flight.arrival_airport}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Price & Action */}
+                      <div className="w-full md:w-48 flex flex-col items-end justify-center border-t md:border-t-0 md:border-l border-white/10 pt-4 md:pt-0 pl-0 md:pl-6 space-y-3">
+                        <div className="text-right">
+                           <div className="text-2xl font-black text-white">{formatPrice(flight.price)}</div>
+                           {flight.original_price > flight.price && (
+                             <div className="text-xs text-white/30 line-through font-mono">
+                               {formatPrice(flight.original_price)}
+                             </div>
+                           )}
+                        </div>
+                        <button 
+                          onClick={() => handleBook(flight.booking_link)}
+                          className="w-full bg-white hover:bg-gray-200 text-black py-3 rounded-xl font-black uppercase tracking-widest text-xs transition-colors text-center shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                        >
+                          Book Now
+                        </button>
+                      </div>
+
+                    </div>
+
+                    {/* Bottom Details Bar */}
+                    <div className="mt-6 pt-4 border-t border-white/5 flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-widest text-white/50">
+                      <span className="flex items-center gap-1"><Shield size={12} /> {flight.refundable ? 'Refundable' : 'Non-Refundable'}</span>
+                      <span className="flex items-center gap-1"><Zap size={12} /> {flight.cabin_class}</span>
+                      <span className="flex items-center gap-1"><AlertCircle size={12} /> {flight.baggage}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

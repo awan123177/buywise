@@ -92,6 +92,10 @@ export default function DealsPage() {
 
   useEffect(() => {
     loadDeals();
+    const interval = setInterval(() => {
+      loadDeals();
+    }, 10000);
+    return () => clearInterval(interval);
   }, [activeTab, selectedCategory, selectedSubtype, selectedTimeframe]);
 
   useEffect(() => {

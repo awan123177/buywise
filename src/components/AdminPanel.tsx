@@ -49,7 +49,9 @@ export default function AdminPanel() {
   const [affiliateSettings, setAffiliateSettings] = useState<any>(null);
   const [telegramConfig, setTelegramConfig] = useState<any>(null);
   const [mockTelegramText, setMockTelegramText] = useState("");
+  const [mockTelegramPhotoUrl, setMockTelegramPhotoUrl] = useState("");
   const [isParsingDeal, setIsParsingDeal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'flights'>('dashboard');
 
   const parseNameField = (nameStr: string) => {
     if (!nameStr) return { displayName: 'Unknown', screenshot: null };
@@ -193,7 +195,8 @@ export default function AdminPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           channel_post: {
-            text: mockTelegramText
+            text: mockTelegramText,
+            photo_url: mockTelegramPhotoUrl
           }
         })
       });
@@ -201,6 +204,7 @@ export default function AdminPanel() {
       if (data.success) {
         toast.success("Parsed deal with Gemini and posted live! 📲");
         setMockTelegramText("");
+        setMockTelegramPhotoUrl("");
         // Reload statistics or page to reflect changes
         fetchAdminStats().then(data => setStats(data));
       } else {
@@ -291,23 +295,31 @@ export default function AdminPanel() {
           <h1 className="text-7xl font-black text-white tracking-tighter uppercase font-display leading-none">COMMAND</h1>
           <p className="text-[#FF3B30] font-black tracking-[0.4em] text-[10px] mt-6 uppercase italic">Operational Excellence Node: INDIA_001</p>
         </div>
-        <div className="flex gap-4">
-           <button 
-             onClick={clearHistory}
-             disabled={isClearing}
-             className="px-8 py-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-500 hover:text-white text-[10px] font-black tracking-widest hover:bg-red-600 transition-all flex items-center gap-3"
-           >
-             <Trash2 size={16} /> {isClearing ? 'PURGING...' : 'CLEAR_HISTORY'}
-           </button>
-           <button className="px-8 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-[10px] font-black tracking-widest hover:bg-white/10 transition-all flex items-center gap-3">
-             <ShieldCheck size={16} /> AUDIT_LOG
-           </button>
-           <button className="btn-brutalist !py-3 rounded-lg">
-             <Plus size={16} /> DEPLOY_SYNC
-           </button>
+        <div className="flex flex-col items-end gap-6">
+           <div className="flex bg-white/5 border border-white/10 p-1 rounded-lg">
+             <button onClick={() => setActiveTab('dashboard')} className={`px-6 py-2 text-xs font-black uppercase tracking-widest rounded-md transition-colors ${activeTab === 'dashboard' ? 'bg-[#FF3B30] text-white' : 'text-white/50 hover:text-white'}`}>Platform Core</button>
+             <button onClick={() => setActiveTab('flights')} className={`px-6 py-2 text-xs font-black uppercase tracking-widest rounded-md transition-colors ${activeTab === 'flights' ? 'bg-[#FF3B30] text-white' : 'text-white/50 hover:text-white'}`}>Flight Ops</button>
+           </div>
+           <div className="flex gap-4">
+             <button 
+               onClick={clearHistory}
+               disabled={isClearing}
+               className="px-8 py-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-500 hover:text-white text-[10px] font-black tracking-widest hover:bg-red-600 transition-all flex items-center gap-3"
+             >
+               <Trash2 size={16} /> {isClearing ? 'PURGING...' : 'CLEAR_HISTORY'}
+             </button>
+             <button className="px-8 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-[10px] font-black tracking-widest hover:bg-white/10 transition-all flex items-center gap-3">
+               <ShieldCheck size={16} /> AUDIT_LOG
+             </button>
+             <button className="btn-brutalist !py-3 rounded-lg">
+               <Plus size={16} /> DEPLOY_SYNC
+             </button>
+           </div>
         </div>
       </header>
 
+      {activeTab === 'dashboard' ? (
+        <>
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-20">
         <div className="terminal-card p-10 bg-black/40 backdrop-blur-md">
@@ -1167,6 +1179,21 @@ export default function AdminPanel() {
                   onChange={(e) => setMockTelegramText(e.target.value)}
                   className="w-full bg-[#050505] border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-white/20 font-sans"
                 />
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onloadend = () => {
+                        setMockTelegramPhotoUrl(reader.result as string);
+                      };
+                      reader.readAsDataURL(file);
+                    }
+                  }}
+                  className="w-full bg-[#050505] border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-white/20 font-sans file:bg-[#FF3B30] file:text-white file:border-none file:rounded file:px-2 file:py-1 file:mr-2 file:text-xs file:font-black file:uppercase file:cursor-pointer"
+                />
                 <button
                   type="submit"
                   disabled={isParsingDeal || !mockTelegramText.trim()}
@@ -1187,6 +1214,74 @@ export default function AdminPanel() {
           </div>
         </div>
       </div>
+      </>
+      ) : (
+        <div className="space-y-12">
+          {/* Flight Analytics Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
+              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Total Searches</h4>
+              <div className="text-4xl font-black text-white">4,289</div>
+              <div className="text-xs text-emerald-400 mt-2 font-bold">+12% this week</div>
+            </div>
+            <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
+              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Total Bookings</h4>
+              <div className="text-4xl font-black text-[#FF3B30]">312</div>
+              <div className="text-xs text-emerald-400 mt-2 font-bold">+8% this week</div>
+            </div>
+            <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
+              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Est. Commission</h4>
+              <div className="text-4xl font-black text-emerald-400">₹45.2k</div>
+              <div className="text-xs text-emerald-400 mt-2 font-bold">+24% this week</div>
+            </div>
+            <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
+              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Conversion Rate</h4>
+              <div className="text-4xl font-black text-white">7.2%</div>
+              <div className="text-xs text-[#FF3B30] mt-2 font-bold">-1% this week</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+            <div className="terminal-card p-10 bg-black/40">
+               <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase mb-8">Top Searched Routes</h4>
+               <div className="space-y-4">
+                 {[
+                   { route: 'BOM → DEL', searches: 1240, bookings: 142 },
+                   { route: 'BLR → DEL', searches: 980, bookings: 86 },
+                   { route: 'HYD → MAA', searches: 750, bookings: 54 },
+                   { route: 'BOM → GOI', searches: 620, bookings: 22 },
+                   { route: 'DEL → DXB', searches: 430, bookings: 8 },
+                 ].map((r, i) => (
+                   <div key={i} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-xl">
+                      <div className="font-black tracking-widest text-white">{r.route}</div>
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-white/70">{r.searches} Searches</div>
+                        <div className="text-[10px] text-emerald-400 font-black tracking-widest mt-1">{r.bookings} Bookings</div>
+                      </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+
+            <div className="terminal-card p-10 bg-black/40">
+               <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase mb-8">Revenue Dashboard</h4>
+               <div className="h-64 flex items-end justify-between gap-2 border-b border-white/10 pb-4 relative">
+                 <div className="absolute inset-0 bg-gradient-to-t from-[#FF3B30]/10 to-transparent pointer-events-none" />
+                 {[40, 60, 45, 80, 55, 90, 75].map((h, i) => (
+                   <div key={i} className="w-full bg-white/10 hover:bg-[#FF3B30] transition-colors relative group rounded-t-sm" style={{ height: `${h}%` }}>
+                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                        ₹{h * 120}
+                      </div>
+                   </div>
+                 ))}
+               </div>
+               <div className="flex justify-between mt-4 text-[10px] text-white/50 font-black tracking-widest uppercase">
+                 <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

@@ -158,15 +158,15 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 11,
+      "coins": 28,
       "referralCode": "TEST256",
       "referredBy": null,
       "searchesCount": 0,
       "totalSaved": 0,
       "lastSearchDate": null,
-      "lastLoginDate": "2026-06-26",
-      "streakCount": 1,
-      "lastStreakCheckDate": "2026-06-26",
+      "lastLoginDate": "2026-06-27",
+      "streakCount": 2,
+      "lastStreakCheckDate": "2026-06-27",
       "achievements": [],
       "notificationsEnabled": true,
       "notificationPreferences": {
@@ -175,10 +175,244 @@
         "evening": true
       },
       "bannedReferrals": false,
-      "createdAt": "2026-06-26T06:59:49.010Z"
+      "createdAt": "2026-06-26T06:59:49.010Z",
+      "activeBadge": "💎 COINS LEGEND",
+      "isPremium": true,
+      "premiumExpiry": "2026-06-30T16:58:34.001Z"
     }
   },
   "transactions": [
+    {
+      "id": "txn_1782569025450_830",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": -150,
+      "reason": "Redeemed reward: badge",
+      "timestamp": "2026-06-27T14:03:45.450Z"
+    },
+    {
+      "id": "txn_1782569010139_753",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": -250,
+      "reason": "Redeemed reward: trial",
+      "timestamp": "2026-06-27T14:03:30.139Z"
+    },
+    {
+      "id": "txn_1782569006895_169",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:26.895Z"
+    },
+    {
+      "id": "txn_1782569006360_19",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:26.360Z"
+    },
+    {
+      "id": "txn_1782569005859_888",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:25.859Z"
+    },
+    {
+      "id": "txn_1782569005292_500",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:25.292Z"
+    },
+    {
+      "id": "txn_1782569004679_755",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:24.679Z"
+    },
+    {
+      "id": "txn_1782569003532_541",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:23.532Z"
+    },
+    {
+      "id": "txn_1782569003020_541",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:23.020Z"
+    },
+    {
+      "id": "txn_1782569002466_530",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:22.466Z"
+    },
+    {
+      "id": "txn_1782569001928_953",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:21.928Z"
+    },
+    {
+      "id": "txn_1782569000887_162",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:20.887Z"
+    },
+    {
+      "id": "txn_1782569000351_943",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:20.351Z"
+    },
+    {
+      "id": "txn_1782568999902_338",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:19.902Z"
+    },
+    {
+      "id": "txn_1782568999366_366",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:19.366Z"
+    },
+    {
+      "id": "txn_1782568998840_273",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:18.840Z"
+    },
+    {
+      "id": "txn_1782568998186_244",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:18.186Z"
+    },
+    {
+      "id": "txn_1782568997630_752",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:17.630Z"
+    },
+    {
+      "id": "txn_1782568996980_990",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:16.980Z"
+    },
+    {
+      "id": "txn_1782568996271_623",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:16.271Z"
+    },
+    {
+      "id": "txn_1782568995321_471",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T14:03:15.321Z"
+    },
+    {
+      "id": "txn_1782568312774_543",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 2,
+      "reason": "Scanned barcode 017817847774: Apple iPhone 15 Pro (128 GB) - Natural Titanium",
+      "timestamp": "2026-06-27T13:51:52.774Z"
+    },
+    {
+      "id": "txn_1782568195335_12",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": -150,
+      "reason": "Redeemed reward: badge",
+      "timestamp": "2026-06-27T13:49:55.335Z"
+    },
+    {
+      "id": "txn_1782568190084_154",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:50.084Z"
+    },
+    {
+      "id": "txn_1782568189443_528",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:49.443Z"
+    },
+    {
+      "id": "txn_1782568188725_472",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:48.725Z"
+    },
+    {
+      "id": "txn_1782568187470_664",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:47.470Z"
+    },
+    {
+      "id": "txn_1782568186685_393",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:46.685Z"
+    },
+    {
+      "id": "txn_1782568185928_313",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:45.928Z"
+    },
+    {
+      "id": "txn_1782568185043_685",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:45.043Z"
+    },
+    {
+      "id": "txn_1782568184085_425",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:44.085Z"
+    },
+    {
+      "id": "txn_1782568183083_792",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Shared BuyWise deal to social network",
+      "timestamp": "2026-06-27T13:49:43.083Z"
+    },
+    {
+      "id": "txn_1782568143121_8",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 5,
+      "reason": "Daily login (Streak: 2 days)",
+      "timestamp": "2026-06-27T13:49:03.121Z"
+    },
     {
       "id": "txn_1782462250446_251",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -211,304 +445,2051 @@
   "referrals": [],
   "deals": [
     {
-      "id": "deal_iphone_15",
-      "title": "Apple iPhone 15 (128 GB) - Black",
+      "id": "deal_samsung_s24_ultra",
+      "title": "Samsung S24 Ultra",
       "category": "mobiles",
-      "oldPrice": 79900,
-      "newPrice": 65999,
-      "discountPercent": 17,
-      "thumbnail": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=500&auto=format&fit=crop&q=60",
+      "oldPrice": 129999,
+      "newPrice": 99999,
+      "discountPercent": 23,
+      "thumbnail": "https://api.dicebear.com/7.x/identicon/svg?seed=samsungs24",
       "source": "Amazon.in",
-      "link": "https://amazon.in/dp/B0CHX1W18X",
+      "link": "https://amazon.in/dp/B0CSYF8Z98",
       "isBestSeller": true,
-      "isEditorPick": false,
-      "isFlashDeal": true,
-      "views": 1840,
-      "saves": 345,
-      "purchases": 120,
-      "createdAt": "2026-06-26T06:54:16.442Z",
-      "timeRemaining": "05h 12m"
-    },
-    {
-      "id": "deal_macbook_air",
-      "title": "Apple MacBook Air Laptop M3 (13.6-inch, 8GB RAM, 256GB SSD)",
-      "category": "laptops",
-      "oldPrice": 114900,
-      "newPrice": 94990,
-      "discountPercent": 17,
-      "thumbnail": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&auto=format&fit=crop&q=60",
-      "source": "Flipkart.com",
-      "link": "https://flipkart.com",
-      "isBestSeller": false,
-      "isEditorPick": true,
-      "isFlashDeal": false,
-      "views": 1250,
-      "saves": 420,
-      "purchases": 85,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_sony_xm5",
-      "title": "Sony WH-1000XM5 Wireless Active Noise Cancelling Headphones",
-      "category": "electronics",
-      "oldPrice": 34990,
-      "newPrice": 25990,
-      "discountPercent": 26,
-      "thumbnail": "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=500&auto=format&fit=crop&q=60",
-      "source": "Croma.com",
-      "link": "https://croma.com",
-      "isBestSeller": true,
-      "isEditorPick": true,
-      "isFlashDeal": false,
-      "views": 920,
-      "saves": 185,
-      "purchases": 54,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_rog_ally",
-      "title": "ASUS ROG Ally RC71L Handheld Gaming Console (AMD Ryzen Z1)",
-      "category": "gaming",
-      "oldPrice": 69990,
-      "newPrice": 44990,
-      "discountPercent": 36,
-      "thumbnail": "https://images.unsplash.com/photo-1605901309584-818e25960a8f?w=500&auto=format&fit=crop&q=60",
-      "source": "VijaySales.com",
-      "link": "https://vijaysales.com",
-      "isBestSeller": false,
       "isEditorPick": true,
       "isFlashDeal": true,
-      "views": 1480,
-      "saves": 310,
-      "purchases": 72,
-      "createdAt": "2026-06-26T06:54:16.442Z",
-      "timeRemaining": "02h 45m"
-    },
-    {
-      "id": "deal_oneplus_ce4",
-      "title": "OnePlus Nord CE4 (8GB RAM, 128GB Storage)",
-      "category": "mobiles",
-      "oldPrice": 24990,
-      "newPrice": 21999,
-      "discountPercent": 12,
-      "thumbnail": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop&q=60",
-      "source": "RelianceDigital.in",
-      "link": "https://reliancedigital.in",
-      "isBestSeller": true,
-      "isEditorPick": false,
-      "isFlashDeal": false,
-      "views": 2200,
-      "saves": 560,
-      "purchases": 198,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_nike_air",
-      "title": "Nike Air Max Pulse Mens Running Shoes/Sneakers",
-      "category": "fashion",
-      "oldPrice": 13995,
-      "newPrice": 8990,
-      "discountPercent": 36,
-      "thumbnail": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60",
-      "source": "TataCliq.com",
-      "link": "https://tatacliq.com",
-      "isBestSeller": false,
-      "isEditorPick": false,
-      "isFlashDeal": false,
-      "views": 750,
-      "saves": 112,
-      "purchases": 43,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_boat_ion",
-      "title": "boAt Nirvana Ion True Wireless Earbuds with 120H Playback",
-      "category": "electronics",
-      "oldPrice": 7990,
-      "newPrice": 1999,
-      "discountPercent": 75,
-      "thumbnail": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=60",
-      "source": "Amazon.in",
-      "link": "https://amazon.in",
-      "isBestSeller": true,
-      "isEditorPick": false,
-      "isFlashDeal": true,
-      "views": 3100,
-      "saves": 850,
-      "purchases": 450,
-      "createdAt": "2026-06-26T06:54:16.442Z",
-      "timeRemaining": "11h 05m"
-    },
-    {
-      "id": "deal_dyson_v12",
-      "title": "Dyson V12 Detect Slim Cordless Vacuum Cleaner",
-      "category": "home",
-      "oldPrice": 55900,
-      "newPrice": 45900,
-      "discountPercent": 18,
-      "thumbnail": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=500&auto=format&fit=crop&q=60",
-      "source": "Croma.com",
-      "link": "https://croma.com",
-      "isBestSeller": false,
-      "isEditorPick": true,
-      "isFlashDeal": false,
-      "views": 610,
-      "saves": 95,
-      "purchases": 28,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_prestige_kettle",
-      "title": "Prestige Electric Kettle PKOSS 1.5 Litre 1500W",
-      "category": "home",
-      "oldPrice": 1895,
-      "newPrice": 899,
-      "discountPercent": 52,
-      "thumbnail": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500&auto=format&fit=crop&q=60",
-      "source": "Flipkart.com",
-      "link": "https://flipkart.com",
-      "isBestSeller": true,
-      "isEditorPick": false,
-      "isFlashDeal": false,
-      "views": 1100,
-      "saves": 190,
-      "purchases": 135,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_tea_gold",
-      "title": "Tata Tea Gold Leaf Premium Black Tea (1kg)",
-      "category": "grocery",
-      "oldPrice": 620,
-      "newPrice": 489,
-      "discountPercent": 21,
-      "thumbnail": "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?w=500&auto=format&fit=crop&q=60",
-      "source": "JioMart.com",
-      "link": "https://jiomart.com",
-      "isBestSeller": false,
-      "isEditorPick": false,
-      "isFlashDeal": false,
-      "views": 450,
+      "views": 125,
       "saves": 45,
-      "purchases": 62,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_ps5_slim",
-      "title": "Sony PlayStation 5 Slim (PS5) Disc Edition Console",
-      "category": "gaming",
-      "oldPrice": 54990,
-      "newPrice": 49490,
-      "discountPercent": 10,
-      "thumbnail": "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=500&auto=format&fit=crop&q=60",
-      "source": "Amazon.in",
-      "link": "https://amazon.in",
-      "isBestSeller": true,
-      "isEditorPick": false,
-      "isFlashDeal": false,
-      "views": 1950,
-      "saves": 480,
-      "purchases": 105,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_casio_watch",
-      "title": "Casio Vintage Digital Dial Unisex Metal Watch - A158WA",
-      "category": "fashion",
-      "oldPrice": 1695,
-      "newPrice": 1355,
-      "discountPercent": 20,
-      "thumbnail": "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=500&auto=format&fit=crop&q=60",
-      "source": "Flipkart.com",
-      "link": "https://flipkart.com",
-      "isBestSeller": false,
-      "isEditorPick": true,
-      "isFlashDeal": false,
-      "views": 840,
-      "saves": 120,
-      "purchases": 45,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_under_500_bottle",
-      "title": "Milton Thermosteel Duo Deluxe 500ml Water Bottle",
-      "category": "home",
-      "oldPrice": 790,
-      "newPrice": 449,
-      "discountPercent": 43,
-      "thumbnail": "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=500&auto=format&fit=crop&q=60",
-      "source": "Amazon.in",
-      "link": "https://amazon.in",
-      "isBestSeller": true,
-      "isEditorPick": false,
-      "isFlashDeal": false,
-      "views": 1200,
-      "saves": 220,
-      "purchases": 154,
-      "createdAt": "2026-06-26T06:54:16.442Z"
-    },
-    {
-      "id": "deal_under_1000_tshirt",
-      "title": "Puma Classic Regular Fit Men's Sports Polo T-Shirt",
-      "category": "fashion",
-      "oldPrice": 1999,
-      "newPrice": 949,
-      "discountPercent": 53,
-      "thumbnail": "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=500&auto=format&fit=crop&q=60",
-      "source": "Myntra.com",
-      "link": "https://myntra.com",
-      "isBestSeller": false,
-      "isEditorPick": true,
-      "isFlashDeal": false,
-      "views": 640,
-      "saves": 95,
-      "purchases": 32,
-      "createdAt": "2026-06-26T06:54:16.442Z"
+      "purchases": 12,
+      "createdAt": "2026-06-27T17:00:18.299Z",
+      "timeRemaining": "12h 00m"
     }
   ],
   "publicStats": {
-    "totalSearches": 24611,
-    "totalUsers": 1421,
-    "productsCompared": 48961,
-    "priceAlertsTriggered": 1243,
+    "totalSearches": 24728,
+    "totalUsers": 1423,
+    "productsCompared": 49303,
+    "priceAlertsTriggered": 1259,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1842918
+    "totalSavedAmount": 1845249
   },
   "bannedUsers": [],
   "reviews": [
     {
-      "id": "rev_1",
-      "userId": "user_top_1",
-      "userName": "Aman Kapoor",
-      "userEmail": "aman.kapoor@gmail.com",
-      "rating": 5,
-      "comment": "Absolutely game-changing shopping app! I saved nearly ₹4,500 on my iPhone 15 using the real-time competitor price comparison. Highly recommended!",
-      "coinsEarned": 15,
-      "timestamp": "2026-06-21T06:54:16.442Z"
-    },
-    {
-      "id": "rev_2",
-      "userId": "user_top_2",
-      "userName": "Priya Verma",
-      "userEmail": "priya.verma@yahoo.com",
-      "rating": 5,
-      "comment": "The interactive 3D product viewer is incredible! It let me inspect the camera bump and port alignments of the phone before purchasing. Unbelievably high fidelity.",
-      "coinsEarned": 15,
-      "timestamp": "2026-06-23T06:54:16.442Z"
-    },
-    {
-      "id": "rev_3",
-      "userId": "user_top_3",
-      "userName": "Ritesh Sharma",
-      "userEmail": "ritesh.sharma@gmail.com",
+      "id": "rev_auto_0",
+      "userId": "user_auto_0",
+      "userName": "Dhruv Bose",
+      "userEmail": "dhruv.bose0@example.com",
       "rating": 4,
-      "comment": "Using the flight tracking tool, I planned my trip from Delhi to Mumbai and snagged flights at the lowest rate in INR. Excellent utility integrations.",
-      "coinsEarned": 15,
-      "timestamp": "2026-06-25T06:54:16.442Z"
+      "comment": "This app is a lifesaver for my budget.",
+      "coinsEarned": 5,
+      "timestamp": "2026-06-23T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_1",
+      "userId": "user_auto_1",
+      "userName": "Pranav Verma",
+      "userEmail": "pranav.verma1@example.com",
+      "rating": 4,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 6,
+      "timestamp": "2026-06-04T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_2",
+      "userId": "user_auto_2",
+      "userName": "Atharv Joshi",
+      "userEmail": "atharv.joshi2@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 14,
+      "timestamp": "2025-08-31T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_3",
+      "userId": "user_auto_3",
+      "userName": "Arham Bose",
+      "userEmail": "arham.bose3@example.com",
+      "rating": 4,
+      "comment": "Super intuitive and the deals are genuine.",
+      "coinsEarned": 14,
+      "timestamp": "2025-11-07T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_4",
+      "userId": "user_auto_4",
+      "userName": "Aaryan Kapoor",
+      "userEmail": "aaryan.kapoor4@example.com",
+      "rating": 5,
+      "comment": "I love how it compares prices across all stores.",
+      "coinsEarned": 9,
+      "timestamp": "2025-12-13T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_5",
+      "userId": "user_auto_5",
+      "userName": "Agastya Mistry",
+      "userEmail": "agastya.mistry5@example.com",
+      "rating": 5,
+      "comment": "Helped me save on my flight bookings.",
+      "coinsEarned": 10,
+      "timestamp": "2026-04-09T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_6",
+      "userId": "user_auto_6",
+      "userName": "Arham Shukla",
+      "userEmail": "arham.shukla6@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 10,
+      "timestamp": "2026-02-22T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_7",
+      "userId": "user_auto_7",
+      "userName": "Arham Saxena",
+      "userEmail": "arham.saxena7@example.com",
+      "rating": 5,
+      "comment": "Super intuitive and the deals are genuine.",
+      "coinsEarned": 5,
+      "timestamp": "2026-06-08T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_8",
+      "userId": "user_auto_8",
+      "userName": "Vihaan Shetty",
+      "userEmail": "vihaan.shetty8@example.com",
+      "rating": 5,
+      "comment": "The best cash-saving app I've downloaded.",
+      "coinsEarned": 10,
+      "timestamp": "2026-02-21T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_9",
+      "userId": "user_auto_9",
+      "userName": "Aariz Malhotra",
+      "userEmail": "aariz.malhotra9@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 10,
+      "timestamp": "2025-11-24T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_10",
+      "userId": "user_auto_10",
+      "userName": "Vivaan Kulkarni",
+      "userEmail": "vivaan.kulkarni10@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 7,
+      "timestamp": "2025-12-08T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_11",
+      "userId": "user_auto_11",
+      "userName": "Aarush Mody",
+      "userEmail": "aarush.mody11@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 5,
+      "timestamp": "2026-06-11T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_12",
+      "userId": "user_auto_12",
+      "userName": "Shivansh Shukla",
+      "userEmail": "shivansh.shukla12@example.com",
+      "rating": 5,
+      "comment": "Helped me save on my flight bookings.",
+      "coinsEarned": 7,
+      "timestamp": "2025-11-25T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_13",
+      "userId": "user_auto_13",
+      "userName": "Arham Agarwal",
+      "userEmail": "arham.agarwal13@example.com",
+      "rating": 5,
+      "comment": "Highly recommended. The AI is so smart.",
+      "coinsEarned": 10,
+      "timestamp": "2025-08-14T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_14",
+      "userId": "user_auto_14",
+      "userName": "Aarush Reddy",
+      "userEmail": "aarush.reddy14@example.com",
+      "rating": 5,
+      "comment": "Great interface, very easy to use.",
+      "coinsEarned": 9,
+      "timestamp": "2025-11-02T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_15",
+      "userId": "user_auto_15",
+      "userName": "Nirvaan Deshmukh",
+      "userEmail": "nirvaan.deshmukh15@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 5,
+      "timestamp": "2025-07-19T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_16",
+      "userId": "user_auto_16",
+      "userName": "Ivaan Sen",
+      "userEmail": "ivaan.sen16@example.com",
+      "rating": 4,
+      "comment": "Highly recommended. The AI is so smart.",
+      "coinsEarned": 7,
+      "timestamp": "2025-10-21T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_17",
+      "userId": "user_auto_17",
+      "userName": "Agastya Sharma",
+      "userEmail": "agastya.sharma17@example.com",
+      "rating": 5,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 10,
+      "timestamp": "2025-07-28T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_18",
+      "userId": "user_auto_18",
+      "userName": "Krishna Patel",
+      "userEmail": "krishna.patel18@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 5,
+      "timestamp": "2026-04-27T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_19",
+      "userId": "user_auto_19",
+      "userName": "Ivaan Iyer",
+      "userEmail": "ivaan.iyer19@example.com",
+      "rating": 5,
+      "comment": "The UI is clean and fast.",
+      "coinsEarned": 11,
+      "timestamp": "2025-07-17T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_20",
+      "userId": "user_auto_20",
+      "userName": "Arham Bhatt",
+      "userEmail": "arham.bhatt20@example.com",
+      "rating": 5,
+      "comment": "It actually works. Highly impressed.",
+      "coinsEarned": 9,
+      "timestamp": "2025-08-19T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_21",
+      "userId": "user_auto_21",
+      "userName": "Aaryan Mistry",
+      "userEmail": "aaryan.mistry21@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 11,
+      "timestamp": "2026-06-07T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_22",
+      "userId": "user_auto_22",
+      "userName": "Yug Tiwari",
+      "userEmail": "yug.tiwari22@example.com",
+      "rating": 5,
+      "comment": "Awesome discounts and accurate price history.",
+      "coinsEarned": 14,
+      "timestamp": "2026-05-04T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_23",
+      "userId": "user_auto_23",
+      "userName": "Laksh Chaudhary",
+      "userEmail": "laksh.chaudhary23@example.com",
+      "rating": 5,
+      "comment": "Can't imagine shopping without it now.",
+      "coinsEarned": 7,
+      "timestamp": "2026-05-07T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_24",
+      "userId": "user_auto_24",
+      "userName": "Laksh Deshmukh",
+      "userEmail": "laksh.deshmukh24@example.com",
+      "rating": 5,
+      "comment": "Love the point system and rewards.",
+      "coinsEarned": 7,
+      "timestamp": "2025-09-29T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_25",
+      "userId": "user_auto_25",
+      "userName": "Shresth Gupta",
+      "userEmail": "shresth.gupta25@example.com",
+      "rating": 4,
+      "comment": "Can't imagine shopping without it now.",
+      "coinsEarned": 11,
+      "timestamp": "2026-04-14T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_26",
+      "userId": "user_auto_26",
+      "userName": "Aditya Verma",
+      "userEmail": "aditya.verma26@example.com",
+      "rating": 5,
+      "comment": "Awesome discounts and accurate price history.",
+      "coinsEarned": 11,
+      "timestamp": "2025-10-19T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_27",
+      "userId": "user_auto_27",
+      "userName": "Aryan Joshi",
+      "userEmail": "aryan.joshi27@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 13,
+      "timestamp": "2026-03-30T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_28",
+      "userId": "user_auto_28",
+      "userName": "Arham Bhatia",
+      "userEmail": "arham.bhatia28@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 14,
+      "timestamp": "2026-04-21T17:03:28.492Z"
+    },
+    {
+      "id": "rev_auto_29",
+      "userId": "user_auto_29",
+      "userName": "Vivaan Bose",
+      "userEmail": "vivaan.bose29@example.com",
+      "rating": 5,
+      "comment": "Can't imagine shopping without it now.",
+      "coinsEarned": 14,
+      "timestamp": "2026-04-30T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_30",
+      "userId": "user_auto_30",
+      "userName": "Ranbir Pillai",
+      "userEmail": "ranbir.pillai30@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 11,
+      "timestamp": "2026-06-01T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_31",
+      "userId": "user_auto_31",
+      "userName": "Aryan Mishra",
+      "userEmail": "aryan.mishra31@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 11,
+      "timestamp": "2025-12-06T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_32",
+      "userId": "user_auto_32",
+      "userName": "Yuvan Singh",
+      "userEmail": "yuvan.singh32@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 14,
+      "timestamp": "2026-03-08T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_33",
+      "userId": "user_auto_33",
+      "userName": "Rudra Saxena",
+      "userEmail": "rudra.saxena33@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 12,
+      "timestamp": "2025-12-21T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_34",
+      "userId": "user_auto_34",
+      "userName": "Nirvaan Nair",
+      "userEmail": "nirvaan.nair34@example.com",
+      "rating": 5,
+      "comment": "Best app for tracking deals on electronics.",
+      "coinsEarned": 6,
+      "timestamp": "2026-02-03T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_35",
+      "userId": "user_auto_35",
+      "userName": "Shaurya Shah",
+      "userEmail": "shaurya.shah35@example.com",
+      "rating": 4,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 9,
+      "timestamp": "2026-02-21T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_36",
+      "userId": "user_auto_36",
+      "userName": "Yug Naidu",
+      "userEmail": "yug.naidu36@example.com",
+      "rating": 5,
+      "comment": "Love the premium features.",
+      "coinsEarned": 7,
+      "timestamp": "2025-12-30T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_37",
+      "userId": "user_auto_37",
+      "userName": "Krishna Chakraborty",
+      "userEmail": "krishna.chakraborty37@example.com",
+      "rating": 5,
+      "comment": "Love the premium features.",
+      "coinsEarned": 12,
+      "timestamp": "2026-01-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_38",
+      "userId": "user_auto_38",
+      "userName": "Atharv Gupta",
+      "userEmail": "atharv.gupta38@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 14,
+      "timestamp": "2025-10-19T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_39",
+      "userId": "user_auto_39",
+      "userName": "Aarav Deshmukh",
+      "userEmail": "aarav.deshmukh39@example.com",
+      "rating": 5,
+      "comment": "I use it every time I shop online.",
+      "coinsEarned": 7,
+      "timestamp": "2025-12-12T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_40",
+      "userId": "user_auto_40",
+      "userName": "Veer Nair",
+      "userEmail": "veer.nair40@example.com",
+      "rating": 5,
+      "comment": "Love the premium features.",
+      "coinsEarned": 9,
+      "timestamp": "2025-10-09T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_41",
+      "userId": "user_auto_41",
+      "userName": "Ridhaan Mehta",
+      "userEmail": "ridhaan.mehta41@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 13,
+      "timestamp": "2025-12-14T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_42",
+      "userId": "user_auto_42",
+      "userName": "Aariz Naidu",
+      "userEmail": "aariz.naidu42@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 5,
+      "timestamp": "2025-07-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_43",
+      "userId": "user_auto_43",
+      "userName": "Ansh Deshmukh",
+      "userEmail": "ansh.deshmukh43@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 6,
+      "timestamp": "2026-05-12T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_44",
+      "userId": "user_auto_44",
+      "userName": "Dhruv Verma",
+      "userEmail": "dhruv.verma44@example.com",
+      "rating": 5,
+      "comment": "It actually works. Highly impressed.",
+      "coinsEarned": 12,
+      "timestamp": "2026-04-08T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_45",
+      "userId": "user_auto_45",
+      "userName": "Avyaan Dixit",
+      "userEmail": "avyaan.dixit45@example.com",
+      "rating": 4,
+      "comment": "Super intuitive and the deals are genuine.",
+      "coinsEarned": 9,
+      "timestamp": "2026-03-15T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_46",
+      "userId": "user_auto_46",
+      "userName": "Shresth Mathur",
+      "userEmail": "shresth.mathur46@example.com",
+      "rating": 5,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 7,
+      "timestamp": "2025-09-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_47",
+      "userId": "user_auto_47",
+      "userName": "Yug Joshi",
+      "userEmail": "yug.joshi47@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 14,
+      "timestamp": "2026-01-06T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_48",
+      "userId": "user_auto_48",
+      "userName": "Ranbir Shetty",
+      "userEmail": "ranbir.shetty48@example.com",
+      "rating": 5,
+      "comment": "Highly recommended. The AI is so smart.",
+      "coinsEarned": 12,
+      "timestamp": "2025-10-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_49",
+      "userId": "user_auto_49",
+      "userName": "Aarav Agarwal",
+      "userEmail": "aarav.agarwal49@example.com",
+      "rating": 5,
+      "comment": "I love how it compares prices across all stores.",
+      "coinsEarned": 10,
+      "timestamp": "2025-09-20T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_50",
+      "userId": "user_auto_50",
+      "userName": "Rishi Iyer",
+      "userEmail": "rishi.iyer50@example.com",
+      "rating": 4,
+      "comment": "This app is a lifesaver for my budget.",
+      "coinsEarned": 12,
+      "timestamp": "2026-02-01T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_51",
+      "userId": "user_auto_51",
+      "userName": "Yug Mehta",
+      "userEmail": "yug.mehta51@example.com",
+      "rating": 5,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 8,
+      "timestamp": "2026-05-01T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_52",
+      "userId": "user_auto_52",
+      "userName": "Atharv Kulkarni",
+      "userEmail": "atharv.kulkarni52@example.com",
+      "rating": 5,
+      "comment": "Helped me save on my flight bookings.",
+      "coinsEarned": 11,
+      "timestamp": "2026-04-03T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_53",
+      "userId": "user_auto_53",
+      "userName": "Aarav Saxena",
+      "userEmail": "aarav.saxena53@example.com",
+      "rating": 5,
+      "comment": "Helped me save on my flight bookings.",
+      "coinsEarned": 10,
+      "timestamp": "2026-02-28T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_54",
+      "userId": "user_auto_54",
+      "userName": "Divyansh Joshi",
+      "userEmail": "divyansh.joshi54@example.com",
+      "rating": 5,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 8,
+      "timestamp": "2026-03-07T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_55",
+      "userId": "user_auto_55",
+      "userName": "Sai Kumar",
+      "userEmail": "sai.kumar55@example.com",
+      "rating": 5,
+      "comment": "The UI is clean and fast.",
+      "coinsEarned": 11,
+      "timestamp": "2025-11-07T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_56",
+      "userId": "user_auto_56",
+      "userName": "Ansh Jain",
+      "userEmail": "ansh.jain56@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 10,
+      "timestamp": "2025-12-01T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_57",
+      "userId": "user_auto_57",
+      "userName": "Reyansh Chaudhary",
+      "userEmail": "reyansh.chaudhary57@example.com",
+      "rating": 5,
+      "comment": "The best cash-saving app I've downloaded.",
+      "coinsEarned": 12,
+      "timestamp": "2025-08-09T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_58",
+      "userId": "user_auto_58",
+      "userName": "Aarush Srivastava",
+      "userEmail": "aarush.srivastava58@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 6,
+      "timestamp": "2025-08-06T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_59",
+      "userId": "user_auto_59",
+      "userName": "Kabir Chaudhary",
+      "userEmail": "kabir.chaudhary59@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 10,
+      "timestamp": "2025-11-04T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_60",
+      "userId": "user_auto_60",
+      "userName": "Pratyush Bhatia",
+      "userEmail": "pratyush.bhatia60@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 12,
+      "timestamp": "2025-08-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_61",
+      "userId": "user_auto_61",
+      "userName": "Aarav Menon",
+      "userEmail": "aarav.menon61@example.com",
+      "rating": 4,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 12,
+      "timestamp": "2025-07-15T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_62",
+      "userId": "user_auto_62",
+      "userName": "Aarav Mehta",
+      "userEmail": "aarav.mehta62@example.com",
+      "rating": 4,
+      "comment": "The UI is clean and fast.",
+      "coinsEarned": 10,
+      "timestamp": "2025-08-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_63",
+      "userId": "user_auto_63",
+      "userName": "Atharv Kumar",
+      "userEmail": "atharv.kumar63@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 13,
+      "timestamp": "2026-03-25T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_64",
+      "userId": "user_auto_64",
+      "userName": "Veer Sinha",
+      "userEmail": "veer.sinha64@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 13,
+      "timestamp": "2026-01-08T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_65",
+      "userId": "user_auto_65",
+      "userName": "Aarav Iyer",
+      "userEmail": "aarav.iyer65@example.com",
+      "rating": 5,
+      "comment": "Highly recommended. The AI is so smart.",
+      "coinsEarned": 11,
+      "timestamp": "2025-12-20T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_66",
+      "userId": "user_auto_66",
+      "userName": "Arjun Trivedi",
+      "userEmail": "arjun.trivedi66@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 14,
+      "timestamp": "2026-05-31T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_67",
+      "userId": "user_auto_67",
+      "userName": "Yug Banerjee",
+      "userEmail": "yug.banerjee67@example.com",
+      "rating": 5,
+      "comment": "The UI is clean and fast.",
+      "coinsEarned": 6,
+      "timestamp": "2025-09-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_68",
+      "userId": "user_auto_68",
+      "userName": "Advik Sharma",
+      "userEmail": "advik.sharma68@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 11,
+      "timestamp": "2026-05-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_69",
+      "userId": "user_auto_69",
+      "userName": "Krishna Pandey",
+      "userEmail": "krishna.pandey69@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 10,
+      "timestamp": "2025-08-25T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_70",
+      "userId": "user_auto_70",
+      "userName": "Shivansh Bhatia",
+      "userEmail": "shivansh.bhatia70@example.com",
+      "rating": 5,
+      "comment": "Highly recommended. The AI is so smart.",
+      "coinsEarned": 11,
+      "timestamp": "2025-09-17T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_71",
+      "userId": "user_auto_71",
+      "userName": "Kian Malhotra",
+      "userEmail": "kian.malhotra71@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 13,
+      "timestamp": "2025-07-27T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_72",
+      "userId": "user_auto_72",
+      "userName": "Aarav Agarwal",
+      "userEmail": "aarav.agarwal72@example.com",
+      "rating": 5,
+      "comment": "Can't imagine shopping without it now.",
+      "coinsEarned": 7,
+      "timestamp": "2025-08-25T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_73",
+      "userId": "user_auto_73",
+      "userName": "Kabir Kumar",
+      "userEmail": "kabir.kumar73@example.com",
+      "rating": 5,
+      "comment": "This app is a lifesaver for my budget.",
+      "coinsEarned": 9,
+      "timestamp": "2025-11-09T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_74",
+      "userId": "user_auto_74",
+      "userName": "Aaryan Mishra",
+      "userEmail": "aaryan.mishra74@example.com",
+      "rating": 5,
+      "comment": "I love how it compares prices across all stores.",
+      "coinsEarned": 6,
+      "timestamp": "2026-01-30T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_75",
+      "userId": "user_auto_75",
+      "userName": "Reyansh Banerjee",
+      "userEmail": "reyansh.banerjee75@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 5,
+      "timestamp": "2026-01-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_76",
+      "userId": "user_auto_76",
+      "userName": "Aarav Rao",
+      "userEmail": "aarav.rao76@example.com",
+      "rating": 5,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 14,
+      "timestamp": "2025-10-27T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_77",
+      "userId": "user_auto_77",
+      "userName": "Aariz Iyer",
+      "userEmail": "aariz.iyer77@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 6,
+      "timestamp": "2025-09-16T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_78",
+      "userId": "user_auto_78",
+      "userName": "Sai Mehta",
+      "userEmail": "sai.mehta78@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 7,
+      "timestamp": "2025-09-26T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_79",
+      "userId": "user_auto_79",
+      "userName": "Kian Nair",
+      "userEmail": "kian.nair79@example.com",
+      "rating": 5,
+      "comment": "Great interface, very easy to use.",
+      "coinsEarned": 10,
+      "timestamp": "2025-12-23T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_80",
+      "userId": "user_auto_80",
+      "userName": "Yug Bhatia",
+      "userEmail": "yug.bhatia80@example.com",
+      "rating": 4,
+      "comment": "Best app for tracking deals on electronics.",
+      "coinsEarned": 6,
+      "timestamp": "2026-04-17T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_81",
+      "userId": "user_auto_81",
+      "userName": "Krishna Rao",
+      "userEmail": "krishna.rao81@example.com",
+      "rating": 5,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 7,
+      "timestamp": "2025-08-23T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_82",
+      "userId": "user_auto_82",
+      "userName": "Ansh Reddy",
+      "userEmail": "ansh.reddy82@example.com",
+      "rating": 4,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 6,
+      "timestamp": "2026-01-29T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_83",
+      "userId": "user_auto_83",
+      "userName": "Sai Pillai",
+      "userEmail": "sai.pillai83@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 9,
+      "timestamp": "2025-11-10T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_84",
+      "userId": "user_auto_84",
+      "userName": "Arjun Mistry",
+      "userEmail": "arjun.mistry84@example.com",
+      "rating": 5,
+      "comment": "The UI is clean and fast.",
+      "coinsEarned": 5,
+      "timestamp": "2025-10-31T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_85",
+      "userId": "user_auto_85",
+      "userName": "Atharv Agarwal",
+      "userEmail": "atharv.agarwal85@example.com",
+      "rating": 5,
+      "comment": "Awesome discounts and accurate price history.",
+      "coinsEarned": 8,
+      "timestamp": "2026-04-07T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_86",
+      "userId": "user_auto_86",
+      "userName": "Shresth Reddy",
+      "userEmail": "shresth.reddy86@example.com",
+      "rating": 5,
+      "comment": "Helped me save on my flight bookings.",
+      "coinsEarned": 6,
+      "timestamp": "2026-04-10T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_87",
+      "userId": "user_auto_87",
+      "userName": "Sai Rao",
+      "userEmail": "sai.rao87@example.com",
+      "rating": 5,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 5,
+      "timestamp": "2026-06-10T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_88",
+      "userId": "user_auto_88",
+      "userName": "Krishna Sinha",
+      "userEmail": "krishna.sinha88@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 11,
+      "timestamp": "2025-11-02T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_89",
+      "userId": "user_auto_89",
+      "userName": "Atharv Naidu",
+      "userEmail": "atharv.naidu89@example.com",
+      "rating": 5,
+      "comment": "Helped me save on my flight bookings.",
+      "coinsEarned": 12,
+      "timestamp": "2025-09-30T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_90",
+      "userId": "user_auto_90",
+      "userName": "Ishaan Dubey",
+      "userEmail": "ishaan.dubey90@example.com",
+      "rating": 5,
+      "comment": "Super intuitive and the deals are genuine.",
+      "coinsEarned": 13,
+      "timestamp": "2026-04-14T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_91",
+      "userId": "user_auto_91",
+      "userName": "Rishi Chopra",
+      "userEmail": "rishi.chopra91@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 6,
+      "timestamp": "2025-12-20T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_92",
+      "userId": "user_auto_92",
+      "userName": "Reyansh Chakraborty",
+      "userEmail": "reyansh.chakraborty92@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 14,
+      "timestamp": "2025-10-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_93",
+      "userId": "user_auto_93",
+      "userName": "Samar Singh",
+      "userEmail": "samar.singh93@example.com",
+      "rating": 5,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 7,
+      "timestamp": "2026-05-11T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_94",
+      "userId": "user_auto_94",
+      "userName": "Aarush Chakraborty",
+      "userEmail": "aarush.chakraborty94@example.com",
+      "rating": 5,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 10,
+      "timestamp": "2025-07-23T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_95",
+      "userId": "user_auto_95",
+      "userName": "Vivaan Shetty",
+      "userEmail": "vivaan.shetty95@example.com",
+      "rating": 5,
+      "comment": "The best cash-saving app I've downloaded.",
+      "coinsEarned": 8,
+      "timestamp": "2025-12-01T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_96",
+      "userId": "user_auto_96",
+      "userName": "Aarav Patel",
+      "userEmail": "aarav.patel96@example.com",
+      "rating": 5,
+      "comment": "Love the point system and rewards.",
+      "coinsEarned": 9,
+      "timestamp": "2026-04-27T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_97",
+      "userId": "user_auto_97",
+      "userName": "Darsh Mathur",
+      "userEmail": "darsh.mathur97@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 8,
+      "timestamp": "2025-08-02T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_98",
+      "userId": "user_auto_98",
+      "userName": "Vihaan Malhotra",
+      "userEmail": "vihaan.malhotra98@example.com",
+      "rating": 5,
+      "comment": "The best cash-saving app I've downloaded.",
+      "coinsEarned": 9,
+      "timestamp": "2026-04-11T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_99",
+      "userId": "user_auto_99",
+      "userName": "Nirvaan Singh",
+      "userEmail": "nirvaan.singh99@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 6,
+      "timestamp": "2025-08-15T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_100",
+      "userId": "user_auto_100",
+      "userName": "Pratyush Jain",
+      "userEmail": "pratyush.jain100@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 14,
+      "timestamp": "2026-02-23T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_101",
+      "userId": "user_auto_101",
+      "userName": "Dhruv Srivastava",
+      "userEmail": "dhruv.srivastava101@example.com",
+      "rating": 5,
+      "comment": "It actually works. Highly impressed.",
+      "coinsEarned": 7,
+      "timestamp": "2026-03-03T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_102",
+      "userId": "user_auto_102",
+      "userName": "Dhruv Gowda",
+      "userEmail": "dhruv.gowda102@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 5,
+      "timestamp": "2025-12-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_103",
+      "userId": "user_auto_103",
+      "userName": "Shaurya Pandey",
+      "userEmail": "shaurya.pandey103@example.com",
+      "rating": 5,
+      "comment": "I use it every time I shop online.",
+      "coinsEarned": 12,
+      "timestamp": "2025-11-24T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_104",
+      "userId": "user_auto_104",
+      "userName": "Devansh Menon",
+      "userEmail": "devansh.menon104@example.com",
+      "rating": 5,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 14,
+      "timestamp": "2026-05-04T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_105",
+      "userId": "user_auto_105",
+      "userName": "Kabir Shetty",
+      "userEmail": "kabir.shetty105@example.com",
+      "rating": 5,
+      "comment": "Best app for tracking deals on electronics.",
+      "coinsEarned": 5,
+      "timestamp": "2025-09-21T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_106",
+      "userId": "user_auto_106",
+      "userName": "Shaurya Shukla",
+      "userEmail": "shaurya.shukla106@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 9,
+      "timestamp": "2026-04-30T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_107",
+      "userId": "user_auto_107",
+      "userName": "Aryan Das",
+      "userEmail": "aryan.das107@example.com",
+      "rating": 5,
+      "comment": "This app is a lifesaver for my budget.",
+      "coinsEarned": 12,
+      "timestamp": "2026-03-14T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_108",
+      "userId": "user_auto_108",
+      "userName": "Rudra Joshi",
+      "userEmail": "rudra.joshi108@example.com",
+      "rating": 5,
+      "comment": "Can't imagine shopping without it now.",
+      "coinsEarned": 8,
+      "timestamp": "2025-08-20T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_109",
+      "userId": "user_auto_109",
+      "userName": "Ayaan Nair",
+      "userEmail": "ayaan.nair109@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 5,
+      "timestamp": "2026-01-30T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_110",
+      "userId": "user_auto_110",
+      "userName": "Aaryan Verma",
+      "userEmail": "aaryan.verma110@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 10,
+      "timestamp": "2026-04-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_111",
+      "userId": "user_auto_111",
+      "userName": "Atharv Bhatia",
+      "userEmail": "atharv.bhatia111@example.com",
+      "rating": 5,
+      "comment": "Highly recommended. The AI is so smart.",
+      "coinsEarned": 8,
+      "timestamp": "2026-04-08T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_112",
+      "userId": "user_auto_112",
+      "userName": "Vivaan Srivastava",
+      "userEmail": "vivaan.srivastava112@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 13,
+      "timestamp": "2026-01-27T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_113",
+      "userId": "user_auto_113",
+      "userName": "Riyansh Iyer",
+      "userEmail": "riyansh.iyer113@example.com",
+      "rating": 4,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 10,
+      "timestamp": "2025-10-13T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_114",
+      "userId": "user_auto_114",
+      "userName": "Aariz Srivastava",
+      "userEmail": "aariz.srivastava114@example.com",
+      "rating": 4,
+      "comment": "Love the point system and rewards.",
+      "coinsEarned": 12,
+      "timestamp": "2025-09-02T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_115",
+      "userId": "user_auto_115",
+      "userName": "Aarav Rajan",
+      "userEmail": "aarav.rajan115@example.com",
+      "rating": 4,
+      "comment": "Super intuitive and the deals are genuine.",
+      "coinsEarned": 11,
+      "timestamp": "2025-06-30T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_116",
+      "userId": "user_auto_116",
+      "userName": "Aarav Garg",
+      "userEmail": "aarav.garg116@example.com",
+      "rating": 4,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 6,
+      "timestamp": "2025-10-06T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_117",
+      "userId": "user_auto_117",
+      "userName": "Pranav Bose",
+      "userEmail": "pranav.bose117@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 6,
+      "timestamp": "2025-12-16T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_118",
+      "userId": "user_auto_118",
+      "userName": "Riyansh Kapoor",
+      "userEmail": "riyansh.kapoor118@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 6,
+      "timestamp": "2025-08-20T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_119",
+      "userId": "user_auto_119",
+      "userName": "Shaurya Dubey",
+      "userEmail": "shaurya.dubey119@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 8,
+      "timestamp": "2026-06-13T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_120",
+      "userId": "user_auto_120",
+      "userName": "Aarav Tiwari",
+      "userEmail": "aarav.tiwari120@example.com",
+      "rating": 4,
+      "comment": "Awesome discounts and accurate price history.",
+      "coinsEarned": 14,
+      "timestamp": "2025-08-08T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_121",
+      "userId": "user_auto_121",
+      "userName": "Kabir Chaturvedi",
+      "userEmail": "kabir.chaturvedi121@example.com",
+      "rating": 4,
+      "comment": "Super intuitive and the deals are genuine.",
+      "coinsEarned": 10,
+      "timestamp": "2025-07-06T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_122",
+      "userId": "user_auto_122",
+      "userName": "Riyansh Gowda",
+      "userEmail": "riyansh.gowda122@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 10,
+      "timestamp": "2025-08-24T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_123",
+      "userId": "user_auto_123",
+      "userName": "Shresth Jain",
+      "userEmail": "shresth.jain123@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 10,
+      "timestamp": "2025-10-26T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_124",
+      "userId": "user_auto_124",
+      "userName": "Ansh Sen",
+      "userEmail": "ansh.sen124@example.com",
+      "rating": 5,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 12,
+      "timestamp": "2026-05-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_125",
+      "userId": "user_auto_125",
+      "userName": "Devansh Shah",
+      "userEmail": "devansh.shah125@example.com",
+      "rating": 5,
+      "comment": "I use it every time I shop online.",
+      "coinsEarned": 5,
+      "timestamp": "2026-01-02T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_126",
+      "userId": "user_auto_126",
+      "userName": "Devansh Joshi",
+      "userEmail": "devansh.joshi126@example.com",
+      "rating": 4,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 13,
+      "timestamp": "2025-08-29T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_127",
+      "userId": "user_auto_127",
+      "userName": "Vihaan Singh",
+      "userEmail": "vihaan.singh127@example.com",
+      "rating": 5,
+      "comment": "Love the premium features.",
+      "coinsEarned": 9,
+      "timestamp": "2026-04-12T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_128",
+      "userId": "user_auto_128",
+      "userName": "Aarush Rajan",
+      "userEmail": "aarush.rajan128@example.com",
+      "rating": 5,
+      "comment": "Love the point system and rewards.",
+      "coinsEarned": 5,
+      "timestamp": "2026-04-24T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_129",
+      "userId": "user_auto_129",
+      "userName": "Shivansh Joshi",
+      "userEmail": "shivansh.joshi129@example.com",
+      "rating": 5,
+      "comment": "I use it every time I shop online.",
+      "coinsEarned": 7,
+      "timestamp": "2025-07-29T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_130",
+      "userId": "user_auto_130",
+      "userName": "Reyansh Mathur",
+      "userEmail": "reyansh.mathur130@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 8,
+      "timestamp": "2025-10-07T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_131",
+      "userId": "user_auto_131",
+      "userName": "Nirvaan Banerjee",
+      "userEmail": "nirvaan.banerjee131@example.com",
+      "rating": 5,
+      "comment": "Best app for tracking deals on electronics.",
+      "coinsEarned": 8,
+      "timestamp": "2025-08-26T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_132",
+      "userId": "user_auto_132",
+      "userName": "Avyaan Banerjee",
+      "userEmail": "avyaan.banerjee132@example.com",
+      "rating": 5,
+      "comment": "The best cash-saving app I've downloaded.",
+      "coinsEarned": 8,
+      "timestamp": "2026-04-17T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_133",
+      "userId": "user_auto_133",
+      "userName": "Aarush Agarwal",
+      "userEmail": "aarush.agarwal133@example.com",
+      "rating": 4,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 5,
+      "timestamp": "2025-11-16T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_134",
+      "userId": "user_auto_134",
+      "userName": "Aryan Chakraborty",
+      "userEmail": "aryan.chakraborty134@example.com",
+      "rating": 5,
+      "comment": "The best cash-saving app I've downloaded.",
+      "coinsEarned": 12,
+      "timestamp": "2025-10-04T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_135",
+      "userId": "user_auto_135",
+      "userName": "Riyansh Rajan",
+      "userEmail": "riyansh.rajan135@example.com",
+      "rating": 4,
+      "comment": "This app is a lifesaver for my budget.",
+      "coinsEarned": 6,
+      "timestamp": "2025-07-24T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_136",
+      "userId": "user_auto_136",
+      "userName": "Arjun Reddy",
+      "userEmail": "arjun.reddy136@example.com",
+      "rating": 4,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 14,
+      "timestamp": "2025-12-14T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_137",
+      "userId": "user_auto_137",
+      "userName": "Aditya Iyer",
+      "userEmail": "aditya.iyer137@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 11,
+      "timestamp": "2025-07-23T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_138",
+      "userId": "user_auto_138",
+      "userName": "Nirvaan Saxena",
+      "userEmail": "nirvaan.saxena138@example.com",
+      "rating": 5,
+      "comment": "Best app for tracking deals on electronics.",
+      "coinsEarned": 11,
+      "timestamp": "2025-09-03T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_139",
+      "userId": "user_auto_139",
+      "userName": "Divyansh Naidu",
+      "userEmail": "divyansh.naidu139@example.com",
+      "rating": 5,
+      "comment": "This app is a lifesaver for my budget.",
+      "coinsEarned": 8,
+      "timestamp": "2026-03-21T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_140",
+      "userId": "user_auto_140",
+      "userName": "Ridhaan Jain",
+      "userEmail": "ridhaan.jain140@example.com",
+      "rating": 4,
+      "comment": "Love the premium features.",
+      "coinsEarned": 12,
+      "timestamp": "2026-06-10T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_141",
+      "userId": "user_auto_141",
+      "userName": "Kian Gowda",
+      "userEmail": "kian.gowda141@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 12,
+      "timestamp": "2026-06-10T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_142",
+      "userId": "user_auto_142",
+      "userName": "Ansh Bose",
+      "userEmail": "ansh.bose142@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 8,
+      "timestamp": "2025-08-12T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_143",
+      "userId": "user_auto_143",
+      "userName": "Yug Verma",
+      "userEmail": "yug.verma143@example.com",
+      "rating": 5,
+      "comment": "It actually works. Highly impressed.",
+      "coinsEarned": 14,
+      "timestamp": "2025-11-02T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_144",
+      "userId": "user_auto_144",
+      "userName": "Vivaan Chopra",
+      "userEmail": "vivaan.chopra144@example.com",
+      "rating": 5,
+      "comment": "I use it every time I shop online.",
+      "coinsEarned": 10,
+      "timestamp": "2026-01-10T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_145",
+      "userId": "user_auto_145",
+      "userName": "Aarav Joshi",
+      "userEmail": "aarav.joshi145@example.com",
+      "rating": 5,
+      "comment": "It actually works. Highly impressed.",
+      "coinsEarned": 8,
+      "timestamp": "2026-01-03T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_146",
+      "userId": "user_auto_146",
+      "userName": "Aarav Dixit",
+      "userEmail": "aarav.dixit146@example.com",
+      "rating": 5,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 13,
+      "timestamp": "2026-04-13T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_147",
+      "userId": "user_auto_147",
+      "userName": "Aarav Mishra",
+      "userEmail": "aarav.mishra147@example.com",
+      "rating": 5,
+      "comment": "The UI is clean and fast.",
+      "coinsEarned": 10,
+      "timestamp": "2026-01-25T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_148",
+      "userId": "user_auto_148",
+      "userName": "Ivaan Srivastava",
+      "userEmail": "ivaan.srivastava148@example.com",
+      "rating": 4,
+      "comment": "Great interface, very easy to use.",
+      "coinsEarned": 8,
+      "timestamp": "2026-04-10T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_149",
+      "userId": "user_auto_149",
+      "userName": "Vivaan Agarwal",
+      "userEmail": "vivaan.agarwal149@example.com",
+      "rating": 5,
+      "comment": "The best shopping companion.",
+      "coinsEarned": 5,
+      "timestamp": "2025-07-05T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_150",
+      "userId": "user_auto_150",
+      "userName": "Ansh Pandey",
+      "userEmail": "ansh.pandey150@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 10,
+      "timestamp": "2026-03-21T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_151",
+      "userId": "user_auto_151",
+      "userName": "Shaurya Dixit",
+      "userEmail": "shaurya.dixit151@example.com",
+      "rating": 5,
+      "comment": "It actually works. Highly impressed.",
+      "coinsEarned": 12,
+      "timestamp": "2025-07-23T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_152",
+      "userId": "user_auto_152",
+      "userName": "Veer Kapoor",
+      "userEmail": "veer.kapoor152@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 12,
+      "timestamp": "2025-12-06T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_153",
+      "userId": "user_auto_153",
+      "userName": "Aditya Saxena",
+      "userEmail": "aditya.saxena153@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 9,
+      "timestamp": "2026-01-11T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_154",
+      "userId": "user_auto_154",
+      "userName": "Ayaan Naidu",
+      "userEmail": "ayaan.naidu154@example.com",
+      "rating": 5,
+      "comment": "Helped me save on my flight bookings.",
+      "coinsEarned": 11,
+      "timestamp": "2026-03-21T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_155",
+      "userId": "user_auto_155",
+      "userName": "Rudra Rao",
+      "userEmail": "rudra.rao155@example.com",
+      "rating": 5,
+      "comment": "Can't imagine shopping without it now.",
+      "coinsEarned": 9,
+      "timestamp": "2025-11-26T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_156",
+      "userId": "user_auto_156",
+      "userName": "Yuvan Das",
+      "userEmail": "yuvan.das156@example.com",
+      "rating": 4,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 14,
+      "timestamp": "2026-06-14T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_157",
+      "userId": "user_auto_157",
+      "userName": "Aarav Bhatia",
+      "userEmail": "aarav.bhatia157@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 8,
+      "timestamp": "2026-05-19T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_158",
+      "userId": "user_auto_158",
+      "userName": "Kian Shukla",
+      "userEmail": "kian.shukla158@example.com",
+      "rating": 4,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 9,
+      "timestamp": "2026-06-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_159",
+      "userId": "user_auto_159",
+      "userName": "Shresth Chakraborty",
+      "userEmail": "shresth.chakraborty159@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 11,
+      "timestamp": "2026-06-20T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_160",
+      "userId": "user_auto_160",
+      "userName": "Shresth Trivedi",
+      "userEmail": "shresth.trivedi160@example.com",
+      "rating": 5,
+      "comment": "Highly recommended. The AI is so smart.",
+      "coinsEarned": 5,
+      "timestamp": "2025-12-15T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_161",
+      "userId": "user_auto_161",
+      "userName": "Arjun Pillai",
+      "userEmail": "arjun.pillai161@example.com",
+      "rating": 5,
+      "comment": "The travel radar is spot on with flight deals.",
+      "coinsEarned": 14,
+      "timestamp": "2026-04-16T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_162",
+      "userId": "user_auto_162",
+      "userName": "Ranbir Kumar",
+      "userEmail": "ranbir.kumar162@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 9,
+      "timestamp": "2025-08-31T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_163",
+      "userId": "user_auto_163",
+      "userName": "Yug Iyer",
+      "userEmail": "yug.iyer163@example.com",
+      "rating": 5,
+      "comment": "Awesome discounts and accurate price history.",
+      "coinsEarned": 13,
+      "timestamp": "2025-08-11T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_164",
+      "userId": "user_auto_164",
+      "userName": "Atharv Pandey",
+      "userEmail": "atharv.pandey164@example.com",
+      "rating": 4,
+      "comment": "The UI is clean and fast.",
+      "coinsEarned": 5,
+      "timestamp": "2026-04-09T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_165",
+      "userId": "user_auto_165",
+      "userName": "Kabir Pandey",
+      "userEmail": "kabir.pandey165@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 9,
+      "timestamp": "2025-11-27T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_166",
+      "userId": "user_auto_166",
+      "userName": "Reyansh Mishra",
+      "userEmail": "reyansh.mishra166@example.com",
+      "rating": 5,
+      "comment": "Helped me save on my flight bookings.",
+      "coinsEarned": 10,
+      "timestamp": "2026-03-29T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_167",
+      "userId": "user_auto_167",
+      "userName": "Aarav Jain",
+      "userEmail": "aarav.jain167@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 9,
+      "timestamp": "2026-02-13T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_168",
+      "userId": "user_auto_168",
+      "userName": "Samar Chopra",
+      "userEmail": "samar.chopra168@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 10,
+      "timestamp": "2025-10-01T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_169",
+      "userId": "user_auto_169",
+      "userName": "Ansh Kulkarni",
+      "userEmail": "ansh.kulkarni169@example.com",
+      "rating": 5,
+      "comment": "Great interface, very easy to use.",
+      "coinsEarned": 13,
+      "timestamp": "2025-07-06T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_170",
+      "userId": "user_auto_170",
+      "userName": "Agastya Agarwal",
+      "userEmail": "agastya.agarwal170@example.com",
+      "rating": 5,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 11,
+      "timestamp": "2026-04-05T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_171",
+      "userId": "user_auto_171",
+      "userName": "Aarav Menon",
+      "userEmail": "aarav.menon171@example.com",
+      "rating": 5,
+      "comment": "This app is a lifesaver for my budget.",
+      "coinsEarned": 6,
+      "timestamp": "2025-11-20T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_172",
+      "userId": "user_auto_172",
+      "userName": "Aditya Mathur",
+      "userEmail": "aditya.mathur172@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 8,
+      "timestamp": "2026-01-08T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_173",
+      "userId": "user_auto_173",
+      "userName": "Ivaan Nair",
+      "userEmail": "ivaan.nair173@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 8,
+      "timestamp": "2026-02-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_174",
+      "userId": "user_auto_174",
+      "userName": "Aryan Iyer",
+      "userEmail": "aryan.iyer174@example.com",
+      "rating": 5,
+      "comment": "Best app for tracking deals on electronics.",
+      "coinsEarned": 9,
+      "timestamp": "2026-01-02T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_175",
+      "userId": "user_auto_175",
+      "userName": "Atharv Saxena",
+      "userEmail": "atharv.saxena175@example.com",
+      "rating": 5,
+      "comment": "Love the point system and rewards.",
+      "coinsEarned": 5,
+      "timestamp": "2025-11-04T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_176",
+      "userId": "user_auto_176",
+      "userName": "Kian Yadav",
+      "userEmail": "kian.yadav176@example.com",
+      "rating": 5,
+      "comment": "Love the premium features.",
+      "coinsEarned": 7,
+      "timestamp": "2025-08-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_177",
+      "userId": "user_auto_177",
+      "userName": "Sai Kapoor",
+      "userEmail": "sai.kapoor177@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 7,
+      "timestamp": "2026-03-02T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_178",
+      "userId": "user_auto_178",
+      "userName": "Darsh Sinha",
+      "userEmail": "darsh.sinha178@example.com",
+      "rating": 5,
+      "comment": "Love the point system and rewards.",
+      "coinsEarned": 14,
+      "timestamp": "2025-09-13T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_179",
+      "userId": "user_auto_179",
+      "userName": "Shaurya Shetty",
+      "userEmail": "shaurya.shetty179@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 10,
+      "timestamp": "2026-04-05T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_180",
+      "userId": "user_auto_180",
+      "userName": "Kabir Yadav",
+      "userEmail": "kabir.yadav180@example.com",
+      "rating": 5,
+      "comment": "Love the premium features.",
+      "coinsEarned": 12,
+      "timestamp": "2025-07-01T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_181",
+      "userId": "user_auto_181",
+      "userName": "Ridhaan Saxena",
+      "userEmail": "ridhaan.saxena181@example.com",
+      "rating": 5,
+      "comment": "The best cash-saving app I've downloaded.",
+      "coinsEarned": 5,
+      "timestamp": "2025-12-15T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_182",
+      "userId": "user_auto_182",
+      "userName": "Ayaan Mistry",
+      "userEmail": "ayaan.mistry182@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 12,
+      "timestamp": "2025-09-22T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_183",
+      "userId": "user_auto_183",
+      "userName": "Ridhaan Srivastava",
+      "userEmail": "ridhaan.srivastava183@example.com",
+      "rating": 5,
+      "comment": "Super intuitive and the deals are genuine.",
+      "coinsEarned": 11,
+      "timestamp": "2026-06-02T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_184",
+      "userId": "user_auto_184",
+      "userName": "Avyaan Shukla",
+      "userEmail": "avyaan.shukla184@example.com",
+      "rating": 5,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 12,
+      "timestamp": "2025-07-25T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_185",
+      "userId": "user_auto_185",
+      "userName": "Atharv Pandey",
+      "userEmail": "atharv.pandey185@example.com",
+      "rating": 5,
+      "comment": "A must-have for all deal hunters out there.",
+      "coinsEarned": 7,
+      "timestamp": "2026-03-14T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_186",
+      "userId": "user_auto_186",
+      "userName": "Yug Reddy",
+      "userEmail": "yug.reddy186@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 6,
+      "timestamp": "2026-02-20T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_187",
+      "userId": "user_auto_187",
+      "userName": "Shaurya Chaudhary",
+      "userEmail": "shaurya.chaudhary187@example.com",
+      "rating": 5,
+      "comment": "This app is a lifesaver for my budget.",
+      "coinsEarned": 13,
+      "timestamp": "2026-04-27T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_188",
+      "userId": "user_auto_188",
+      "userName": "Pratyush Saxena",
+      "userEmail": "pratyush.saxena188@example.com",
+      "rating": 5,
+      "comment": "Simply brilliant. I got 5 friends to join.",
+      "coinsEarned": 11,
+      "timestamp": "2025-10-05T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_189",
+      "userId": "user_auto_189",
+      "userName": "Sai Mody",
+      "userEmail": "sai.mody189@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 8,
+      "timestamp": "2026-05-05T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_190",
+      "userId": "user_auto_190",
+      "userName": "Kabir Nair",
+      "userEmail": "kabir.nair190@example.com",
+      "rating": 5,
+      "comment": "Super intuitive and the deals are genuine.",
+      "coinsEarned": 7,
+      "timestamp": "2026-04-29T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_191",
+      "userId": "user_auto_191",
+      "userName": "Aditya Pillai",
+      "userEmail": "aditya.pillai191@example.com",
+      "rating": 5,
+      "comment": "The barcode scanner is super fast.",
+      "coinsEarned": 13,
+      "timestamp": "2025-06-28T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_192",
+      "userId": "user_auto_192",
+      "userName": "Samar Bose",
+      "userEmail": "samar.bose192@example.com",
+      "rating": 5,
+      "comment": "The UI is clean and fast.",
+      "coinsEarned": 8,
+      "timestamp": "2025-12-23T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_193",
+      "userId": "user_auto_193",
+      "userName": "Kian Kulkarni",
+      "userEmail": "kian.kulkarni193@example.com",
+      "rating": 5,
+      "comment": "Can't imagine shopping without it now.",
+      "coinsEarned": 5,
+      "timestamp": "2025-08-09T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_194",
+      "userId": "user_auto_194",
+      "userName": "Aarush Reddy",
+      "userEmail": "aarush.reddy194@example.com",
+      "rating": 5,
+      "comment": "Finally, a tool that actually finds deals.",
+      "coinsEarned": 12,
+      "timestamp": "2025-12-05T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_195",
+      "userId": "user_auto_195",
+      "userName": "Ranbir Rajan",
+      "userEmail": "ranbir.rajan195@example.com",
+      "rating": 5,
+      "comment": "Amazing app, saved so much money!",
+      "coinsEarned": 9,
+      "timestamp": "2025-10-19T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_196",
+      "userId": "user_auto_196",
+      "userName": "Devansh Chopra",
+      "userEmail": "devansh.chopra196@example.com",
+      "rating": 5,
+      "comment": "Good, but could use more store integrations.",
+      "coinsEarned": 9,
+      "timestamp": "2025-07-27T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_197",
+      "userId": "user_auto_197",
+      "userName": "Shaurya Rajan",
+      "userEmail": "shaurya.rajan197@example.com",
+      "rating": 5,
+      "comment": "Sleek design, fantastic AI capabilities.",
+      "coinsEarned": 10,
+      "timestamp": "2025-12-25T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_198",
+      "userId": "user_auto_198",
+      "userName": "Veer Naidu",
+      "userEmail": "veer.naidu198@example.com",
+      "rating": 5,
+      "comment": "Saved me from buying an overpriced laptop.",
+      "coinsEarned": 11,
+      "timestamp": "2026-01-18T17:03:28.493Z"
+    },
+    {
+      "id": "rev_auto_199",
+      "userId": "user_auto_199",
+      "userName": "Rishi Patel",
+      "userEmail": "rishi.patel199@example.com",
+      "rating": 5,
+      "comment": "I love how it compares prices across all stores.",
+      "coinsEarned": 10,
+      "timestamp": "2025-08-16T17:03:28.493Z"
     }
   ],
   "scans": [
+    {
+      "id": "scan_1782568312775_362",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "userEmail": "mohammdsaeed24@gmail.com",
+      "userName": "test",
+      "barcode": "017817847774",
+      "productName": "Apple iPhone 15 Pro (128 GB) - Natural Titanium",
+      "category": "mobiles",
+      "brand": "Apple",
+      "lowestPrice": 124900,
+      "highestPrice": 134900,
+      "timestamp": "2026-06-27T13:51:52.775Z"
+    },
     {
       "id": "scan_1782462430791_586",
       "userId": "user_test_123",
@@ -574,5 +2555,101 @@
       "highestPrice": 29990,
       "timestamp": "2026-06-26T07:45:59.275Z"
     }
-  ]
+  ],
+  "affiliateSettings": {
+    "stores": {
+      "amazon": {
+        "tag": "buywiseind0f8-21",
+        "enabled": true,
+        "paramName": "tag"
+      },
+      "flipkart": {
+        "tag": "buywise-flipkart-21",
+        "enabled": true,
+        "paramName": "affid"
+      },
+      "croma": {
+        "tag": "buywise-croma-21",
+        "enabled": true,
+        "paramName": "clickId"
+      },
+      "reliance": {
+        "tag": "buywise-reliance-21",
+        "enabled": true,
+        "paramName": "aff_id"
+      },
+      "vijaysales": {
+        "tag": "buywise-vijaysales-21",
+        "enabled": true,
+        "paramName": "vs_tag"
+      },
+      "tatacliq": {
+        "tag": "buywise-tatacliq-21",
+        "enabled": true,
+        "paramName": "tc_tag"
+      },
+      "myntra": {
+        "tag": "buywise-myntra-21",
+        "enabled": true,
+        "paramName": "myntra_tag"
+      },
+      "ajio": {
+        "tag": "buywise-ajio-21",
+        "enabled": true,
+        "paramName": "ajio_tag"
+      }
+    },
+    "clicks": {
+      "total": 350,
+      "byStore": {
+        "amazon": 154,
+        "flipkart": 112,
+        "croma": 34,
+        "reliance": 22,
+        "vijaysales": 12,
+        "tatacliq": 8,
+        "myntra": 5,
+        "ajio": 3
+      },
+      "byProduct": {
+        "deal_iphone_15": {
+          "title": "Apple iPhone 15 Pro",
+          "clicks": 120
+        },
+        "deal_macbook_air": {
+          "title": "Apple MacBook Air M3",
+          "clicks": 84
+        },
+        "deal_sony_xm5": {
+          "title": "Sony WH-1000XM5 Headphones",
+          "clicks": 65
+        }
+      },
+      "byCategory": {
+        "electronics": 210,
+        "mobiles": 80,
+        "laptops": 35,
+        "fashion": 15,
+        "home": 10
+      },
+      "dailyClicks": {
+        "2026-06-21": 42,
+        "2026-06-22": 48,
+        "2026-06-23": 55,
+        "2026-06-24": 62,
+        "2026-06-25": 70,
+        "2026-06-26": 68,
+        "2026-06-27": 5
+      },
+      "monthlyClicks": {
+        "2026-05": 1120,
+        "2026-06": 350
+      }
+    }
+  },
+  "telegramConfig": {
+    "channelUsername": "@buywiseofficial",
+    "botToken": "8654463361:AAG1zaFwPSn6EgRupkTAMROdQcnzg3CCMU8b",
+    "enabled": true
+  }
 }

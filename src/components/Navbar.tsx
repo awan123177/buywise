@@ -80,7 +80,6 @@ export default function Navbar() {
           {[
             { name: 'INDEX', path: '/' },
             { name: 'DEALS', path: '/deals' },
-            { name: 'AI SHOPPER', path: '/shopper' },
             { name: 'SCANNER', path: '/scanner' },
             { name: 'RADAR', path: '/radar' },
             { name: 'TRAVEL', path: '/travel' },
@@ -194,7 +193,6 @@ export default function Navbar() {
         {[
           { name: 'INDEX', path: '/', icon: LayoutDashboard },
           { name: 'DEALS', path: '/deals', icon: Flame },
-          { name: 'AI SHOPPER', path: '/shopper', icon: Bot },
           { name: 'SCANNER', path: '/scanner', icon: Scan },
           { name: 'RADAR', path: '/radar', icon: Search },
           { name: 'TRAVEL', path: '/travel', icon: Plane },
