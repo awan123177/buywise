@@ -1899,7 +1899,7 @@ Format each item exactly like this:
           cabin_class: cabin_class || "Economy",
           baggage: "15kg Check-in, 7kg Cabin",
           refundable: false,
-          booking_link: `https://tp.media/r?campaign_id=100&marker=744135&p=4114&trs=543965&u=https%3A%2F%2Faviasales.com`
+          booking_link: `https://kiwi.tpo.lu/bybnqDEf`
         },
         {
           id: "tp-2",
@@ -1917,7 +1917,7 @@ Format each item exactly like this:
           cabin_class: cabin_class || "Economy",
           baggage: "20kg Check-in, 7kg Cabin",
           refundable: true,
-          booking_link: `https://tp.media/r?campaign_id=100&marker=744135&p=4114&trs=543965&u=https%3A%2F%2Faviasales.com`
+          booking_link: `https://kiwi.tpo.lu/bybnqDEf`
         },
         {
           id: "tp-3",
@@ -1935,7 +1935,7 @@ Format each item exactly like this:
           cabin_class: cabin_class || "Economy",
           baggage: "15kg Check-in, 7kg Cabin",
           refundable: true,
-          booking_link: `https://tp.media/r?campaign_id=100&marker=744135&p=4114&trs=543965&u=https%3A%2F%2Faviasales.com`
+          booking_link: `https://kiwi.tpo.lu/bybnqDEf`
         }
       ];
 
