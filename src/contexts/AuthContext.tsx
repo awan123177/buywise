@@ -18,8 +18,6 @@ interface AuthContextType {
   setLoginOpen: (open: boolean) => void;
   openLogin: () => void;
   signIn: (email: string, password?: string, isSignUp?: boolean, name?: string) => Promise<void>;
-  signInWithPhone: (phone: string) => Promise<void>;
-  verifyPhoneOtp: (phone: string, token: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -31,8 +29,6 @@ const AuthContext = createContext<AuthContextType>({
   setLoginOpen: () => {},
   openLogin: () => {},
   signIn: async () => {},
-  signInWithPhone: async () => {},
-  verifyPhoneOtp: async () => {},
   logout: async () => {},
 });
 
@@ -162,44 +158,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setLoginOpen(false);
   };
 
-  const signInWithPhone = async (phone: string) => {
-    // Note: If real Supabase SMS is not configured, this might fail. We will fallback to email mock if needed.
-    const { error } = await supabase.auth.signInWithOtp({
-      phone,
-    });
-    if (error) {
-       // If SMS fails due to config, mock auth via email
-       console.warn("SMS OTP Failed, falling back to mock auth", error);
-       if (error.message.includes("sms provider")) {
-         throw new Error("SMS_NOT_CONFIGURED");
-       }
-       throw error;
-    }
-  };
-
-  const verifyPhoneOtp = async (phone: string, token: string, name?: string) => {
-    const { error } = await supabase.auth.verifyOtp({
-      phone,
-      token,
-      type: 'sms'
-    });
-    if (error) throw error;
-
-    // Update name if provided and we just signed up
-    if (name) {
-       await supabase.auth.updateUser({
-         data: { full_name: name }
-       });
-    }
-    setLoginOpen(false);
-  };
-
   const logout = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginOpen, setLoginOpen, openLogin, signIn, signInWithPhone, verifyPhoneOtp, logout }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginOpen, setLoginOpen, openLogin, signIn, logout }}>
       {children}
     </AuthContext.Provider>
   );
