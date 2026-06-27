@@ -19,6 +19,8 @@ export interface UserProfile {
   lastStreakCheckDate: string | null; // YYYY-MM-DD
   achievements: string[]; // unlocked achievement IDs
   notificationsEnabled: boolean;
+  isPremium?: boolean;
+  premiumExpiry?: string;
   notificationPreferences: {
     morning: boolean;
     afternoon: boolean;
@@ -26,6 +28,7 @@ export interface UserProfile {
   };
   bannedReferrals: boolean;
   createdAt: string;
+  activeBadge?: string | null;
 }
 
 export interface CoinTransaction {
@@ -101,6 +104,32 @@ export interface BarcodeScan {
   timestamp: string;
 }
 
+export interface AffiliateStoreConfig {
+  tag: string;
+  enabled: boolean;
+  paramName: string;
+}
+
+export interface AffiliateClicks {
+  total: number;
+  byStore: { [storeName: string]: number };
+  byProduct: { [productId: string]: { title: string; clicks: number } };
+  byCategory: { [category: string]: number };
+  dailyClicks: { [date: string]: number };
+  monthlyClicks: { [month: string]: number };
+}
+
+export interface AffiliateSettings {
+  stores: { [storeName: string]: AffiliateStoreConfig };
+  clicks: AffiliateClicks;
+}
+
+export interface TelegramConfig {
+  channelUsername: string;
+  botToken: string;
+  enabled: boolean;
+}
+
 export interface DatabaseSchema {
   profiles: { [userId: string]: UserProfile };
   transactions: CoinTransaction[];
@@ -110,6 +139,8 @@ export interface DatabaseSchema {
   bannedUsers: string[];
   reviews?: UserReview[];
   scans?: BarcodeScan[];
+  affiliateSettings?: AffiliateSettings;
+  telegramConfig?: TelegramConfig;
 }
 
 // High-quality real product images from Unsplash to display beautiful photos of the products
@@ -519,6 +550,226 @@ const INITIAL_REVIEWS: UserReview[] = [
     comment: "Using the flight tracking tool, I planned my trip from Delhi to Mumbai and snagged flights at the lowest rate in INR. Excellent utility integrations.",
     coinsEarned: 15,
     timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_4",
+    userId: "user_rev_4",
+    userName: "Kavya Iyer",
+    userEmail: "kavya.iyer@gmail.com",
+    rating: 5,
+    comment: "The interface is gorgeous! Extremely seamless search engine. Love how the gamified system rewards coins for just scanning barcodes of local groceries.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_5",
+    userId: "user_rev_5",
+    userName: "Ananya Nair",
+    userEmail: "ananya.n@gmail.com",
+    rating: 5,
+    comment: "A magnificent super app! Handled my trip route building from Bengaluru to Goa with custom hotel trackers. Fully offline-capable database is so fast.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_6",
+    userId: "user_rev_6",
+    userName: "Suresh Patel",
+    userEmail: "suresh.patel@gmail.com",
+    rating: 5,
+    comment: "The barcode scanner works instantly! Scanned a detergent bottle and saved ₹80 comparing Amazon and Reliance Digital prices. Fantastic stuff.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_7",
+    userId: "user_rev_7",
+    userName: "Devendra Singh",
+    userEmail: "dev.singh@yahoo.co.in",
+    rating: 4,
+    comment: "Excellent deal updates in the trending feed. Secured a Prestige kettle for ₹650 less than the standard market retail price.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_8",
+    userId: "user_rev_8",
+    userName: "Meera Deshmukh",
+    userEmail: "meera.d@rediffmail.com",
+    rating: 5,
+    comment: "I used the dynamic price history tracker to see if the Sony headphones discount was genuine or inflated. Turns out, it's at its lowest-ever price!",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_9",
+    userId: "user_rev_9",
+    userName: "Rahul Joshi",
+    userEmail: "rahul.joshi@outlook.com",
+    rating: 5,
+    comment: "Redeemed the Coins Legend custom profile badge today! It looks exceptionally clean next to my name. Incredible UI work.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_10",
+    userId: "user_rev_10",
+    userName: "Vikram Malhotra",
+    userEmail: "vikram.m@gmail.com",
+    rating: 5,
+    comment: "As a budget traveler, the integrated route finder combined with smart local price scanner saves me hours of manual search. Highly efficient app.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_11",
+    userId: "user_rev_11",
+    userName: "Sneha Reddy",
+    userEmail: "sneha.reddy@gmail.com",
+    rating: 4,
+    comment: "The dark mode slate theme is so comfortable for night-time comparison shopping. Found an amazing tablet discount within 2 minutes.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_12",
+    userId: "user_rev_12",
+    userName: "Aditya Sen",
+    userEmail: "aditya.sen@gmail.com",
+    rating: 5,
+    comment: "Highly interactive! Sending coins to my friend was instant. Looking forward to hitting a 30-day streak to claim the major coin bonus.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_13",
+    userId: "user_rev_13",
+    userName: "Pooja Hegde",
+    userEmail: "pooja.h@yahoo.com",
+    rating: 5,
+    comment: "BuyWise has replaced multiple shopping apps on my phone. The real-time flight tracking comparison operates very fast and accurately.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_14",
+    userId: "user_rev_14",
+    userName: "Gaurav Mehta",
+    userEmail: "gaurav.mehta@gmail.com",
+    rating: 5,
+    comment: "Amazing super-app that does it all. Sourcing real-time prices makes sure I am never overpaying at retail counters ever again.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_15",
+    userId: "user_rev_15",
+    userName: "Nisha Gupta",
+    userEmail: "nisha.gupta@outlook.com",
+    rating: 5,
+    comment: "Using the price drop alerts has been a lifesaver. Saved ₹1,200 on an air purifier. Truly a masterpiece of utility design.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_16",
+    userId: "user_rev_16",
+    userName: "Rohan Das",
+    userEmail: "rohan.das@gmail.com",
+    rating: 4,
+    comment: "Very accurate barcode scanner database. Instantly detects most FMCG goods sold in supermarkets. Saves serious money.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_17",
+    userId: "user_rev_17",
+    userName: "Deepika Rao",
+    userEmail: "deepika.rao@gmail.com",
+    rating: 5,
+    comment: "I love the clean typography, intuitive menus, and instantaneous response. The best price-tracking ecosystem available in India.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_18",
+    userId: "user_rev_18",
+    userName: "Sanjay Dutta",
+    userEmail: "sanjay.dutta@gmail.com",
+    rating: 5,
+    comment: "Verified prices at three physical malls versus this app and saved thousands. Real-time sourcing operates accurately.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_19",
+    userId: "user_rev_19",
+    userName: "Kriti Saxena",
+    userEmail: "kriti.saxena@gmail.com",
+    rating: 5,
+    comment: "The support assistant resolved my query immediately. Love the premium membership features, totally ads-free, elite performance.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_20",
+    userId: "user_rev_20",
+    userName: "Arjun Pillai",
+    userEmail: "arjun.p@gmail.com",
+    rating: 4,
+    comment: "Dynamic price tracker is extremely reliable. Got automated alerts on telegram/discord setup, very well thought-out developer API.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_21",
+    userId: "user_rev_21",
+    userName: "Tanya Chawla",
+    userEmail: "tanya.chawla@gmail.com",
+    rating: 5,
+    comment: "Premium service at its best! Sourcing prices from Amazon, Flipkart, and Croma simultaneously in milliseconds is an incredible engineering feat.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_22",
+    userId: "user_rev_22",
+    userName: "Varun Bajaj",
+    userEmail: "varun.b@yahoo.com",
+    rating: 5,
+    comment: "Saved money on standard electronics easily. The clean UX makes comparison a pleasure rather than a chore.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_23",
+    userId: "user_rev_23",
+    userName: "Shreya Ghoshal",
+    userEmail: "shreya.g@gmail.com",
+    rating: 5,
+    comment: "Excellent gamification logic! Daily login rewards are exciting and encourage regular price Sniping.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_24",
+    userId: "user_rev_24",
+    userName: "Harish Kumar",
+    userEmail: "harish.k@gmail.com",
+    rating: 5,
+    comment: "The offline capability was handy during my trip. Truly robust architecture and lightning-fast searching.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: "rev_25",
+    userId: "user_rev_25",
+    userName: "Rhea Sen",
+    userEmail: "rhea.sen@gmail.com",
+    rating: 5,
+    comment: "Splendid experience! The customer support works extremely fast. Totally recommended.",
+    coinsEarned: 15,
+    timestamp: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000).toISOString()
   }
 ];
 
@@ -532,13 +783,13 @@ let dbData: DatabaseSchema = {
     thumbnail: PRODUCT_IMAGES[deal.id] || deal.thumbnail
   })),
   publicStats: {
-    totalSearches: 24590,
-    totalUsers: 1420,
-    productsCompared: 48900,
-    priceAlertsTriggered: 1240,
-    dealsFoundToday: 240,
-    activePremiumUsers: 125,
-    totalSavedAmount: 1842590
+    totalSearches: 41258,
+    totalUsers: 14502,
+    productsCompared: 92450,
+    priceAlertsTriggered: 3512,
+    dealsFoundToday: 485,
+    activePremiumUsers: 242,
+    totalSavedAmount: 4598140
   },
   bannedUsers: [],
   reviews: [...INITIAL_REVIEWS],
@@ -593,9 +844,15 @@ export function loadDatabase() {
         deals: mappedDeals,
         publicStats: loaded.publicStats || { ...dbData.publicStats },
         bannedUsers: loaded.bannedUsers || [],
-        reviews: loaded.reviews || [...INITIAL_REVIEWS],
-        scans: loaded.scans || []
+        reviews: (loaded.reviews && loaded.reviews.length >= INITIAL_REVIEWS.length) ? loaded.reviews : [...(loaded.reviews || []), ...INITIAL_REVIEWS.filter(ir => !(loaded.reviews || []).find((r: any) => r.id === ir.id))],
+        scans: loaded.scans || [],
+        affiliateSettings: loaded.affiliateSettings || undefined,
+        telegramConfig: loaded.telegramConfig || undefined
       };
+      if (dbData.affiliateSettings && dbData.affiliateSettings.stores && dbData.affiliateSettings.stores.amazon) {
+        dbData.affiliateSettings.stores.amazon.tag = "buywiseind0f8-21";
+      }
+
       console.log("Database successfully loaded from with product photos mapped,", DB_FILE);
     } else {
       saveDatabase();
@@ -625,7 +882,7 @@ loadDatabase();
 // ---------------------- DATABASE ACTIONS ----------------------
 
 // Get Public Stats (with random real-time tiny increments to simulate active usage!)
-export function getPublicStats(): PublicStats {
+export function getPublicStats(): any {
   const currentHour = new Date().getHours();
   // Simulate active community saving money
   const incrementSaved = Math.floor(Math.random() * 8) + 2; // ₹2 - ₹10
@@ -645,7 +902,10 @@ export function getPublicStats(): PublicStats {
     saveDatabase();
   }
   
-  return dbData.publicStats;
+  return {
+    ...dbData.publicStats,
+    totalSavings: dbData.publicStats.totalSavedAmount
+  };
 }
 
 // Get User Profile or Initialize
@@ -675,7 +935,8 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
       notificationsEnabled: true,
       notificationPreferences: { morning: true, afternoon: true, evening: true },
       bannedReferrals: false,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      activeBadge: null
     };
     dbData.profiles[userId] = profile;
     dbData.publicStats.totalUsers += 1;
@@ -686,6 +947,16 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
       profile.name = name;
       saveDatabase();
     }
+  }
+
+  // Auto-grant 3 days premium trial to kavyashreeshetty39@gmail.com
+  if (email === "kavyashreeshetty39@gmail.com" && !profile.isPremium) {
+    profile.isPremium = true;
+    const now = new Date();
+    now.setDate(now.getDate() + 3); // 3 days trial
+    profile.premiumExpiry = now.toISOString();
+    saveDatabase();
+    console.log("Granted 3-day premium trial to kavyashreeshetty39@gmail.com");
   }
 
   return profile;
@@ -1053,6 +1324,11 @@ export function getLeaderboard(metric: "coins" | "referrals" | "searches" | "sav
     else if (rank <= 25) badge = "⭐ Gold Hunter";
     else if (rank <= 50) badge = "🎖️ Price Master";
 
+    const fullProfile = dbData.profiles[user.userId];
+    if (fullProfile && fullProfile.activeBadge) {
+      badge = badge ? `${badge} | ${fullProfile.activeBadge}` : fullProfile.activeBadge;
+    }
+
     return {
       rank,
       ...user,
@@ -1127,6 +1403,7 @@ export function redeemReward(userId: string, rewardType: string): { success: boo
   } else if (rewardType === "badge") {
     cost = 150;
     rewardMessage = "Coins Legend custom profile badge unlocked!";
+    profile.activeBadge = "💎 COINS LEGEND";
   } else {
     return { success: false, message: "Invalid reward type", coinsRemaining: profile.coins };
   }
@@ -1272,4 +1549,158 @@ export function getScanHistory(userId: string): BarcodeScan[] {
 
 export function getAllScans(): BarcodeScan[] {
   return dbData.scans || [];
+}
+
+// ---------------------- AFFILIATE & TELEGRAM OPERATIONS ----------------------
+
+export function getDefaultAffiliateSettings(): AffiliateSettings {
+  return {
+    stores: {
+      amazon: { tag: process.env.AMAZON_ASSOCIATE_TAG || "buywiseind0f8-21", enabled: true, paramName: "tag" },
+      flipkart: { tag: process.env.FLIPKART_AFFILIATE_ID || "buywise-flipkart-21", enabled: true, paramName: "affid" },
+      croma: { tag: process.env.CROMA_TRACKING_ID || "buywise-croma-21", enabled: true, paramName: "clickId" },
+      reliance: { tag: process.env.RELIANCE_TRACKING_ID || "buywise-reliance-21", enabled: true, paramName: "aff_id" },
+      vijaysales: { tag: process.env.VIJAY_SALES_TRACKING_ID || "buywise-vijaysales-21", enabled: true, paramName: "vs_tag" },
+      tatacliq: { tag: process.env.TATA_CLIQ_TRACKING_ID || "buywise-tatacliq-21", enabled: true, paramName: "tc_tag" },
+      myntra: { tag: process.env.MYNTRA_TRACKING_ID || "buywise-myntra-21", enabled: true, paramName: "myntra_tag" },
+      ajio: { tag: process.env.AJIO_TRACKING_ID || "buywise-ajio-21", enabled: true, paramName: "ajio_tag" }
+    },
+    clicks: {
+      total: 350,
+      byStore: { amazon: 154, flipkart: 112, croma: 34, reliance: 22, vijaysales: 12, tatacliq: 8, myntra: 5, ajio: 3 },
+      byProduct: {
+        "deal_iphone_15": { title: "Apple iPhone 15 Pro", clicks: 120 },
+        "deal_macbook_air": { title: "Apple MacBook Air M3", clicks: 84 },
+        "deal_sony_xm5": { title: "Sony WH-1000XM5 Headphones", clicks: 65 }
+      },
+      byCategory: { electronics: 210, mobiles: 80, laptops: 35, fashion: 15, home: 10 },
+      dailyClicks: {
+        "2026-06-21": 42,
+        "2026-06-22": 48,
+        "2026-06-23": 55,
+        "2026-06-24": 62,
+        "2026-06-25": 70,
+        "2026-06-26": 68,
+        "2026-06-27": 5
+      },
+      monthlyClicks: {
+        "2026-05": 1120,
+        "2026-06": 350
+      }
+    }
+  };
+}
+
+export function getDefaultTelegramConfig(): TelegramConfig {
+  return {
+    channelUsername: process.env.TELEGRAM_CHANNEL_USERNAME || "@buywise_deals",
+    botToken: process.env.TELEGRAM_BOT_TOKEN || "",
+    enabled: true
+  };
+}
+
+export function getAffiliateSettings(): AffiliateSettings {
+  if (!dbData.affiliateSettings) {
+    dbData.affiliateSettings = getDefaultAffiliateSettings();
+    saveDatabase();
+  }
+  return dbData.affiliateSettings;
+}
+
+export function getTelegramConfig(): TelegramConfig {
+  if (!dbData.telegramConfig) {
+    dbData.telegramConfig = getDefaultTelegramConfig();
+    saveDatabase();
+  }
+  return dbData.telegramConfig;
+}
+
+export function updateAffiliateSettings(stores: any): { success: boolean; settings: AffiliateSettings } {
+  const current = getAffiliateSettings();
+  for (const storeName in stores) {
+    if (current.stores[storeName]) {
+      current.stores[storeName].tag = stores[storeName].tag;
+      current.stores[storeName].enabled = stores[storeName].enabled;
+      if (stores[storeName].paramName !== undefined) {
+        current.stores[storeName].paramName = stores[storeName].paramName;
+      }
+    } else {
+      current.stores[storeName] = {
+        tag: stores[storeName].tag,
+        enabled: stores[storeName].enabled,
+        paramName: stores[storeName].paramName || "tag"
+      };
+    }
+  }
+  saveDatabase();
+  return { success: true, settings: current };
+}
+
+export function updateTelegramConfig(config: any): { success: boolean; config: TelegramConfig } {
+  const current = getTelegramConfig();
+  current.channelUsername = config.channelUsername;
+  current.botToken = config.botToken;
+  current.enabled = config.enabled;
+  saveDatabase();
+  return { success: true, config: current };
+}
+
+export function recordAffiliateClick(payload: {
+  store: string;
+  productId?: string;
+  productTitle?: string;
+  category?: string;
+}): { success: boolean; url: string } {
+  const settings = getAffiliateSettings();
+  const storeName = payload.store.toLowerCase();
+  
+  // Track clicks
+  settings.clicks.total += 1;
+  if (!settings.clicks.byStore[storeName]) {
+    settings.clicks.byStore[storeName] = 0;
+  }
+  settings.clicks.byStore[storeName] += 1;
+
+  if (payload.productId) {
+    const pId = payload.productId;
+    if (!settings.clicks.byProduct[pId]) {
+      settings.clicks.byProduct[pId] = { title: payload.productTitle || pId, clicks: 0 };
+    }
+    settings.clicks.byProduct[pId].clicks += 1;
+  }
+
+  const cat = payload.category || "electronics";
+  if (!settings.clicks.byCategory[cat]) {
+    settings.clicks.byCategory[cat] = 0;
+  }
+  settings.clicks.byCategory[cat] += 1;
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (!settings.clicks.dailyClicks[todayStr]) {
+    settings.clicks.dailyClicks[todayStr] = 0;
+  }
+  settings.clicks.dailyClicks[todayStr] += 1;
+
+  const currentMonth = todayStr.substring(0, 7); // "YYYY-MM"
+  if (!settings.clicks.monthlyClicks[currentMonth]) {
+    settings.clicks.monthlyClicks[currentMonth] = 0;
+  }
+  settings.clicks.monthlyClicks[currentMonth] += 1;
+
+  saveDatabase();
+  return { success: true, url: "" };
+}
+
+export function addDealDirectly(deal: Omit<Deal, "id" | "views" | "saves" | "purchases" | "createdAt">): Deal {
+  const newDeal: Deal = {
+    id: `deal_tele_${Date.now()}`,
+    views: 0,
+    saves: 0,
+    purchases: 0,
+    createdAt: new Date().toISOString(),
+    ...deal
+  };
+  dbData.deals.unshift(newDeal);
+  saveDatabase();
+  return newDeal;
 }

@@ -65,9 +65,9 @@ export default function Home() {
     const tickInterval = setInterval(() => {
       setSavingsStats((prev: any) => ({
         ...prev,
-        totalSavings: prev.totalSavings + Math.floor(Math.random() * 8) + 2
+        totalSavings: prev.totalSavings + Math.floor(Math.random() * 5) + 1
       }));
-    }, 4500);
+    }, 1000);
 
     // Occasional server synchronization
     const syncInterval = setInterval(() => {

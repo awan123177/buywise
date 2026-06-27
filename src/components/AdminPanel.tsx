@@ -45,6 +45,12 @@ export default function AdminPanel() {
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastBody, setBroadcastBody] = useState('');
 
+  // Affiliate & Telegram States
+  const [affiliateSettings, setAffiliateSettings] = useState<any>(null);
+  const [telegramConfig, setTelegramConfig] = useState<any>(null);
+  const [mockTelegramText, setMockTelegramText] = useState("");
+  const [isParsingDeal, setIsParsingDeal] = useState(false);
+
   const parseNameField = (nameStr: string) => {
     if (!nameStr) return { displayName: 'Unknown', screenshot: null };
     const parts = nameStr.split('|||');
@@ -60,6 +66,18 @@ export default function AdminPanel() {
         setStats(data);
         setLoading(false);
       });
+
+      // Load Affiliate Settings
+      fetch("/api/affiliate/settings")
+        .then(res => res.json())
+        .then(data => setAffiliateSettings(data))
+        .catch(err => console.error("Error loading affiliate settings:", err));
+
+      // Load Telegram Config
+      fetch("/api/telegram/config")
+        .then(res => res.json())
+        .then(data => setTelegramConfig(data))
+        .catch(err => console.error("Error loading telegram config:", err));
 
       const qTrack = query(collection(db, "price_tracking"), orderBy("trackedAt", "desc"), limit(20));
       const unsubTrack = onSnapshot(qTrack, (snap) => {
@@ -126,6 +144,72 @@ export default function AdminPanel() {
       alert("Error purging history");
     } finally {
       setIsClearing(false);
+    }
+  };
+
+  const handleSaveAffiliate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!affiliateSettings) return;
+    try {
+      const response = await fetch("/api/affiliate/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stores: affiliateSettings.stores })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Affiliate program tags updated!");
+      }
+    } catch (err: any) {
+      toast.error("Failed to update affiliate settings: " + err.message);
+    }
+  };
+
+  const handleSaveTelegram = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!telegramConfig) return;
+    try {
+      const response = await fetch("/api/telegram/config", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ config: telegramConfig })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Telegram channel integration saved!");
+      }
+    } catch (err: any) {
+      toast.error("Failed to update Telegram settings: " + err.message);
+    }
+  };
+
+  const handleMockTelegramPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mockTelegramText.trim()) return;
+    setIsParsingDeal(true);
+    try {
+      const response = await fetch("/api/telegram/webhook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          channel_post: {
+            text: mockTelegramText
+          }
+        })
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Parsed deal with Gemini and posted live! 📲");
+        setMockTelegramText("");
+        // Reload statistics or page to reflect changes
+        fetchAdminStats().then(data => setStats(data));
+      } else {
+        toast.error("Could not parse text. Ensure deal details are listed.");
+      }
+    } catch (err: any) {
+      toast.error("Failed to post mock Telegram deal: " + err.message);
+    } finally {
+      setIsParsingDeal(false);
     }
   };
   
@@ -894,6 +978,213 @@ export default function AdminPanel() {
             </form>
           </div>
 
+        </div>
+      </div>
+
+      {/* --- AFFILIATE & TELEGRAM MONETIZATION CONSOLE --- */}
+      <div className="mt-12 terminal-card p-12 bg-black/40 backdrop-blur-md mb-20 border border-white/10">
+        <header className="mb-12 border-b border-white/10 pb-6 flex justify-between items-center flex-wrap gap-4">
+          <div>
+            <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase flex items-center gap-2">
+              <Globe size={18} /> AFFILIATE MONETIZATION & INTEGRATION CONSOLE
+            </h4>
+            <p className="text-[10px] text-white/40 uppercase tracking-wider font-mono mt-1">
+              Configure store tags, review real-time redirects, and sync deals from Telegram channels
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <span className="text-[9px] font-mono font-black uppercase bg-green-500/10 text-green-400 px-3 py-1 rounded-full border border-green-500/20 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              Secure Redirects Active
+            </span>
+          </div>
+        </header>
+
+        {/* Part 1: Click Analytics Telemetry */}
+        <div className="mb-12">
+          <h5 className="text-[11px] font-black tracking-widest text-white/50 uppercase mb-6 flex items-center gap-2">
+            <Activity size={14} className="text-cyan-400" /> Real-time Affiliate Click Tracker
+          </h5>
+
+          {affiliateSettings ? (
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+              {Object.keys(affiliateSettings.stores).map((storeKey) => {
+                const clickCount = affiliateSettings.clicks[storeKey] || 0;
+                const storeConfig = affiliateSettings.stores[storeKey];
+                return (
+                  <div key={storeKey} className="bg-white/[0.02] border border-white/5 p-4 rounded-lg flex flex-col justify-between hover:border-white/10 transition-colors">
+                    <div>
+                      <span className="text-[9px] font-black tracking-widest text-white/40 uppercase block truncate">{storeKey}</span>
+                      <span className="text-2xl font-black text-white tracking-tighter mt-1 block">{clickCount}</span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between text-[8px] font-mono font-black">
+                      <span className={storeConfig.enabled ? "text-emerald-400" : "text-white/20"}>
+                        {storeConfig.enabled ? "● MONETIZED" : "○ INACTIVE"}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-6 text-center text-white/20 text-xs font-mono">LOADING AFFILIATE CLICK ANALYTICS...</div>
+          )}
+        </div>
+
+        {/* Part 2: Twin Configuration Form Panels */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+          {/* Column A: Affiliate Store Tags Settings */}
+          <div className="lg:col-span-7 bg-white/[0.02] border border-white/5 p-8 rounded-xl space-y-6">
+            <div className="border-b border-white/5 pb-4">
+              <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Tag size={14} className="text-yellow-500" /> Affiliate Store Associate Configuration
+              </h5>
+              <p className="text-[9px] text-white/40 mt-1 uppercase font-mono">Enter parameters for each storefront to redirect purchases with tags</p>
+            </div>
+
+            {affiliateSettings ? (
+              <form onSubmit={handleSaveAffiliate} className="space-y-4">
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                  {Object.keys(affiliateSettings.stores).map((storeKey) => {
+                    const store = affiliateSettings.stores[storeKey];
+                    return (
+                      <div key={storeKey} className="p-4 bg-black/40 border border-white/5 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={store.enabled}
+                            onChange={(e) => {
+                              const updatedStores = { ...affiliateSettings.stores };
+                              updatedStores[storeKey].enabled = e.target.checked;
+                              setAffiliateSettings({ ...affiliateSettings, stores: updatedStores });
+                            }}
+                            className="rounded border-white/10 bg-white/5 text-[#FF3B30] focus:ring-0"
+                          />
+                          <div>
+                            <span className="text-xs font-black uppercase text-white">{storeKey}</span>
+                            <span className="text-[8px] font-mono text-white/40 block">PARAMETER: {store.paramName || "tag"}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 flex-grow sm:max-w-xs">
+                          <input
+                            type="text"
+                            placeholder="TRACKING_TAG_ID"
+                            value={store.tag}
+                            onChange={(e) => {
+                              const updatedStores = { ...affiliateSettings.stores };
+                              updatedStores[storeKey].tag = e.target.value;
+                              setAffiliateSettings({ ...affiliateSettings, stores: updatedStores });
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded px-3 py-1.5 text-xs text-white placeholder-white/20 uppercase font-mono"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button type="submit" className="w-full py-3 bg-[#FF3B30] text-white font-black uppercase tracking-widest text-[10px] rounded hover:bg-red-600 transition-colors cursor-pointer">
+                  SAVE_AFFILIATE_SETTINGS
+                </button>
+              </form>
+            ) : (
+              <div className="py-12 text-center text-white/20 text-xs font-mono">LOADING STORE CONFIGURATIONS...</div>
+            )}
+          </div>
+
+          {/* Column B: Telegram Sync Config & Mock Deal Bot Parser */}
+          <div className="lg:col-span-5 space-y-6">
+            
+            {/* Telegram settings config */}
+            <div className="bg-white/[0.02] border border-white/5 p-8 rounded-xl space-y-6">
+              <div className="border-b border-white/5 pb-4">
+                <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <Globe size={14} className="text-indigo-400" /> Telegram Channel Integration Sync
+                </h5>
+                <p className="text-[9px] text-white/40 mt-1 uppercase font-mono">Sync incoming deals posted to your channel directly into Deals page</p>
+              </div>
+
+              {telegramConfig ? (
+                <form onSubmit={handleSaveTelegram} className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-black/40 border border-white/5 rounded-lg text-xs">
+                    <span className="text-white/60 uppercase">Enable Webhook Listener</span>
+                    <input
+                      type="checkbox"
+                      checked={telegramConfig.enabled}
+                      onChange={(e) => setTelegramConfig({ ...telegramConfig, enabled: e.target.checked })}
+                      className="rounded border-white/10 bg-white/5 text-indigo-500 focus:ring-0"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] text-white/40 font-mono block uppercase">CHANNEL_USERNAME_OR_ID</label>
+                    <input
+                      type="text"
+                      placeholder="@BUYWISE_DEALS"
+                      value={telegramConfig.channelUsername}
+                      onChange={(e) => setTelegramConfig({ ...telegramConfig, channelUsername: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-white/20 uppercase font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] text-white/40 font-mono block uppercase">TELEGRAM_BOT_TOKEN</label>
+                    <input
+                      type="password"
+                      placeholder="ENTER BOT TOKEN (e.g. 5238...)"
+                      value={telegramConfig.botToken}
+                      onChange={(e) => setTelegramConfig({ ...telegramConfig, botToken: e.target.value })}
+                      className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-white/20 font-mono"
+                    />
+                  </div>
+
+                  <button type="submit" className="w-full py-3 bg-indigo-600 text-white font-black uppercase tracking-widest text-[10px] rounded hover:bg-indigo-700 transition-colors cursor-pointer shadow-lg shadow-indigo-600/20">
+                    SAVE_TELEGRAM_BOT_CONFIG
+                  </button>
+                </form>
+              ) : (
+                <div className="py-6 text-center text-white/20 text-xs font-mono">LOADING TELEGRAM PROFILE...</div>
+              )}
+            </div>
+
+            {/* Direct Mock Bot Post Parser Tool */}
+            <div className="bg-[#FF3B30]/5 border border-[#FF3B30]/20 p-8 rounded-xl space-y-4">
+              <div>
+                <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles size={14} className="text-[#FF3B30]" /> Telegram Post AI Parser Playground
+                </h5>
+                <p className="text-[9px] text-white/40 leading-relaxed uppercase font-mono mt-0.5">
+                  Paste any raw deal post text here. Gemini AI will instantly parse categories, pricing, and links to post live to Deals section.
+                </p>
+              </div>
+
+              <form onSubmit={handleMockTelegramPost} className="space-y-3">
+                <textarea
+                  placeholder="Paste Telegram post here... e.g., &#10;🔥 AMAZING DEAL on Amazon! &#10;Samsung S24 Ultra now only ₹99,999 from ₹1,29,999! &#10;Check it out: https://amazon.in/dp/B0CSYF8Z98"
+                  rows={4}
+                  value={mockTelegramText}
+                  onChange={(e) => setMockTelegramText(e.target.value)}
+                  className="w-full bg-[#050505] border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-white/20 font-sans"
+                />
+                <button
+                  type="submit"
+                  disabled={isParsingDeal || !mockTelegramText.trim()}
+                  className="w-full py-3 bg-emerald-600 text-white font-black uppercase tracking-widest text-[10px] rounded hover:bg-emerald-700 transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isParsingDeal ? (
+                    <>
+                      <span className="w-2.5 h-2.5 rounded-full border-t-2 border-b-2 border-white animate-spin" />
+                      PARSING WITH GEMINI ENGINE...
+                    </>
+                  ) : (
+                    "PARSE & PUBLISH LIVE"
+                  )}
+                </button>
+              </form>
+            </div>
+
+          </div>
         </div>
       </div>
 

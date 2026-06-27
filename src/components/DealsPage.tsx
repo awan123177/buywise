@@ -11,12 +11,14 @@ import {
   updateNotificationSettings, fetchGamificationProfile 
 } from '../lib/api';
 import toast from 'react-hot-toast';
+import { useAffiliate } from '../contexts/AffiliateContext';
 
 import { useCurrency } from '../contexts/CurrencyContext';
 
 export default function DealsPage() {
   const { user, openLogin } = useAuth();
   const { formatPrice } = useCurrency();
+  const { triggerRedirect } = useAffiliate();
   const [activeTab, setActiveTab] = useState<'daily' | 'trending'>('daily');
   const [deals, setDeals] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -189,7 +191,8 @@ export default function DealsPage() {
     { id: 'gaming', label: 'Gaming' },
     { id: 'fashion', label: 'Fashion' },
     { id: 'home', label: 'Home' },
-    { id: 'grocery', label: 'Grocery' }
+    { id: 'grocery', label: 'Grocery' },
+    { id: 'travel', label: 'Travel & Flights' }
   ];
 
   // Best Deal today (First deal with isBestSeller or flash deal)
@@ -322,19 +325,21 @@ export default function DealsPage() {
             <h3 className="text-[11px] font-black uppercase tracking-widest text-[#FF3B30] flex items-center gap-2 mb-3">
               <SlidersHorizontal size={12} /> CATEGORIES
             </h3>
-            {categories.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(cat.id)}
-                className={`w-full text-left px-3 py-1.5 rounded text-xs font-black tracking-wider transition-colors block ${
-                  selectedCategory === cat.id 
-                    ? 'bg-white/10 text-white' 
-                    : 'text-white/40 hover:bg-white/5 hover:text-white'
-                }`}
-              >
-                {cat.label.toUpperCase()}
-              </button>
-            ))}
+            <div className="flex flex-row overflow-x-auto lg:flex-col gap-2 pb-2 lg:pb-0 lg:space-y-1.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+              {categories.map(cat => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`whitespace-nowrap px-3 py-1.5 rounded text-xs font-black tracking-wider transition-all block ${
+                    selectedCategory === cat.id 
+                      ? 'bg-[#FF3B30] text-white shadow-[0_0_10px_rgba(255,59,48,0.3)]' 
+                      : 'bg-white/5 lg:bg-transparent text-white/40 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  {cat.label.toUpperCase()}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Notifications Center */}
@@ -461,6 +466,21 @@ export default function DealsPage() {
                 <div className="flex flex-wrap gap-3 pt-2">
                   <motion.button
                     whileTap={{ scale: 0.95 }}
+                    onClick={() => triggerRedirect({
+                      url: bestDeal.link || "https://www.amazon.in",
+                      store: bestDeal.source || "amazon",
+                      productId: bestDeal.id,
+                      productTitle: bestDeal.title,
+                      category: bestDeal.category
+                    })}
+                    className="flex items-center gap-1.5 px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg text-[10px] font-black tracking-widest cursor-pointer shadow-lg shadow-green-500/20"
+                  >
+                    <Globe size={14} />
+                    VIEW DEAL
+                  </motion.button>
+
+                  <motion.button
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => handleSaveDeal(bestDeal.id)}
                     className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-black tracking-widest transition-colors cursor-pointer ${
                       savedDeals.includes(bestDeal.id)
@@ -558,7 +578,16 @@ export default function DealsPage() {
                       </div>
 
                       {/* Main Deal Body */}
-                      <div className="flex gap-4 items-start flex-1 mb-4">
+                      <div 
+                        onClick={() => triggerRedirect({
+                          url: deal.link || "https://www.amazon.in",
+                          store: deal.source || "amazon",
+                          productId: deal.id,
+                          productTitle: deal.title,
+                          category: deal.category
+                        })}
+                        className="flex gap-4 items-start flex-1 mb-4 cursor-pointer"
+                      >
                         <div className="w-20 h-20 bg-white rounded-lg p-1.5 shrink-0 flex items-center justify-center border border-white/10 overflow-hidden relative">
                           <img src={deal.thumbnail} alt={deal.title} className="w-full h-full object-contain filter group-hover:scale-105 transition-transform" referrerPolicy="no-referrer" />
                         </div>
@@ -586,6 +615,21 @@ export default function DealsPage() {
                       <div className="flex items-center gap-2 pt-3 border-t border-white/5">
                         <motion.button
                           whileTap={{ scale: 0.95 }}
+                          onClick={() => triggerRedirect({
+                            url: deal.link || "https://www.amazon.in",
+                            store: deal.source || "amazon",
+                            productId: deal.id,
+                            productTitle: deal.title,
+                            category: deal.category
+                          })}
+                          className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white rounded text-[9px] font-black tracking-widest uppercase cursor-pointer text-center flex items-center justify-center gap-1"
+                        >
+                          <Globe size={11} />
+                          VIEW DEAL
+                        </motion.button>
+
+                        <motion.button
+                          whileTap={{ scale: 0.95 }}
                           onClick={() => handleSaveDeal(deal.id)}
                           className={`p-2 rounded bg-white/5 text-white cursor-pointer hover:bg-white/10 ${
                             isSaved ? 'text-green-500' : 'text-white/60'
@@ -609,10 +653,9 @@ export default function DealsPage() {
                         <motion.button
                           whileTap={{ scale: 0.95 }}
                           onClick={() => handleShareDeal(deal)}
-                          className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-[#FF3B30]/10 text-[#FF3B30] hover:bg-[#FF3B30]/20 rounded text-[9px] font-black tracking-widest uppercase cursor-pointer"
+                          className="px-3 py-2 bg-[#FF3B30]/10 text-[#FF3B30] hover:bg-[#FF3B30]/20 rounded text-[9px] font-black tracking-widest uppercase cursor-pointer"
                         >
                           <Share2 size={11} />
-                          SHARE (+2 COINS)
                         </motion.button>
                       </div>
 

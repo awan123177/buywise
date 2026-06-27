@@ -337,8 +337,15 @@ export default function RewardsHub() {
             {/* Wallet Core Badge */}
             <div className="bg-gradient-to-br from-[#1c1c13] to-[#111111] p-6 rounded-2xl border border-yellow-500/20 relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 blur-[40px] pointer-events-none group-hover:bg-yellow-500/10 transition-all" />
-              <div className="text-xs uppercase font-black text-yellow-500/60 tracking-widest flex items-center gap-1.5 mb-2">
-                <Wallet size={12} /> COINS BALANCE
+              <div className="flex justify-between items-start mb-2">
+                <div className="text-xs uppercase font-black text-yellow-500/60 tracking-widest flex items-center gap-1.5">
+                  <Wallet size={12} /> COINS BALANCE
+                </div>
+                {profile?.activeBadge && (
+                  <span className="text-[8px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded uppercase font-black tracking-widest font-mono">
+                    {profile.activeBadge}
+                  </span>
+                )}
               </div>
               <div className="text-4xl md:text-5xl font-black text-yellow-500 flex items-center gap-2 drop-shadow-[0_0_10px_rgba(234,179,8,0.2)]">
                 🪙 {profile?.coins || 0}

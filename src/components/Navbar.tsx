@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
@@ -15,6 +15,7 @@ export default function Navbar() {
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [coins, setCoins] = useState<number>(0);
+  const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
 
   useEffect(() => {
@@ -22,6 +23,7 @@ export default function Navbar() {
       fetchGamificationProfile()
         .then(profile => {
           setCoins(profile.coins);
+          setActiveBadge(profile.activeBadge || null);
         })
         .catch(() => {});
     }
@@ -78,6 +80,7 @@ export default function Navbar() {
           {[
             { name: 'INDEX', path: '/' },
             { name: 'DEALS', path: '/deals' },
+            { name: 'AI SHOPPER', path: '/shopper' },
             { name: 'SCANNER', path: '/scanner' },
             { name: 'RADAR', path: '/radar' },
             { name: 'TRAVEL', path: '/travel' },
@@ -148,6 +151,11 @@ export default function Navbar() {
                <Link to="/rewards" className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-yellow-500/20 bg-yellow-500/5 text-yellow-500 text-xs font-black font-mono shadow-[0_0_10px_rgba(234,179,8,0.05)] hover:border-yellow-500/50 transition-colors cursor-pointer">
                  🪙 {coins} <span className="text-[9px] font-medium text-white/40">COINS</span>
                </Link>
+               {activeBadge && (
+                  <div className="hidden sm:flex items-center justify-center px-2 py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[9px] font-black uppercase tracking-wider font-mono shadow-[0_0_10px_rgba(59,130,246,0.1)]">
+                     {activeBadge}
+                  </div>
+               )}
                {user.isPremium && (
                   <div title="Premium Member" className="hidden sm:flex items-center justify-center p-2 rounded-full border border-yellow-500/50 bg-yellow-500/10 text-yellow-500">
                      <ShieldCheck size={16} />
@@ -182,24 +190,26 @@ export default function Navbar() {
       </nav>
 
       {/* Bottom Mobile Tab Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#050505]/90 backdrop-blur-xl border-t border-white/10 z-[100] flex items-center justify-around px-2">
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#050505]/95 backdrop-blur-xl border-t border-white/10 z-[100] flex items-center justify-around px-1">
         {[
           { name: 'INDEX', path: '/', icon: LayoutDashboard },
           { name: 'DEALS', path: '/deals', icon: Flame },
+          { name: 'AI SHOPPER', path: '/shopper', icon: Bot },
           { name: 'SCANNER', path: '/scanner', icon: Scan },
           { name: 'RADAR', path: '/radar', icon: Search },
+          { name: 'TRAVEL', path: '/travel', icon: Plane },
           { name: 'CLUB', path: '/rewards', icon: Trophy },
           { name: 'PREMIUM', path: '/premium', icon: Diamond },
         ].map((item) => (
           <Link
             key={item.name}
             to={item.path}
-            className={`flex flex-col items-center justify-center w-full h-full gap-1 transition-colors ${
+            className={`flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors ${
               location.pathname === item.path ? 'text-[#FF3B30]' : 'text-[#f5f5f5]/50 hover:text-[#f5f5f5]'
             }`}
           >
-            <item.icon size={20} />
-            <span className="text-[8px] font-black uppercase tracking-widest">{item.name}</span>
+            <item.icon size={18} />
+            <span className="text-[7px] font-black uppercase tracking-widest">{item.name}</span>
           </Link>
         ))}
       </div>

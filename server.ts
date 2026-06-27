@@ -25,7 +25,13 @@ import {
   submitReview,
   recordBarcodeScan,
   getScanHistory,
-  getAllScans
+  getAllScans,
+  getAffiliateSettings,
+  getTelegramConfig,
+  updateAffiliateSettings,
+  updateTelegramConfig,
+  recordAffiliateClick,
+  addDealDirectly
 } from "./src/server/gamificationDb.js";
 
 dotenv.config();
@@ -847,6 +853,181 @@ Return a JSON object exactly matching this schema:
     }
   });
 
+  // --- AFFILIATE & TELEGRAM APIS ---
+
+  async function parseTelegramPost(text: string): Promise<any> {
+    try {
+      const ai = getAi();
+      const prompt = `You are an elite, highly accurate shopping deal parser. Parse the following Telegram deal post and return a JSON object with the exact fields below. Extract pricing and link accurately.
+{
+  "title": "Clean, descriptive product title, free of emojis and tracking tags",
+  "category": "electronics",
+  "oldPrice": 12999,
+  "newPrice": 9999,
+  "discountPercent": 23,
+  "thumbnail": "Unsplash search query keyword or product image URL",
+  "source": "amazon",
+  "link": "The clean original URL link found in the post",
+  "isBestSeller": false,
+  "isEditorPick": true,
+  "isFlashDeal": false
+}
+
+Categories MUST be one of: "electronics" | "fashion" | "home" | "grocery" | "gaming" | "mobiles" | "laptops".
+Source MUST be one of: "amazon" | "flipkart" | "croma" | "reliance" | "vijaysales" | "tatacliq" | "myntra" | "ajio". If not matching, map to "amazon".
+If prices are found, convert them to raw numbers (remove commas, currency symbols like ₹, Rs, etc.).
+If oldPrice is not explicitly specified, calculate it as 15-30% higher than newPrice based on discount if any.
+If no link is found, default to "https://www.amazon.in".
+If thumbnail is needed, select a high-quality product photo URL from Unsplash.
+
+Telegram Message:
+"${text}"
+
+Return ONLY valid JSON. No other conversational text.`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [prompt],
+        config: {
+          responseMimeType: "application/json"
+        }
+      });
+
+      const parsed = JSON.parse(response.text || "{}");
+      return parsed;
+    } catch (err: any) {
+      console.error("Gemini Telegram parse failed, using fallback regex:", err.message);
+      let source = "amazon";
+      if (text.toLowerCase().includes("flipkart")) source = "flipkart";
+      else if (text.toLowerCase().includes("croma")) source = "croma";
+      else if (text.toLowerCase().includes("reliance")) source = "reliance";
+      
+      let link = "https://www.amazon.in";
+      const linkMatch = text.match(/https?:\/\/[^\s]+/);
+      if (linkMatch) link = linkMatch[0];
+
+      return {
+        title: "Telegram Deal: " + (text.length > 50 ? text.substring(0, 50) + "..." : text),
+        category: "electronics",
+        oldPrice: 1000,
+        newPrice: 799,
+        discountPercent: 21,
+        thumbnail: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60",
+        source,
+        link,
+        isBestSeller: false,
+        isEditorPick: true,
+        isFlashDeal: false
+      };
+    }
+  }
+
+  // Get affiliate settings and click analytics
+  app.get("/api/affiliate/settings", (req: any, res: any) => {
+    try {
+      res.json(getAffiliateSettings());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Save affiliate store configurations
+  app.post("/api/affiliate/settings", (req: any, res: any) => {
+    const { stores } = req.body;
+    try {
+      const result = updateAffiliateSettings(stores);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Track affiliate click and return redirection link
+  app.post("/api/affiliate/click", (req: any, res: any) => {
+    const { store, productId, productTitle, category, url } = req.body;
+    try {
+      // Record click analytics
+      recordAffiliateClick({ store, productId, productTitle, category });
+
+      // Generate the secure affiliate URL
+      const settings = getAffiliateSettings();
+      const storeName = store ? store.toLowerCase() : "amazon";
+      const config = settings.stores[storeName];
+      
+      let affiliateUrl = url || "https://www.amazon.in";
+      if (config && config.enabled && config.tag) {
+        try {
+          const u = new URL(affiliateUrl);
+          u.searchParams.set(config.paramName || "tag", config.tag);
+          affiliateUrl = u.toString();
+        } catch {
+          const separator = affiliateUrl.includes("?") ? "&" : "?";
+          affiliateUrl = `${affiliateUrl}${separator}${config.paramName || "tag"}=${encodeURIComponent(config.tag)}`;
+        }
+      }
+      
+      res.json({ success: true, affiliateUrl });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message, affiliateUrl: url });
+    }
+  });
+
+  // Get Telegram webhook / channel configurations
+  app.get("/api/telegram/config", (req: any, res: any) => {
+    try {
+      res.json(getTelegramConfig());
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Save Telegram webhook / channel configurations
+  app.post("/api/telegram/config", (req: any, res: any) => {
+    const { config } = req.body;
+    try {
+      const result = updateTelegramConfig(config);
+      res.json(result);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Telegram incoming deals receiver webhook
+  app.post("/api/telegram/webhook", async (req: any, res: any) => {
+    try {
+      const update = req.body;
+      console.log("Telegram webhook update received:", JSON.stringify(update));
+      
+      // Support Telegram bot channel_post update
+      const message = update.channel_post || update.message || update;
+      const text = message.text || message.caption || "";
+      
+      if (!text) {
+        return res.json({ success: false, message: "No text content found in Telegram payload." });
+      }
+
+      // Parse with Gemini!
+      const parsedDeal = await parseTelegramPost(text);
+      
+      // Save directly to raw deals list so it shows in deals section
+      const createdDeal = addDealDirectly(parsedDeal);
+
+      // Append to the direct data_store file
+      const storePath = path.join(process.cwd(), "data_store.json");
+      if (fs.existsSync(storePath)) {
+        const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+        if (!raw.deals) raw.deals = [];
+        raw.deals.unshift(createdDeal);
+        fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), "utf-8");
+      }
+      
+      res.json({ success: true, message: "Deal parsed and added to BuyWise live deals section", deal: createdDeal });
+    } catch (err: any) {
+      console.error("Telegram webhook parse error:", err.message);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Admin Actions Override
   app.post("/api/gamification/admin/action", (req: any, res: any) => {
     const { action, payload } = req.body;
@@ -949,6 +1130,69 @@ Return a JSON object exactly matching this schema:
     } catch (e: any) {
       console.error("Gemini Extract Features Error:", e.message);
       res.status(500).json({ error: e.message || "Failed to extract features" });
+    }
+  });
+
+  app.post("/api/gemini/shopper-plan", async (req, res) => {
+    try {
+      const { query } = req.body;
+      const systemInstruction = `You are the BuyWise AI Personal Shopper. You receive natural language queries like "I have ₹30,000. Build me the best gaming setup."
+You must output ONLY valid JSON representing a complete shopping plan. Do NOT output markdown code blocks.
+The JSON must follow this exact structure:
+{
+  "title": "Title of the plan",
+  "totalBudget": number,
+  "totalCost": number,
+  "savings": number,
+  "summary": "A brief explanation of why you chose these products and how it fits the budget.",
+  "products": [
+    {
+      "id": "unique-string",
+      "name": "Product Name",
+      "brand": "Brand",
+      "price": number,
+      "originalPrice": number,
+      "store": "Amazon",
+      "rating": 4.5,
+      "imageUrl": "https://example.com/image.jpg",
+      "discount": "10% OFF",
+      "delivery": "Tomorrow",
+      "recommendation": "Why you picked this specific item",
+      "link": "https://amazon.in/dp/example"
+    }
+  ]
+}
+
+- Use realistic mock products if you don't have live internet access.
+- Make prices in INR (₹). Use numbers for prices (e.g. 5000, not "5,000").
+- Use placeholder images from Unsplash or clear image URLs.
+- Ensure the totalCost does not exceed the totalBudget (infer budget from the prompt if possible).
+- ALWAYS output ONLY raw JSON. No markdown. No text outside JSON.`;
+
+      let planJsonStr = "";
+      try {
+        const response = await getAi().models.generateContent({
+          model: "gemini-3.5-flash",
+          config: {
+            systemInstruction: systemInstruction,
+            temperature: 0.2,
+          },
+          contents: `User Query: "${query}"`,
+        });
+        planJsonStr = response.text?.trim() || "";
+        // Clean up markdown block if the model accidentally included it
+        if (planJsonStr.startsWith("```json")) {
+           planJsonStr = planJsonStr.replace(/^```json\n/, "").replace(/\n```$/, "");
+        }
+        const plan = JSON.parse(planJsonStr);
+        res.json(plan);
+      } catch (err: any) {
+        console.warn("Gemini Shopper Plan failed:", err.message);
+        res.status(500).json({ error: "Failed to generate plan" });
+      }
+    } catch (e: any) {
+      console.error("Shopper Plan Error:", e.message);
+      res.status(500).json({ error: e.message || "Failed to generate plan" });
     }
   });
 

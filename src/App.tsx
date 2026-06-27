@@ -13,15 +13,18 @@ import ThreeBackground from './components/ThreeBackground';
 import SupportChat from './components/SupportChat';
 import LoginModal from './components/LoginModal';
 import ScannerPage from './components/ScannerPage';
+import PersonalShopper from './components/PersonalShopper';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
+import { AffiliateProvider } from './contexts/AffiliateContext';
 
 export default function App() {
   return (
       <Router>
         <AuthProvider>
           <CurrencyProvider>
-          <div className="min-h-screen bg-[#050505] text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-white">
+            <AffiliateProvider>
+              <div className="min-h-screen bg-[#050505] text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-white">
             <ThreeBackground />
             <Navbar />
             <LoginModal />
@@ -41,6 +44,7 @@ export default function App() {
                 <Route path="/" element={<Home />} />
                 <Route path="/admin" element={<AdminPanel />} />
                 <Route path="/radar" element={<Radar />} />
+                <Route path="/shopper" element={<PersonalShopper />} />
                 <Route path="/travel" element={<Travel />} />
                 <Route path="/premium" element={<Premium />} />
                 <Route path="/deals" element={<DealsPage />} />
@@ -56,7 +60,8 @@ export default function App() {
 
             {/* Border Frame */}
             <div className="fixed inset-0 pointer-events-none z-50 border-[20px] border-black/40 hidden xl:block" />
-          </div>
+            </div>
+            </AffiliateProvider>
           </CurrencyProvider>
         </AuthProvider>
       </Router>

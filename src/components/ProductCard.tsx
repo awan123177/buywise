@@ -6,6 +6,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { doc, setDoc } from "../lib/firebase";
 import { db } from "../lib/firebase";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useAffiliate } from "../contexts/AffiliateContext";
 
 interface ProductCardProps {
   product?: {
@@ -32,6 +33,7 @@ export default function ProductCard({
 }: ProductCardProps) {
   const { user, openLogin } = useAuth();
   const { formatPrice: contextFormatPrice } = useCurrency();
+  const { triggerRedirect } = useAffiliate();
   const [isTracked, setIsTracked] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -255,20 +257,24 @@ export default function ProductCard({
           </div>
 
           <div className="flex gap-2">
-            <motion.a
-              href={getOrderLink()}
-              target="_blank"
-              rel="noopener noreferrer"
+            <motion.button
+              onClick={() => triggerRedirect({
+                url: getOrderLink(),
+                store: product.source || "amazon",
+                productId: product.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50),
+                productTitle: product.title,
+                category: "electronics"
+              })}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className={`w-full py-4 text-[11px] font-black tracking-[0.2em] uppercase transition-all text-center flex items-center justify-center gap-2 rounded-lg border ${
+              className={`w-full py-4 text-[11px] font-black tracking-[0.2em] uppercase transition-all text-center flex items-center justify-center gap-2 rounded-lg border cursor-pointer ${
                 isBest
                   ? "bg-[#FF3B30] text-white hover:bg-white hover:text-black border-[#FF3B30] shadow-[0_0_15px_rgba(255,59,48,0.5)]"
                   : "bg-white/5 text-white hover:bg-white hover:text-black border-white/10"
               }`}
             >
               ORDER_NOW <ExternalLink size={14} />
-            </motion.a>
+            </motion.button>
             <motion.button
               onClick={handleWishlist}
               whileHover={{ scale: 1.02 }}
@@ -301,6 +307,37 @@ export default function ProductCard({
                 <TrendingDown size={18} />
               )}
             </motion.button>
+          </div>
+
+          {/* Quick Store Checkout Grid */}
+          <div className="border-t border-white/10 pt-4 mt-2">
+            <div className="text-[9px] font-black tracking-widest text-white/40 uppercase mb-2">Buy directly on top platforms:</div>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { name: "Buy on Amazon", key: "amazon", baseUrl: "https://www.amazon.in/s?k=" },
+                { name: "Buy on Flipkart", key: "flipkart", baseUrl: "https://www.flipkart.com/search?q=" },
+                { name: "Buy on Croma", key: "croma", baseUrl: "https://www.croma.com/searchB?q=" },
+                { name: "Buy on Reliance", key: "reliance", baseUrl: "https://www.reliancedigital.in/search?q=" }
+              ].map((store) => {
+                const searchUrl = `${store.baseUrl}${encodeURIComponent(product.title)}`;
+                return (
+                  <button
+                    key={store.key}
+                    onClick={() => triggerRedirect({
+                      url: searchUrl,
+                      store: store.key,
+                      productId: `${product.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30)}_${store.key}`,
+                      productTitle: product.title,
+                      category: "electronics"
+                    })}
+                    className="py-2 px-3 bg-[#0a0a0a] border border-white/10 hover:border-[#FF3B30] hover:bg-white hover:text-black rounded text-[9px] font-black tracking-wider uppercase text-center transition-all flex items-center justify-between group cursor-pointer"
+                  >
+                    <span>{store.name}</span>
+                    <ExternalLink size={10} className="text-white/30 group-hover:text-black transition-colors" />
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
