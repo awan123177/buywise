@@ -386,12 +386,25 @@ export default function ScannerPage() {
                   
                   {/* Futuristic Overlay Elements */}
                   <div className="absolute inset-0 border-2 border-[#FF3B30]/30 pointer-events-none rounded-xl" />
-                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[35%] border-2 border-dashed border-[#FF3B30] shadow-[0_0_15px_rgba(255,59,48,0.3)] rounded pointer-events-none flex items-center justify-center">
+                  
+                  {/* Corner Brackets */}
+                  <div className="absolute top-[25%] left-[10%] w-8 h-8 border-t-4 border-l-4 border-[#FF3B30] shadow-[0_0_10px_rgba(255,59,48,0.5)] rounded-tl-lg pointer-events-none" />
+                  <div className="absolute top-[25%] right-[10%] w-8 h-8 border-t-4 border-r-4 border-[#FF3B30] shadow-[0_0_10px_rgba(255,59,48,0.5)] rounded-tr-lg pointer-events-none" />
+                  <div className="absolute bottom-[25%] left-[10%] w-8 h-8 border-b-4 border-l-4 border-[#FF3B30] shadow-[0_0_10px_rgba(255,59,48,0.5)] rounded-bl-lg pointer-events-none" />
+                  <div className="absolute bottom-[25%] right-[10%] w-8 h-8 border-b-4 border-r-4 border-[#FF3B30] shadow-[0_0_10px_rgba(255,59,48,0.5)] rounded-br-lg pointer-events-none" />
+
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[70%] h-[40%] border border-dashed border-[#FF3B30]/50 rounded pointer-events-none flex items-center justify-center bg-[#FF3B30]/5">
                     <span className="text-[10px] tracking-widest text-[#FF3B30] bg-black/80 px-2.5 py-1 font-mono uppercase font-black">ALIGN_BARCODE_HERE</span>
                   </div>
                   
                   {/* Neon Red Moving Scanline */}
-                  <div className="absolute left-0 right-0 h-0.5 bg-[#FF3B30] shadow-[0_0_8px_#FF3B30] animate-bounce pointer-events-none" style={{ animationDuration: '3.5s' }} />
+                  <div className="absolute left-[10%] right-[10%] h-[3px] bg-[#FF3B30] shadow-[0_0_12px_2px_#FF3B30] animate-[scan_3s_ease-in-out_infinite] pointer-events-none" style={{ top: '30%', animation: 'scanline 2s linear infinite alternate' }} />
+                  <style>{`
+                    @keyframes scanline {
+                      0% { top: 30%; }
+                      100% { top: 70%; }
+                    }
+                  `}</style>
                   
                   <div className="absolute top-4 left-4 bg-black/80 border border-white/10 rounded px-2.5 py-1 font-mono text-[9px] uppercase tracking-wider text-[#FF3B30] animate-pulse">
                     RECEIVING_LIVE_FEED_
@@ -550,14 +563,32 @@ export default function ScannerPage() {
 
           {/* User's Historic Scans Panel */}
           <div className="terminal-card bg-black/60 border border-white/10 p-6 rounded-2xl">
-            <h3 className="text-sm font-black text-white font-display tracking-widest uppercase mb-4 flex items-center gap-2 text-white/70">
-              <TrendingUp size={16} />
-              HISTORIC DEPLOYMENTS
-            </h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-sm font-black text-white font-display tracking-widest uppercase flex items-center gap-2 text-white/70">
+                <TrendingUp size={16} />
+                HISTORIC DEPLOYMENTS
+              </h3>
+              {scanHistory.length > 0 && (
+                <button
+                  onClick={() => setScanHistory([])}
+                  className="text-white/40 hover:text-[#FF3B30] text-[9px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1"
+                >
+                  <Trash2 size={10} /> CLEAR HISTORY
+                </button>
+              )}
+            </div>
             
             {scanHistory.length === 0 ? (
-              <div className="text-center py-6 text-white/20 font-mono text-[10px] uppercase tracking-wider">
-                No telemetry history registered.
+              <div className="text-center py-8 flex flex-col items-center">
+                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center text-white/20 mb-4">
+                  <TrendingUp size={20} />
+                </div>
+                <div className="text-white/40 font-mono text-[10px] uppercase tracking-wider">
+                  No telemetry history registered.
+                </div>
+                <div className="text-white/20 font-mono text-[9px] uppercase tracking-wider mt-1">
+                  Scanned items will appear here
+                </div>
               </div>
             ) : (
               <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
@@ -566,16 +597,24 @@ export default function ScannerPage() {
                     key={idx}
                     onClick={() => handleBarcodeFound(hist.barcode, "HISTORY")}
                     disabled={loading}
-                    className="w-full text-left bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-3 transition-all flex items-center gap-3 group"
+                    className="w-full text-left bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl p-3 transition-all flex items-center gap-3 group relative overflow-hidden"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/50 text-xs font-mono font-black uppercase">
-                      {idx + 1}
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-[#FF3B30] transition-colors" />
+                    <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/50 text-[10px] font-mono font-black uppercase overflow-hidden shrink-0">
+                      {hist.thumbnail ? (
+                        <img src={hist.thumbnail} alt={hist.productName} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
+                      ) : (
+                        idx + 1
+                      )}
                     </div>
                     <div className="flex-grow min-w-0">
-                      <h4 className="text-white font-bold text-xs truncate group-hover:text-brand transition-colors">{hist.productName}</h4>
-                      <p className="text-white/40 text-[9px] uppercase font-mono tracking-wider mt-0.5">
-                        {hist.barcode} • <span className="text-[#FF3B30]">₹{hist.lowestPrice?.toLocaleString() || 'N/A'}</span>
-                      </p>
+                      <h4 className="text-white font-bold text-xs truncate group-hover:text-[#FF3B30] transition-colors">{hist.productName}</h4>
+                      <div className="flex justify-between items-center mt-1">
+                        <p className="text-white/40 text-[9px] uppercase font-mono tracking-wider">
+                          {hist.barcode}
+                        </p>
+                        <span className="text-emerald-400 font-mono font-bold text-[10px]">₹{hist.lowestPrice?.toLocaleString() || 'N/A'}</span>
+                      </div>
                     </div>
                   </button>
                 ))}

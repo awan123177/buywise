@@ -558,13 +558,14 @@ export default function Home() {
       <section className="mb-20 px-4 md:px-12 relative z-20 max-w-[1400px] mx-auto">
         <div className="bg-[#111111]/80 backdrop-blur-md p-10 flex flex-col md:flex-row items-center gap-12 rounded-3xl border border-white/10 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF3B30]/5 blur-[80px] rounded-full pointer-events-none" />
-           <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
-              <span className="text-white/40 font-mono text-xl uppercase tracking-widest">AW</span>
+           <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
+              <img src="/founder.jpg" alt="Awan Warsi" className="w-full h-full object-cover object-top" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+              <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
            </div>
            <div>
               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FF3B30] mb-2">Founded By</div>
               <h2 className="text-3xl md:text-5xl font-black font-display text-white mb-2 tracking-tight">Awan Warsi</h2>
-              <h3 className="text-sm md:text-base font-medium text-white/50 mb-6 uppercase tracking-widest">Founder of BuyWise</h3>
+              <h3 className="text-sm md:text-base font-medium text-white/50 mb-6 uppercase tracking-widest">Founder, Owner & CEO of BuyWise</h3>
               <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-2xl">
                 Building an AI-powered shopping and travel platform that helps people save money through smart comparisons, affiliate deals, and intelligent recommendations.
               </p>
