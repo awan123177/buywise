@@ -137,8 +137,28 @@ export default function ProductPage() {
                   This product is currently at its <span className="text-green-400 font-bold">lowest price in 6 months</span>. 
                   Reviews highly praise the camera and build quality. <span className="text-yellow-400 font-bold">Recommendation: BUY NOW.</span>
                 </p>
+                <div className="mt-4 pt-4 border-t border-white/10 flex items-center gap-4">
+                  <div>
+                    <div className="text-[10px] text-white/40 uppercase tracking-widest font-black">AI Deal Score</div>
+                    <div className="text-2xl font-black text-white">96<span className="text-sm text-white/50">/100</span></div>
+                  </div>
+                  <div className="flex-1 flex gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star key={star} size={14} className="text-[#FF3B30] fill-[#FF3B30]" />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+
+          {/* Scam Detection */}
+          <div className="bg-gradient-to-r from-green-500/10 to-transparent border border-green-500/20 rounded-2xl p-4 flex items-center gap-3">
+             <ShieldCheck size={24} className="text-green-400 shrink-0" />
+             <div>
+               <div className="text-xs font-black text-green-400 uppercase tracking-widest">Safe Purchase Verified</div>
+               <div className="text-[10px] text-white/60">Seller is authorized. 0% fake reviews detected. Trusted return policy.</div>
+             </div>
           </div>
 
           {/* Specifications & Features */}
@@ -289,6 +309,25 @@ export default function ProductPage() {
               <div className="flex flex-col items-center text-center gap-2">
                 <Undo size={20} className="text-[#FF3B30]" />
                 <span className="text-[9px] uppercase font-bold text-white/50 tracking-widest">7 Day Return</span>
+              </div>
+            </div>
+
+            {/* Global Shopping / Import Compare */}
+            <div className="mt-8 pt-6 border-t border-white/10">
+              <h3 className="text-xs font-black uppercase tracking-widest text-white/60 mb-4">Global Prices (Import)</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between items-center text-[10px] uppercase font-bold">
+                  <span className="text-white flex items-center gap-2"><span className="text-sm">🇺🇸</span> USA</span>
+                  <span className="text-white/60">₹79,000 + ₹6,000 Tax</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] uppercase font-bold">
+                  <span className="text-white flex items-center gap-2"><span className="text-sm">🇦🇪</span> UAE</span>
+                  <span className="text-white/60">₹81,000 + ₹3,000 Tax</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] uppercase font-bold">
+                  <span className="text-white flex items-center gap-2"><span className="text-sm">🇯🇵</span> Japan</span>
+                  <span className="text-white/60">₹82,500 + ₹4,000 Tax</span>
+                </div>
               </div>
             </div>
 

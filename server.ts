@@ -74,7 +74,7 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (urlStr.includes("googleapis.com") && process.env.GEMINI_API_KEY) {
     const key = process.env.GEMINI_API_KEY.trim();
-    const isAccessToken = !key.startsWith("AIza");
+    const isAccessToken = key.startsWith("ya29.") || key.startsWith("AQ.");
     
     if (isAccessToken) {
       const url = new URL(urlStr);
@@ -141,7 +141,7 @@ function getAi() {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
   const key = process.env.GEMINI_API_KEY.trim();
-  const isAccessToken = !key.startsWith("AIza");
+  const isAccessToken = key.startsWith("ya29.") || key.startsWith("AQ.");
   
   const headers: Record<string, string> = {
     'User-Agent': 'aistudio-build',

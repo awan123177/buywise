@@ -476,6 +476,107 @@ export default function Radar() {
           </div>
         </section>
       </div>
+
+      {/* Smart Analytics and Live Radar */}
+      <div className="mt-16 border-t border-white/10 pt-16">
+        <h2 className="text-3xl font-black uppercase tracking-tight text-white mb-8">Smart Analytics & Live Radar</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+           <div className="bg-[#111111] border border-white/10 p-6 rounded-3xl relative overflow-hidden group">
+             <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/10 rounded-full blur-[30px] group-hover:bg-green-500/20 transition-colors" />
+             <div className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">Total Savings YTD</div>
+             <div className="text-4xl font-black text-white font-mono flex items-center gap-2">
+               <span className="text-green-400">₹</span>14,320
+             </div>
+             <div className="text-xs text-green-400 font-bold uppercase tracking-widest mt-4">+12% vs last year</div>
+           </div>
+           
+           <div className="bg-[#111111] border border-white/10 p-6 rounded-3xl relative overflow-hidden group">
+             <div className="absolute top-0 right-0 w-24 h-24 bg-[#FF3B30]/10 rounded-full blur-[30px] group-hover:bg-[#FF3B30]/20 transition-colors" />
+             <div className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">Total Purchases</div>
+             <div className="text-4xl font-black text-white font-mono">24</div>
+             <div className="text-xs text-white/50 font-bold uppercase tracking-widest mt-4">Across 6 platforms</div>
+           </div>
+
+           <div className="bg-[#111111] border border-white/10 p-6 rounded-3xl relative overflow-hidden group">
+             <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-[30px] group-hover:bg-blue-500/20 transition-colors" />
+             <div className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">Favorite Brand</div>
+             <div className="text-4xl font-black text-white font-mono">Apple</div>
+             <div className="text-xs text-white/50 font-bold uppercase tracking-widest mt-4">38% of your purchases</div>
+           </div>
+
+           <div className="bg-[#111111] border border-white/10 p-6 rounded-3xl relative overflow-hidden group">
+             <div className="absolute top-0 right-0 w-24 h-24 bg-yellow-500/10 rounded-full blur-[30px] group-hover:bg-yellow-500/20 transition-colors" />
+             <div className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-2">BuyWise Coins</div>
+             <div className="text-4xl font-black text-white font-mono flex items-center gap-2">
+               <span className="text-yellow-500">🪙</span>2,450
+             </div>
+             <div className="text-xs text-yellow-500 font-bold uppercase tracking-widest mt-4">Premium Status Active</div>
+           </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div>
+            <h3 className="text-xl font-black uppercase tracking-widest text-white mb-6">Trending Deals Globally</h3>
+            <div className="space-y-4">
+               {[1, 2, 3].map((i) => (
+                 <div key={i} className="flex items-center gap-4 bg-white/[0.02] border border-white/5 p-4 rounded-2xl hover:border-white/20 transition-colors cursor-pointer">
+                   <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center shrink-0">
+                     <Zap className="text-[#FF3B30]" size={24} />
+                   </div>
+                   <div className="flex-1">
+                     <h4 className="text-sm font-bold text-white mb-1">Samsung Galaxy S24 Ultra</h4>
+                     <div className="text-xs text-white/50 font-black uppercase tracking-widest">Amazon US &bull; -15% DROP</div>
+                   </div>
+                   <div className="text-right">
+                     <div className="text-lg font-black font-mono text-[#FF3B30]">$1,099</div>
+                     <div className="text-[9px] text-white/40 uppercase tracking-widest">Was $1,299</div>
+                   </div>
+                 </div>
+               ))}
+            </div>
+          </div>
+          <div>
+            <h3 className="text-xl font-black uppercase tracking-widest text-white mb-6">Shopping Calendar</h3>
+            <div className="bg-gradient-to-br from-[#111111] to-black border border-white/10 rounded-3xl p-6 relative overflow-hidden">
+               <div className="absolute -top-12 -right-12 text-[#FF3B30]/10">
+                 <BellRing size={150} />
+               </div>
+               <div className="relative z-10 space-y-6">
+                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                   <div>
+                     <div className="text-lg font-black text-white">Prime Day 2026</div>
+                     <div className="text-xs text-[#FF3B30] uppercase tracking-widest font-black mt-1">Amazon Global</div>
+                   </div>
+                   <div className="text-right">
+                     <div className="text-2xl font-black font-mono text-white">14:02:45</div>
+                     <div className="text-[9px] text-white/50 uppercase tracking-widest">Days : Hrs : Mins</div>
+                   </div>
+                 </div>
+                 <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                   <div>
+                     <div className="text-lg font-black text-white">Big Billion Days</div>
+                     <div className="text-xs text-blue-400 uppercase tracking-widest font-black mt-1">Flipkart</div>
+                   </div>
+                   <div className="text-right">
+                     <div className="text-xl font-black font-mono text-white/70">82 Days</div>
+                     <div className="text-[9px] text-white/50 uppercase tracking-widest">Remaining</div>
+                   </div>
+                 </div>
+                 <div className="flex items-center justify-between">
+                   <div>
+                     <div className="text-lg font-black text-white">Diwali Mega Sale</div>
+                     <div className="text-xs text-orange-400 uppercase tracking-widest font-black mt-1">All Platforms</div>
+                   </div>
+                   <div className="text-right">
+                     <div className="text-xl font-black font-mono text-white/70">120 Days</div>
+                     <div className="text-[9px] text-white/50 uppercase tracking-widest">Remaining</div>
+                   </div>
+                 </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

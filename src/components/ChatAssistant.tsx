@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, Send, X, Bot, Sparkles, ShieldCheck, Mic, MicOff, Volume2, VolumeX } from 'lucide-react';
+import { MessageSquare, Send, X, Bot, Sparkles, ShieldCheck, Mic, MicOff, Volume2, VolumeX, Image as ImageIcon } from 'lucide-react';
 import { getShoppingAdvice } from '../lib/gemini';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -241,8 +241,18 @@ export default function ChatAssistant({ results }: { results: any[] }) {
                     onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                     placeholder={user?.isPremium ? "Ask about products, compare..." : "LOCKED_"}
                     disabled={!user?.isPremium || isProcessing}
-                    className="w-full bg-[#111111] border border-[rgba(255,255,255,0.1)] rounded-xl pl-4 pr-12 py-3.5 text-white text-sm focus:outline-none focus:border-[#FF3B30]/50 placeholder:text-white/30 transition-all disabled:opacity-50"
+                    className="w-full bg-[#111111] border border-[rgba(255,255,255,0.1)] rounded-xl pl-10 pr-12 py-3.5 text-white text-sm focus:outline-none focus:border-[#FF3B30]/50 placeholder:text-white/30 transition-all disabled:opacity-50"
                   />
+                  <label className="absolute left-3 top-1/2 -translate-y-1/2 p-1 cursor-pointer text-white/40 hover:text-white transition-colors">
+                    <ImageIcon size={16} />
+                    <input type="file" className="hidden" accept="image/*" onChange={(e) => {
+                      if(e.target.files && e.target.files.length > 0) {
+                         const file = e.target.files[0];
+                         setInput(`Find this product from image: [${file.name}]`);
+                         // Simulated image upload functionality
+                      }
+                    }} disabled={!user?.isPremium || isProcessing} />
+                  </label>
                   <button
                     onClick={toggleListening}
                     disabled={!user?.isPremium || isProcessing}

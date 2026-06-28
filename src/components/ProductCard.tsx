@@ -304,6 +304,21 @@ export default function ProductCard({
           </div>
         )}
 
+        {/* AI Insights (Price Prediction & Cashback) */}
+        <div className="mt-2 space-y-1.5 border border-white/5 bg-white/[0.02] p-2.5 rounded-xl">
+           <div className="flex justify-between items-center">
+             <span className="text-[9px] font-black uppercase tracking-widest text-white/40">AI Prediction</span>
+             <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Wait 7 Days (85%)</span>
+           </div>
+           <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+             <div className="h-full bg-emerald-500 w-[85%] rounded-full" />
+           </div>
+           <div className="flex justify-between items-center pt-1 border-t border-white/5">
+             <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Smart Cashback</span>
+             <span className="text-[9px] font-black uppercase tracking-widest text-[#FFD700]">Earn ~2%</span>
+           </div>
+        </div>
+
         <div className="mt-auto pt-4 flex flex-col gap-6">
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-3">
