@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, Loader2, Sparkles, Diamond, ArrowRight, Camera, Mic, Volume2, Filter, SlidersHorizontal, ChevronDown, Check, Star, Tag, Zap, Scan } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -7,7 +7,6 @@ import { detectProduct, extractProductFeatures } from '../lib/gemini';
 import ProductCard from './ProductCard';
 import ProductSkeleton from './ProductSkeleton';
 import ChatAssistant from './ChatAssistant';
-import Product3DViewer from './Product3DViewer';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../contexts/CurrencyContext';
 
@@ -130,10 +129,28 @@ export default function Home() {
 
     setLoading(true);
     setSearchingStatus('Analyzing Market Data...');
+    
+    // Reset filters
+    setShowFilters(false);
+    setMinPrice('');
+    setMaxPrice('');
+    setSelectedBrands([]);
+    setSelectedRating(0);
+    setSelectedSpecs([]);
 
     try {
-      const detected = await detectProduct(activeQuery);
+      const detectedData = await detectProduct(activeQuery);
+      const detected = detectedData.result || activeQuery;
+      
       setSearchingStatus(`Deep Search: ${detected}`);
+
+      // Apply constraints from AI
+      if (detectedData.minPrice) setMinPrice(detectedData.minPrice);
+      if (detectedData.maxPrice) setMaxPrice(detectedData.maxPrice);
+      if (detectedData.brand) setSelectedBrands(prev => prev.includes(detectedData.brand) ? prev : [...prev, detectedData.brand]);
+      if (detectedData.minPrice || detectedData.maxPrice || detectedData.brand) {
+        setShowFilters(true);
+      }
 
       // Extract features dynamically in parallel
       const featuresPromise = extractProductFeatures(detected);
@@ -181,14 +198,6 @@ export default function Home() {
              })
              .catch(() => {});
          }
-
-         // Reset filters
-         setShowFilters(false);
-         setMinPrice('');
-         setMaxPrice('');
-         setSelectedBrands([]);
-         setSelectedRating(0);
-         setSelectedSpecs([]);
       } else {
         alert("No specific shopping matches found. Try refining the name.");
       }
@@ -237,8 +246,8 @@ export default function Home() {
   }, [filteredResults]);
 
   return (
-    <div className="min-h-screen pt-32 md:pt-44 pb-32 px-4 md:px-12 bg-transparent">
-      <div className="max-w-[1400px] mx-auto">
+    <div className="min-h-screen relative overflow-hidden bg-transparent">
+      <div className="pt-32 md:pt-44 pb-32 px-4 md:px-12 relative z-10 max-w-[1400px] mx-auto">
         {/* Balanced Hero Section */}
         <header className="mb-20 md:mb-32 relative">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-end">
@@ -247,12 +256,11 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, ease: "circOut" }}
             >
-              <h1 className="text-[12vw] sm:text-[9vw] leading-[0.8] tracking-[-0.06em] font-black uppercase font-display text-white relative z-10 w-[max-content] max-w-full">
+              <h1 className="text-[12vw] sm:text-[9vw] leading-[0.85] tracking-[-0.04em] font-black uppercase font-display text-white relative z-10 w-[max-content] max-w-full">
                 <span className="relative z-10">PRICE</span><br/>
-                <span className="text-[#FF3B30] relative z-10 inline-block">
+                <span className="text-[#FF3B30] relative z-10 inline-block drop-shadow-md">
                   CONTROL.
-                  <div className="absolute inset-x-0 bottom-0 h-1 bg-[#FF3B30]/50 rounded-full"></div>
-                  <div className="absolute inset-x-0 bottom-1 h-0.5 bg-gradient-to-r from-transparent via-white to-transparent opacity-30"></div>
+                  <div className="absolute inset-x-0 -bottom-2 h-1 bg-[#FF3B30]"></div>
                 </span>
               </h1>
             </motion.div>
@@ -261,27 +269,27 @@ export default function Home() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.8 }}
-              className="flex flex-col gap-6 lg:pb-4"
+              className="flex flex-col gap-8 lg:pb-4"
             >
               <p className="text-xl font-medium text-white max-w-md leading-snug">
                 The global standard for real-time market sourcing and competitive intelligence.
               </p>
-              <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
+              <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.4em] text-white/50">
                 <div className="w-12 h-[2px] bg-[#FF3B30]" />
                 AUTONOMOUS RETRIEVAL ACTIVE
               </div>
 
               {/* Public Live Savings Counter Odometer Widget */}
-              <div className="bg-gradient-to-r from-[#10b981]/10 to-transparent border-l-2 border-[#10b981] p-4 rounded-r-lg max-w-md mt-2 space-y-2">
-                <div className="text-[9px] uppercase font-black text-[#10b981] tracking-widest flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-[#10b981] rounded-full animate-ping"></span> LIVE CUMULATIVE USER SAVINGS
+              <div className="glass-card p-6 rounded-none border-l-2 border-l-[#00FF66] max-w-md mt-2 space-y-4 bg-transparent shadow-none border-y-0 border-r-0 border-white/0">
+                <div className="text-[9px] uppercase font-black text-[#00FF66] tracking-widest flex items-center gap-1.5">
+                  LIVE CUMULATIVE USER SAVINGS
                 </div>
-                <div className="text-2xl md:text-3xl font-black font-mono text-[#10b981] drop-shadow-[0_0_12px_rgba(16,185,129,0.35)]">
+                <div className="text-4xl md:text-5xl font-black font-mono text-[#00FF66]">
                   {formatPrice(savingsStats.totalSavings)}
                 </div>
 
                 {/* Live Activity Ticker with AnimatePresence */}
-                <div className="h-6 overflow-hidden flex items-center border-t border-white/5 pt-1 mt-1">
+                <div className="h-6 overflow-hidden flex items-center border-t border-white/10 pt-4 mt-2">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={eventIndex}
@@ -289,15 +297,15 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.3 }}
-                      className="text-[9px] sm:text-[10px] text-emerald-400 font-mono tracking-tight flex items-center gap-1.5 whitespace-nowrap truncate"
+                      className="text-[10px] text-[#00FF66] font-mono tracking-tight flex items-center gap-1.5 whitespace-nowrap truncate"
                     >
-                      <span className="text-emerald-500 font-black">✦</span> {REALTIME_EVENTS[eventIndex]}
+                      <span className="text-[#00FF66] font-black">✦</span> {REALTIME_EVENTS[eventIndex]}
                     </motion.div>
                   </AnimatePresence>
                 </div>
 
-                <div className="text-[9px] text-white/30">
-                  Comparing index prices across <span className="text-white/60 font-bold">{savingsStats.totalUsers.toLocaleString()}</span> active nodes.
+                <div className="text-[9px] text-white/40 mt-2">
+                  Comparing index prices across <span className="text-white font-bold">{savingsStats.totalUsers.toLocaleString()}</span> active nodes.
                 </div>
               </div>
 
@@ -306,7 +314,7 @@ export default function Home() {
                 href="https://t.me/buywiseofficial" 
                 target="_blank" 
                 rel="noreferrer"
-                className="mt-4 flex items-center gap-3 bg-[#0088cc]/10 hover:bg-[#0088cc]/20 border border-[#0088cc]/30 w-fit px-6 py-3 rounded-xl transition-all group"
+                className="mt-4 flex items-center gap-3 bg-[#0088cc]/10 hover:bg-[#0088cc]/20 border border-[#0088cc]/30 w-fit px-6 py-3 rounded-2xl transition-all group backdrop-blur-md"
               >
                 <div className="w-6 h-6 bg-[#0088cc] rounded-full flex items-center justify-center text-white">
                   <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M24 0l-6 22-8.129-7.239 7.802-8.234-10.45 6.67 7.239-2.083-4.103-11.114 13.641-5z"/></svg>
@@ -321,15 +329,15 @@ export default function Home() {
         </header>
 
         {/* Precision Search Console */}
-        <section className="mb-20 md:mb-40 relative">
+        <section className="mb-20 md:mb-40 relative z-20">
           <motion.div 
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className={`terminal-card flex flex-col md:flex-row items-stretch md:items-center p-0 overflow-hidden ${loading ? 'opacity-50' : ''} border-white/10 bg-transparent`}
+            className={`bg-[#111111] border border-transparent rounded-2xl flex flex-col md:flex-row items-stretch md:items-center p-0 overflow-hidden ${loading ? 'opacity-50' : ''}`}
           >
-            <div className="flex-grow flex items-center h-16 md:h-24 px-6 md:px-12 border-b md:border-b-0 md:border-r border-white/10 bg-white/5 backdrop-blur-md">
-              <span className="mr-4 md:mr-6 text-white/20 font-black tracking-tighter text-xl">#</span>
+            <div className="flex-grow flex items-center h-20 md:h-24 px-6 md:px-12 bg-transparent">
+              <span className="mr-4 md:mr-6 text-white/30 font-black tracking-tighter text-xl">#</span>
               <input
                 type="text"
                 value={query}
@@ -339,26 +347,26 @@ export default function Home() {
                 className="bg-transparent border-none outline-none text-white w-full text-lg md:text-2xl font-black placeholder:text-white/30 uppercase tracking-tighter"
               />
             </div>
-            <div className="flex h-16 md:h-24">
+            <div className="flex h-20 md:h-24">
               <button 
                 onClick={() => navigate('/scanner')}
-                className="w-16 md:w-24 flex items-center justify-center border-r border-white/10 text-white/70 transition-all hover:bg-white/10 hover:text-white"
+                className="w-16 md:w-24 flex items-center justify-center border-l border-white/5 text-white/50 transition-all hover:bg-white/5 hover:text-white"
                 title="Smart Barcode Scanner"
               >
                 <Scan size={24} className="w-5 h-5 md:w-6 md:h-6" />
               </button>
               <button 
                 onClick={startVoiceSearch}
-                className={`w-16 md:w-24 flex items-center justify-center border-r border-white/10 transition-all hover:bg-white/10 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/70'}`}
+                className={`w-16 md:w-24 flex items-center justify-center border-l border-white/5 transition-all hover:bg-white/5 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/50'}`}
               >
                 <Mic size={24} className="w-5 h-5 md:w-6 md:h-6" />
               </button>
               <button
                 onClick={() => handleSearch()}
                 disabled={loading}
-                className="btn-brutalist !border-none !rounded-none min-w-[140px] md:min-w-[200px] flex-grow md:flex-grow-0 h-full flex items-center justify-center text-[10px] md:text-xs"
+                className="btn-brutalist !border-none !rounded-none min-w-[140px] md:min-w-[200px] flex-grow md:flex-grow-0 h-full flex items-center justify-center text-[10px] md:text-xs !bg-[#FF3B30] !text-white hover:!bg-red-600 transition-all"
               >
-                {loading ? <Loader2 className="animate-spin w-5 h-5 md:w-6 md:h-6" /> : 'RETRIEVE DATA'}
+                {loading ? <Loader2 className="animate-spin w-5 h-5 md:w-6 md:h-6" /> : 'RETRIEVE'}
               </button>
             </div>
           </motion.div>
@@ -396,7 +404,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
             >
               {/* Filter Bar */}
-              <div className="mb-8 border border-white/10 bg-white/5 backdrop-blur-md rounded-xl overflow-hidden">
+              <div className="mb-8 glass-card overflow-hidden">
                 <button 
                   onClick={() => setShowFilters(!showFilters)}
                   className="w-full flex items-center justify-between p-4 hover:bg-white/5 transition-colors"
@@ -405,12 +413,12 @@ export default function Home() {
                     <SlidersHorizontal size={20} className={showFilters ? 'text-[#FF3B30]' : ''} />
                     <span className="font-black tracking-widest text-sm uppercase">Advanced Analysis Filters</span>
                     {filteredResults.length !== results.length && (
-                      <span className="ml-4 px-2 py-0.5 bg-[#FF3B30] text-white text-[10px] rounded-full font-black">
+                      <span className="ml-4 px-2 py-0.5 bg-[#FF3B30] text-black text-[10px] rounded-full font-black">
                         {filteredResults.length} / {results.length} MATCHES
                       </span>
                     )}
                   </div>
-                  <ChevronDown size={20} className={`text-white transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={20} className={`text-[#FF3B30] transition-transform ${showFilters ? 'rotate-180' : ''}`} />
                 </button>
                 
                 <AnimatePresence>
@@ -419,13 +427,13 @@ export default function Home() {
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      className="border-t border-white/10"
+                      className="border-t border-[rgba(255,255,255,0.08)]"
                     >
                       <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-8 text-white">
                         
                         {/* Price Filter */}
                         <div>
-                          <div className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                          <div className="text-[10px] font-black text-[#FF3B30] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                             <Tag size={12} /> Price Constraints
                           </div>
                           <div className="flex items-center gap-2">
@@ -434,30 +442,30 @@ export default function Home() {
                               placeholder="MIN" 
                               value={minPrice}
                               onChange={e => setMinPrice(e.target.value ? Number(e.target.value) : '')}
-                              className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs outline-none focus:border-[#FF3B30]"
+                              className="w-full bg-[#0a0a0a] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#FF3B30] focus:ring-1 focus:ring-[#FF3B30]/50 transition-all"
                             />
-                            <span className="text-white/40">-</span>
+                            <span className="text-[#FF3B30]/40">-</span>
                             <input 
                               type="number" 
                               placeholder="MAX" 
                               value={maxPrice}
                               onChange={e => setMaxPrice(e.target.value ? Number(e.target.value) : '')}
-                              className="w-full bg-black/40 border border-white/10 rounded px-3 py-2 text-xs outline-none focus:border-[#FF3B30]"
+                              className="w-full bg-[#0a0a0a] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-xs outline-none focus:border-[#FF3B30] focus:ring-1 focus:ring-[#FF3B30]/50 transition-all"
                             />
                           </div>
                         </div>
 
                         {/* Brand Filter */}
                         <div>
-                          <div className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                          <div className="text-[10px] font-black text-[#FF3B30] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                             <Filter size={12} /> Manufacturer Entity
                           </div>
-                          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+                          <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-[#111111]">
                             {uniqueBrands.map(brand => (
                               <button
                                 key={brand}
                                 onClick={() => setSelectedBrands(prev => prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand])}
-                                className={`px-2 py-1 text-[10px] font-black tracking-widest rounded border transition-colors ${selectedBrands.includes(brand) ? 'bg-[#FF3B30] border-[#FF3B30] text-white' : 'bg-transparent border-white/20 text-white/70 hover:border-white/50'}`}
+                                className={`px-3 py-1.5 text-[10px] font-black tracking-widest rounded-lg border transition-colors ${selectedBrands.includes(brand) ? 'bg-[#FF3B30]/20 border-[#FF3B30] text-[#FF3B30]' : 'bg-transparent border-[rgba(255,255,255,0.1)] text-white/70 hover:border-[#FF3B30]/50'}`}
                               >
                                 {brand}
                               </button>
@@ -467,7 +475,7 @@ export default function Home() {
 
                         {/* Rating Filter */}
                         <div>
-                          <div className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                          <div className="text-[10px] font-black text-[#FF3B30] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                             <Star size={12} /> Seller Reliability
                           </div>
                           <div className="flex flex-col gap-2">
@@ -477,8 +485,8 @@ export default function Home() {
                                 onClick={() => setSelectedRating(prev => prev === rating ? 0 : rating)}
                                 className={`flex items-center gap-2 text-xs transition-colors ${selectedRating === rating ? 'text-[#FF3B30] font-bold' : 'text-white/70 hover:text-white'}`}
                               >
-                                <div className={`w-3 h-3 border rounded-sm flex items-center justify-center ${selectedRating === rating ? 'bg-[#FF3B30] border-[#FF3B30]' : 'border-white/20'}`}>
-                                  {selectedRating === rating && <Check size={10} className="text-white" />}
+                                <div className={`w-4 h-4 border rounded-md flex items-center justify-center ${selectedRating === rating ? 'bg-[#FF3B30]/20 border-[#FF3B30]' : 'border-[rgba(255,255,255,0.2)]'}`}>
+                                  {selectedRating === rating && <Check size={12} className="text-[#FF3B30]" />}
                                 </div>
                                 {rating}+ Stars & Up
                               </button>
@@ -488,18 +496,18 @@ export default function Home() {
 
                         {/* AI Specs Filter */}
                         <div>
-                          <div className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                          <div className="text-[10px] font-black text-[#FF3B30] uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                             <Zap size={12} /> Extracted Specs
                           </div>
-                          <div className="flex flex-col gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
+                          <div className="flex flex-col gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-[#111111]">
                             {allSpecs.map(spec => (
                               <button
                                 key={spec}
                                 onClick={() => setSelectedSpecs(prev => prev.includes(spec) ? prev.filter(s => s !== spec) : [...prev, spec])}
                                 className={`flex items-center gap-2 text-[10px] text-left transition-colors uppercase font-bold tracking-wider ${selectedSpecs.includes(spec) ? 'text-[#FF3B30]' : 'text-white/70 hover:text-white'}`}
                               >
-                                <div className={`w-3 h-3 flex-shrink-0 border rounded-[2px] flex items-center justify-center ${selectedSpecs.includes(spec) ? 'bg-[#FF3B30] border-[#FF3B30]' : 'border-white/20'}`}>
-                                  {selectedSpecs.includes(spec) && <Check size={10} className="text-white" />}
+                                <div className={`w-4 h-4 flex-shrink-0 border rounded-md flex items-center justify-center ${selectedSpecs.includes(spec) ? 'bg-[#FF3B30]/20 border-[#FF3B30]' : 'border-[rgba(255,255,255,0.2)]'}`}>
+                                  {selectedSpecs.includes(spec) && <Check size={12} className="text-[#FF3B30]" />}
                                 </div>
                                 {spec}
                               </button>
@@ -514,7 +522,7 @@ export default function Home() {
               </div>
 
               {sortedFilteredResults.length === 0 ? (
-                <div className="py-20 text-center border dashed border-white/20 rounded-xl">
+                <div className="py-20 text-center border dashed border-[rgba(255,255,255,0.1)] rounded-xl">
                   <p className="text-white/40 uppercase font-black tracking-widest text-sm">NO RESULTS MATCH FILTERS</p>
                   <button onClick={() => {
                     setMinPrice(''); setMaxPrice(''); setSelectedBrands([]); setSelectedRating(0); setSelectedSpecs([]);
@@ -535,24 +543,82 @@ export default function Home() {
               key="empty"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="flex flex-col items-center justify-center py-40"
+              className="flex flex-col items-center justify-center py-40 relative z-10"
             >
-              <div className="p-12 border border-white/10 rounded-xl bg-white/5 backdrop-blur-md">
-                <p className="text-[11px] uppercase font-black tracking-[1em] text-white/30">AWAITING_MARKET_SIGNAL</p>
+              <div className="glass-card p-12 text-center">
+                <Sparkles className="w-12 h-12 text-[#FF3B30] mx-auto mb-4 opacity-50" />
+                <p className="text-[11px] uppercase font-black tracking-[1em] text-white/50">AWAITING_MARKET_SIGNAL</p>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
+      {/* Founder Section */}
+      <section className="mb-20 px-4 md:px-12 relative z-20 max-w-[1400px] mx-auto">
+        <div className="bg-[#111111]/80 backdrop-blur-md p-10 flex flex-col md:flex-row items-center gap-12 rounded-3xl border border-white/10 relative overflow-hidden">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF3B30]/5 blur-[80px] rounded-full pointer-events-none" />
+           <div className="w-32 h-32 md:w-48 md:h-48 rounded-full border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
+              <span className="text-white/40 font-mono text-xl uppercase tracking-widest">AW</span>
+           </div>
+           <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FF3B30] mb-2">Founded By</div>
+              <h2 className="text-3xl md:text-5xl font-black font-display text-white mb-2 tracking-tight">Awan Warsi</h2>
+              <h3 className="text-sm md:text-base font-medium text-white/50 mb-6 uppercase tracking-widest">Founder of BuyWise</h3>
+              <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-2xl">
+                Building an AI-powered shopping and travel platform that helps people save money through smart comparisons, affiliate deals, and intelligent recommendations.
+              </p>
+              
+              <button onClick={() => navigate('/founder')} className="mt-8 text-xs font-black uppercase tracking-widest text-white flex items-center gap-2 hover:text-[#FF3B30] transition-colors pb-1 w-fit">
+                 Read Founder Story <ArrowRight size={14} />
+              </button>
+           </div>
+        </div>
+      </section>
+
       <ChatAssistant results={sortedFilteredResults} />
 
-      <footer className="w-full h-auto py-4 md:h-16 md:py-0 border-t border-white/10 px-4 md:px-16 flex flex-col md:flex-row items-center justify-between text-[8px] md:text-[10px] text-white font-black uppercase tracking-[0.2em] bg-[#050505] relative z-[100] gap-2 md:gap-0 mt-20">
-        <div>&copy; 2024 BUY_WISE_INTEL_HUB.</div>
-        <div className="flex flex-wrap justify-center gap-4 md:gap-12 opacity-50 md:opacity-100">
-          <span className="flex items-center gap-2 md:gap-3"><div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-[#FF3B30] animate-pulse"></div> SYSTEM_READY</span>
-          <span className="text-white/30 hidden sm:inline-block">AES_256_ACTIVE</span>
-          <span className="text-white/30 hidden sm:inline-block">GATEWAY: INDIA_001</span>
+      <footer className="w-full border-t border-[rgba(255,255,255,0.05)] px-4 md:px-12 py-12 text-[11px] text-white/60 font-medium bg-[#0a0a0a] relative z-[100] mt-10">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div>
+            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">BuyWise</h4>
+            <p className="mb-4 text-white/50 leading-relaxed">AI-powered shopping and travel comparison platform. Never overpay again.</p>
+            <div className="flex items-center gap-2 text-[#FF3B30] text-[10px] font-black uppercase tracking-widest">
+              <div className="w-1.5 h-1.5 bg-[#FF3B30] rounded-full animate-pulse" /> SYSTEM ACTIVE
+            </div>
+          </div>
+          <div>
+            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Company</h4>
+            <div className="flex flex-col gap-2">
+              <a href="/about" onClick={(e) => { e.preventDefault(); navigate('/about'); }} className="hover:text-white transition-colors">About BuyWise</a>
+              <a href="/founder" onClick={(e) => { e.preventDefault(); navigate('/founder'); }} className="hover:text-white transition-colors">Founder (Awan Warsi)</a>
+              <a href="/careers" onClick={(e) => { e.preventDefault(); navigate('/careers'); }} className="hover:text-white transition-colors">Careers</a>
+              <a href="/press" onClick={(e) => { e.preventDefault(); navigate('/press'); }} className="hover:text-white transition-colors">Press & Media</a>
+              <a href="/contact" onClick={(e) => { e.preventDefault(); navigate('/contact'); }} className="hover:text-white transition-colors">Contact Us</a>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Legal</h4>
+            <div className="flex flex-col gap-2">
+              <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate('/privacy'); }} className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/terms" onClick={(e) => { e.preventDefault(); navigate('/terms'); }} className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="/disclaimer" onClick={(e) => { e.preventDefault(); navigate('/disclaimer'); }} className="hover:text-white transition-colors">Disclaimer</a>
+              <a href="/faq" onClick={(e) => { e.preventDefault(); navigate('/faq'); }} className="hover:text-white transition-colors">FAQ</a>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Connect</h4>
+            <div className="flex flex-col gap-2">
+              <a href="https://instagram.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Instagram</a>
+              <a href="https://linkedin.com/company/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">LinkedIn</a>
+              <a href="https://t.me/buywiseofficial" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Telegram</a>
+              <a href="https://youtube.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">YouTube</a>
+              <a href="https://x.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">X (Twitter)</a>
+            </div>
+          </div>
+        </div>
+        <div className="max-w-[1400px] mx-auto mt-12 pt-6 border-t border-[rgba(255,255,255,0.05)] text-center text-[10px] text-white/40 uppercase tracking-widest">
+          &copy; {new Date().getFullYear()} BUYWISE. ALL RIGHTS RESERVED.
         </div>
       </footer>
     </div>

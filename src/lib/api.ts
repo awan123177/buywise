@@ -56,6 +56,26 @@ export async function triggerDailyCheckIn() {
 }
 
 // 3. Log a Product Search to earn coins and check achievements
+export async function spinWheelDaily() {
+  try {
+    const response = await api.post("/gamification/spin");
+    return response.data;
+  } catch (error) {
+    console.error("Failed to spin wheel", error);
+    throw error;
+  }
+}
+
+export async function submitMission(missionId: string) {
+  try {
+    const response = await api.post("/gamification/mission", { missionId });
+    return response.data;
+  } catch (error) {
+    console.error("Failed to complete mission", error);
+    throw error;
+  }
+}
+
 export async function logSearchAction(queryText: string) {
   try {
     const response = await api.post("/gamification/search", { query: queryText });

@@ -9,23 +9,39 @@ import Travel from './components/Travel';
 import Premium from './components/Premium';
 import DealsPage from './components/DealsPage';
 import RewardsHub from './components/RewardsHub';
-import ThreeBackground from './components/ThreeBackground';
 import SupportChat from './components/SupportChat';
 import LoginModal from './components/LoginModal';
 import ScannerPage from './components/ScannerPage';
+import ProductPage from './components/ProductPage';
 import PersonalShopper from './components/PersonalShopper';
+import SmartNotifications from './components/SmartNotifications';
+import StaticPage from './components/StaticPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { AffiliateProvider } from './contexts/AffiliateContext';
 
 export default function App() {
   return (
+    <>
+      <script type="application/ld+json">
+        {JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Organization",
+          "name": "BuyWise",
+          "url": "https://buywiser.store",
+          "description": "AI-powered shopping and travel comparison platform.",
+          "founder": {
+            "@type": "Person",
+            "name": "Awan Warsi",
+            "jobTitle": "Founder"
+          }
+        })}
+      </script>
       <Router>
         <AuthProvider>
           <CurrencyProvider>
             <AffiliateProvider>
-              <div className="min-h-screen bg-[#050505] text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-white">
-            <ThreeBackground />
+              <div className="min-h-screen bg-transparent text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-black">
             <Navbar />
             <LoginModal />
             <Toaster 
@@ -49,20 +65,19 @@ export default function App() {
                 <Route path="/deals" element={<DealsPage />} />
                 <Route path="/rewards" element={<RewardsHub />} />
                 <Route path="/scanner" element={<ScannerPage />} />
+                <Route path="/product/:id" element={<ProductPage />} />
                 <Route path="/ref/:code" element={<Home />} />
-                {/* Backward compatibility */}
                 <Route path="/wishlist" element={<Radar />} />
+                <Route path="/:pageId" element={<StaticPage />} />
               </Routes>
             </main>
             
             <SupportChat />
-
-            {/* Border Frame */}
-            <div className="fixed inset-0 pointer-events-none z-50 border-[20px] border-black/40 hidden xl:block" />
             </div>
             </AffiliateProvider>
           </CurrencyProvider>
         </AuthProvider>
       </Router>
+    </>
   );
 }

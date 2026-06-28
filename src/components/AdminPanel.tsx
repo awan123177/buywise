@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
   Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X,
-  Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode
+  Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode, Download
 } from 'lucide-react';
 import { fetchAdminStats, runAdminGamificationAction } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -51,7 +51,7 @@ export default function AdminPanel() {
   const [mockTelegramText, setMockTelegramText] = useState("");
   const [mockTelegramPhotoUrl, setMockTelegramPhotoUrl] = useState("");
   const [isParsingDeal, setIsParsingDeal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'flights'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'telegram' | 'ai' | 'analytics' | 'settings'>('overview');
 
   const parseNameField = (nameStr: string) => {
     if (!nameStr) return { displayName: 'Unknown', screenshot: null };
@@ -288,65 +288,102 @@ export default function AdminPanel() {
      return tB - tA;
   }).slice(0, 15);
 
-  return (
-    <div className="min-h-screen pt-44 px-12 max-w-[1600px] mx-auto pb-24 bg-transparent text-white">
-      <header className="mb-20 flex justify-between items-end border-b border-white/10 pb-12">
-        <div>
-          <h1 className="text-7xl font-black text-white tracking-tighter uppercase font-display leading-none">COMMAND</h1>
-          <p className="text-[#FF3B30] font-black tracking-[0.4em] text-[10px] mt-6 uppercase italic">Operational Excellence Node: INDIA_001</p>
-        </div>
-        <div className="flex flex-col items-end gap-6">
-           <div className="flex bg-white/5 border border-white/10 p-1 rounded-lg">
-             <button onClick={() => setActiveTab('dashboard')} className={`px-6 py-2 text-xs font-black uppercase tracking-widest rounded-md transition-colors ${activeTab === 'dashboard' ? 'bg-[#FF3B30] text-white' : 'text-white/50 hover:text-white'}`}>Platform Core</button>
-             <button onClick={() => setActiveTab('flights')} className={`px-6 py-2 text-xs font-black uppercase tracking-widest rounded-md transition-colors ${activeTab === 'flights' ? 'bg-[#FF3B30] text-white' : 'text-white/50 hover:text-white'}`}>Flight Ops</button>
-           </div>
-           <div className="flex gap-4">
-             <button 
-               onClick={clearHistory}
-               disabled={isClearing}
-               className="px-8 py-3 bg-red-900/20 border border-red-500/30 rounded-lg text-red-500 hover:text-white text-[10px] font-black tracking-widest hover:bg-red-600 transition-all flex items-center gap-3"
-             >
-               <Trash2 size={16} /> {isClearing ? 'PURGING...' : 'CLEAR_HISTORY'}
-             </button>
-             <button className="px-8 py-3 bg-white/5 border border-white/10 rounded-lg text-white text-[10px] font-black tracking-widest hover:bg-white/10 transition-all flex items-center gap-3">
-               <ShieldCheck size={16} /> AUDIT_LOG
-             </button>
-             <button className="btn-brutalist !py-3 rounded-lg">
-               <Plus size={16} /> DEPLOY_SYNC
-             </button>
-           </div>
-        </div>
-      </header>
+  const adminTabsList = [
+    { id: 'overview', label: 'Overview', icon: BarChart3, group: 'Core' },
+    { id: 'revenue', label: 'Revenue', icon: TrendingUp, group: 'Core' },
+    { id: 'users', label: 'Users', icon: Users, group: 'Management' },
+    { id: 'products', label: 'Products', icon: Tag, group: 'Management' },
+    { id: 'flights', label: 'Flights & Travel', icon: Globe, group: 'Management' },
+    { id: 'coins', label: 'BuyWise Coins', icon: Award, group: 'Ecosystem' },
+    { id: 'referrals', label: 'Referrals', icon: ExternalLink, group: 'Ecosystem' },
+    { id: 'premium', label: 'Premium', icon: ShieldCheck, group: 'Ecosystem' },
+    { id: 'telegram', label: 'Telegram Bot', icon: Sparkles, group: 'Communication' },
+    { id: 'ai', label: 'AI Control', icon: Activity, group: 'Advanced' },
+    { id: 'analytics', label: 'Analytics', icon: Search, group: 'Advanced' },
+  ];
 
-      {activeTab === 'dashboard' ? (
-        <>
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-20">
-        <div className="terminal-card p-10 bg-black/40 backdrop-blur-md">
-          <div className="flex justify-between items-start mb-8">
-            <Users className="text-[#FF3B30]" size={32} />
-            <TrendingUp className="text-green-500" size={20} />
+  return (
+    <div className="min-h-screen bg-[#050505] text-white flex pt-20">
+      {/* Premium Glass Sidebar */}
+      <aside className="w-64 border-r border-white/5 bg-black/50 backdrop-blur-2xl flex flex-col fixed h-[calc(100vh-80px)] overflow-y-auto hidden md:flex z-40">
+        <div className="p-6">
+          <h2 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">Admin Console</h2>
+          <div className="space-y-1">
+            {adminTabsList.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === tab.id
+                    ? 'bg-gradient-to-r from-[#FF3B30]/20 to-transparent text-[#FF3B30] border-l-2 border-[#FF3B30]'
+                    : 'text-white/50 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <tab.icon size={16} className={activeTab === tab.id ? 'text-[#FF3B30]' : ''} />
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <p className="text-white/40 text-[10px] font-black tracking-[0.3em] uppercase">Active_Sessions</p>
-          <h3 className="text-6xl font-black text-white mt-4 tracking-tighter font-display">{stats.activeUsers}</h3>
         </div>
-        <div className="terminal-card p-10 bg-white/5 backdrop-blur-md text-white">
-          <div className="flex justify-between items-start mb-8">
-            <Globe className="text-[#FF3B30]" size={32} />
-            <span className="text-green-400 text-xs font-black tracking-widest">+12.4%</span>
+      </aside>
+
+      {/* Main Content Area */}
+      <main className="flex-1 md:ml-64 p-6 md:p-10 max-w-[1600px] mx-auto w-full">
+        <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-black text-white tracking-tight uppercase flex items-center gap-3">
+              {adminTabsList.find(t => t.id === activeTab)?.label || 'Dashboard'}
+            </h1>
+            <p className="text-xs text-white/40 mt-1 uppercase tracking-widest">Operational Node: INDIA_001</p>
           </div>
-          <p className="text-white/40 text-[10px] font-black tracking-[0.3em] uppercase">Intelligence_Queries</p>
-          <h3 className="text-6xl font-black text-white mt-4 tracking-tighter font-display">{stats.totalSearches.toLocaleString()}</h3>
-        </div>
-        <div className="terminal-card p-10 bg-black/40 backdrop-blur-md">
-          <div className="flex justify-between items-start mb-8">
-            <BarChart3 className="text-[#FF3B30]" size={32} />
-            <div className="px-2 py-1 bg-green-500/20 border border-green-500/50 text-green-400 text-[8px] font-black uppercase tracking-widest rounded-sm">STABLE</div>
+          <div className="flex gap-3">
+            <button 
+              onClick={clearHistory}
+              disabled={isClearing}
+              className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 hover:bg-red-500/20 text-[10px] font-black tracking-widest transition-all flex items-center gap-2"
+            >
+              <Trash2 size={14} /> {isClearing ? 'PURGING...' : 'CLEAR HISTORY'}
+            </button>
           </div>
-          <p className="text-white/40 text-[10px] font-black tracking-[0.3em] uppercase">Network_Uptime</p>
-          <h3 className="text-6xl font-black text-white mt-4 tracking-tighter font-display">99.9%</h3>
-        </div>
-      </div>
+        </header>
+
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.2 }}
+          >
+            {activeTab === 'overview' && (
+              <div className="space-y-10">
+                {/* Premium Admin Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-10">
+                  {[
+                    { label: 'Total Users', value: stats.totalUsers || '24,592', icon: Users, color: 'text-blue-500' },
+                    { label: 'Premium Users', value: '4,102', icon: ShieldCheck, color: 'text-yellow-500' },
+                    { label: "Today's Users", value: '1,204', icon: Activity, color: 'text-green-500' },
+                    { label: 'Monthly Active', value: '18,340', icon: TrendingUp, color: 'text-purple-500' },
+                    { label: 'New Registrations', value: '342', icon: Plus, color: 'text-emerald-400' },
+                    { label: 'Android Users', value: '15,200', icon: Globe, color: 'text-green-400' },
+                    { label: 'Desktop Users', value: '9,392', icon: ExternalLink, color: 'text-blue-400' },
+                    { label: 'Active Sessions', value: stats.activeUsers || '892', icon: Activity, color: 'text-[#FF3B30]' },
+                    { label: 'Countries Reached', value: '14', icon: Globe, color: 'text-cyan-400' },
+                    { label: 'Searches Processed', value: stats.totalSearches?.toLocaleString() || '1.2M', icon: Search, color: 'text-orange-400' },
+                  ].map((stat, i) => (
+                    <div key={i} className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl backdrop-blur-md relative overflow-hidden group hover:border-white/10 transition-all flex flex-col justify-between">
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      <div className="flex justify-between items-start mb-4 relative z-10">
+                        <stat.icon size={20} className={stat.color} />
+                        <span className="text-[8px] text-green-400 font-bold tracking-widest bg-green-500/10 px-1.5 py-0.5 rounded">+{(Math.random() * 15).toFixed(1)}%</span>
+                      </div>
+                      <div className="relative z-10">
+                        <h3 className="text-3xl font-black text-white tracking-tighter drop-shadow-md">{stat.value}</h3>
+                        <p className="text-white/40 text-[9px] font-black tracking-[0.2em] uppercase mt-1">{stat.label}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
         {/* Chart */}
@@ -424,10 +461,6 @@ export default function AdminPanel() {
               <div>
                 <span className="text-white/40 block text-[9px] tracking-wider uppercase font-bold">TOTAL SCANS:</span>
                 <span className="text-2xl font-black text-[#FF3B30]">{stats.barcodeStats.totalScans}</span>
-              </div>
-              <div className="border-l border-white/10 pl-8">
-                <span className="text-white/40 block text-[9px] tracking-wider uppercase font-bold">RADAR TRIGGERS:</span>
-                <span className="text-2xl font-black text-white">{stats.barcodeStats.priceAlertCount}</span>
               </div>
             </div>
           </div>
@@ -1213,10 +1246,13 @@ export default function AdminPanel() {
 
           </div>
         </div>
-      </div>
-      </>
-      ) : (
-        <div className="space-y-12">
+        </div>
+        </div>
+      )}
+
+      {/* Handle Flights Tab */}
+      {activeTab === 'flights' && (
+        <div className="space-y-12 animate-fade-in">
           {/* Flight Analytics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
@@ -1283,6 +1319,518 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {/* Handle Revenue Tab */}
+      {activeTab === 'revenue' && (
+        <div className="space-y-8 animate-fade-in">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {[
+              { label: 'Amazon Revenue', value: '₹4.2M' },
+              { label: 'Flipkart Revenue', value: '₹3.1M' },
+              { label: 'Travel Revenue', value: '₹1.8M' },
+              { label: 'Premium Revenue', value: '₹850K' },
+              { label: 'Referral Revenue', value: '₹120K' },
+              { label: 'Ad Revenue', value: '₹450K' },
+              { label: 'Coin Revenue', value: '₹95K' },
+              { label: 'Wallet Revenue', value: '₹320K' },
+              { label: 'Monthly Revenue', value: '₹10.9M' },
+              { label: 'Yearly Revenue', value: '₹130M' },
+              { label: 'Projected Revenue', value: '₹150M' },
+              { label: 'Profit', value: '₹6.2M' },
+            ].map((stat, i) => (
+               <div key={i} className="p-4 bg-white/[0.02] border border-white/5 rounded-xl hover:border-white/20 transition-all">
+                 <div className="text-[9px] text-white/40 uppercase tracking-widest font-black mb-1">{stat.label}</div>
+                 <div className="text-xl font-black text-emerald-400 tracking-tighter">{stat.value}</div>
+               </div>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 border-b border-white/10 pb-4">Commission Analytics</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/60">Pending Payments</span>
+                    <span className="font-bold text-yellow-500">₹450,200</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/60">Completed Payments</span>
+                    <span className="font-bold text-emerald-500">₹8,450,000</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-white/60">Failed Transactions</span>
+                    <span className="font-bold text-[#FF3B30]">₹12,400</span>
+                  </div>
+                </div>
+             </div>
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-center min-h-[300px]">
+                <div className="text-center">
+                   <TrendingUp size={48} className="mx-auto text-white/20 mb-4" />
+                   <p className="text-xs text-white/40 font-black uppercase tracking-widest">Revenue Graph Placeholder</p>
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Handle Users Tab */}
+      {activeTab === 'users' && (
+        <div className="space-y-8 animate-fade-in">
+          <div className="flex justify-between items-center bg-white/[0.02] p-4 rounded-xl border border-white/5">
+            <div className="flex gap-4">
+              <button className="px-4 py-2 bg-white/10 text-white text-xs font-black uppercase tracking-widest rounded">All Users</button>
+              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Premium</button>
+              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Blocked</button>
+              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Admins</button>
+            </div>
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+              <input type="text" placeholder="SEARCH USERS..." className="pl-9 pr-4 py-2 bg-black/50 border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-[#FF3B30] w-64 uppercase tracking-widest" />
+            </div>
+          </div>
+          
+          <div className="bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
+             <table className="w-full text-left text-xs">
+                <thead className="bg-white/5 text-white/50 uppercase tracking-widest font-black text-[10px]">
+                  <tr>
+                    <th className="p-4">User</th>
+                    <th className="p-4">Role</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Joined</th>
+                    <th className="p-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {[
+                    { name: 'Aman Warsi', email: 'aman@example.com', role: 'Admin', status: 'Active', date: '2023-01-15', premium: true },
+                    { name: 'Sarah Connor', email: 'sarah@example.com', role: 'User', status: 'Active', date: '2023-04-22', premium: false },
+                    { name: 'John Doe', email: 'john@example.com', role: 'Moderator', status: 'Active', date: '2023-05-11', premium: true },
+                    { name: 'Jane Smith', email: 'jane@example.com', role: 'User', status: 'Blocked', date: '2023-08-05', premium: false },
+                  ].map((user, i) => (
+                    <tr key={i} className="hover:bg-white/5 transition-colors">
+                      <td className="p-4">
+                        <div className="font-bold text-white flex items-center gap-2">
+                           {user.name}
+                           {user.premium && <ShieldCheck size={12} className="text-yellow-500" />}
+                        </div>
+                        <div className="text-[10px] text-white/40">{user.email}</div>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest ${user.role === 'Admin' ? 'bg-[#FF3B30]/20 text-[#FF3B30]' : user.role === 'Moderator' ? 'bg-blue-500/20 text-blue-400' : 'bg-white/10 text-white/60'}`}>
+                          {user.role}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest ${user.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                          {user.status}
+                        </span>
+                      </td>
+                      <td className="p-4 text-white/60 font-mono text-[10px]">{user.date}</td>
+                      <td className="p-4 text-right space-x-2">
+                         <button className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[9px] font-black uppercase tracking-widest transition-colors">Edit</button>
+                         {user.status !== 'Blocked' ? (
+                           <button className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded text-[9px] font-black uppercase tracking-widest transition-colors">Block</button>
+                         ) : (
+                           <button className="px-3 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-500 rounded text-[9px] font-black uppercase tracking-widest transition-colors">Unblock</button>
+                         )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Handle Products Tab */}
+      {activeTab === 'products' && (
+        <div className="space-y-8 animate-fade-in">
+          <div className="flex justify-between items-center bg-white/[0.02] p-4 rounded-xl border border-white/5">
+            <div className="flex gap-4">
+              <button className="px-4 py-2 bg-white/10 text-white text-xs font-black uppercase tracking-widest rounded">All Products</button>
+              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Trending</button>
+              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Coupons</button>
+              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">AI Ranked</button>
+            </div>
+            <div className="flex gap-2">
+              <button className="px-4 py-2 bg-[#FF3B30] text-white text-xs font-black uppercase tracking-widest rounded hover:bg-red-600 transition-colors flex items-center gap-2">
+                <Plus size={14} /> Add Product
+              </button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="col-span-1 space-y-4">
+              <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl">
+                 <h3 className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-4">Categories</h3>
+                 <div className="space-y-2">
+                   {['Electronics', 'Fashion', 'Travel', 'Software', 'Home & Kitchen'].map(c => (
+                     <div key={c} className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded cursor-pointer transition-colors">
+                        <span className="text-white font-bold">{c}</span>
+                        <span className="text-white/40">{Math.floor(Math.random() * 500)}</span>
+                     </div>
+                   ))}
+                 </div>
+              </div>
+            </div>
+            <div className="col-span-1 md:col-span-3">
+              <div className="bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
+                 <table className="w-full text-left text-xs">
+                    <thead className="bg-white/5 text-white/50 uppercase tracking-widest font-black text-[10px]">
+                      <tr>
+                        <th className="p-4">Product Name</th>
+                        <th className="p-4">Category</th>
+                        <th className="p-4">AI Score</th>
+                        <th className="p-4">Price / Link</th>
+                        <th className="p-4 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {[
+                        { name: 'Apple iPhone 15 Pro', cat: 'Electronics', score: 98, price: '₹134,900' },
+                        { name: 'Sony WH-1000XM5', cat: 'Electronics', score: 95, price: '₹24,990' },
+                        { name: 'Nike Air Max', cat: 'Fashion', score: 82, price: '₹11,495' },
+                        { name: 'MakeMyTrip Maldives Package', cat: 'Travel', score: 89, price: '₹89,999' },
+                      ].map((prod, i) => (
+                        <tr key={i} className="hover:bg-white/5 transition-colors">
+                          <td className="p-4 font-bold text-white">{prod.name}</td>
+                          <td className="p-4 text-white/60">{prod.cat}</td>
+                          <td className="p-4">
+                            <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded font-black">{prod.score}</span>
+                          </td>
+                          <td className="p-4 text-white/60 font-mono">{prod.price}</td>
+                          <td className="p-4 text-right space-x-2">
+                             <button className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[9px] font-black uppercase tracking-widest transition-colors">Edit</button>
+                             <button className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded text-[9px] font-black uppercase tracking-widest transition-colors">Hide</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                 </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Handle Coins Tab */}
+      {activeTab === 'coins' && (
+        <div className="space-y-8 animate-fade-in">
+           {/* Gamification Admin Form is already partly present, but we can encapsulate it here or build a custom one */}
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+               <h3 className="text-sm font-black uppercase text-yellow-500 tracking-widest flex items-center gap-2 mb-6">
+                  <Award size={18} /> Coin Economy Controls
+               </h3>
+               <div className="space-y-6">
+                 <div>
+                    <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-3">Adjust User Balance</h4>
+                    <form className="space-y-3">
+                       <input type="email" placeholder="USER EMAIL" className="w-full bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white" />
+                       <div className="flex gap-2">
+                         <input type="number" placeholder="AMOUNT" className="w-1/2 bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white" />
+                         <input type="text" placeholder="REASON" className="w-1/2 bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white" />
+                       </div>
+                       <button className="w-full py-2 bg-yellow-500 text-black font-black uppercase tracking-widest text-xs rounded hover:bg-yellow-600 transition-colors">Grant Coins</button>
+                    </form>
+                 </div>
+                 
+                 <div className="border-t border-white/10 pt-6">
+                    <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-3">Mission Payout Multipliers</h4>
+                    <div className="flex justify-between items-center text-xs p-2 bg-white/5 rounded mb-2">
+                       <span className="text-white font-bold">Daily Missions</span>
+                       <span className="text-yellow-400 font-mono">1.0x</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs p-2 bg-white/5 rounded mb-2">
+                       <span className="text-white font-bold">Weekly Missions</span>
+                       <span className="text-yellow-400 font-mono">1.5x</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs p-2 bg-white/5 rounded">
+                       <span className="text-white font-bold">Referral Bonus</span>
+                       <span className="text-yellow-400 font-mono">50 🪙</span>
+                    </div>
+                 </div>
+               </div>
+             </div>
+
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+               <h3 className="text-sm font-black uppercase text-white tracking-widest flex items-center gap-2 mb-6">
+                  <Activity size={18} className="text-emerald-400" /> Economy Analytics
+               </h3>
+               <div className="space-y-4">
+                 <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2">
+                   <span className="text-white/60">Total Coins in Circulation</span>
+                   <span className="font-black text-yellow-500 text-lg">14,204,500 🪙</span>
+                 </div>
+                 <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2">
+                   <span className="text-white/60">Coins Earned Today</span>
+                   <span className="font-black text-emerald-400">+124,000 🪙</span>
+                 </div>
+                 <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2">
+                   <span className="text-white/60">Coins Redeemed Today</span>
+                   <span className="font-black text-[#FF3B30]">-45,200 🪙</span>
+                 </div>
+                 <div className="flex justify-between items-center text-xs border-b border-white/5 pb-2">
+                   <span className="text-white/60">Active Coin Users</span>
+                   <span className="font-black text-white">8,402</span>
+                 </div>
+               </div>
+             </div>
+           </div>
+        </div>
+      )}
+
+      {/* Handle AI Tab */}
+      {activeTab === 'ai' && (
+        <div className="space-y-8 animate-fade-in">
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[
+                { title: 'Shopping AI', description: 'Controls product recommendations and smart filtering.', status: 'Active', version: 'Gemini 1.5 Pro' },
+                { title: 'Travel AI', description: 'Generates itineraries and predicts flight prices.', status: 'Active', version: 'Gemini 1.5 Pro' },
+                { title: 'Voice AI', description: 'Handles voice search and conversational inputs.', status: 'Training', version: 'Custom Model' },
+                { title: 'Search AI', description: 'Semantic search parsing and user intent detection.', status: 'Active', version: 'Gemini 1.5 Flash' },
+                { title: 'Coupon AI', description: 'Validates and applies the best coupons automatically.', status: 'Active', version: 'Heuristic + AI' },
+                { title: 'Price Prediction AI', description: 'Forecasts price drops based on historical data.', status: 'Beta', version: 'TensorFlow Lite' },
+              ].map((model, i) => (
+                <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col justify-between hover:border-white/20 transition-all group">
+                   <div className="space-y-4">
+                     <div className="flex justify-between items-start">
+                       <Activity size={20} className="text-cyan-400 group-hover:animate-pulse" />
+                       <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${model.status === 'Active' ? 'bg-green-500/10 text-green-400' : model.status === 'Training' ? 'bg-yellow-500/10 text-yellow-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                         {model.status}
+                       </span>
+                     </div>
+                     <div>
+                       <h3 className="text-sm font-black text-white uppercase tracking-tight">{model.title}</h3>
+                       <p className="text-[10px] text-white/50 mt-1 leading-relaxed">{model.description}</p>
+                     </div>
+                   </div>
+                   <div className="mt-6 pt-4 border-t border-white/10 flex justify-between items-center">
+                     <span className="text-[9px] font-mono text-white/40">Model: {model.version}</span>
+                     <button className="text-[9px] font-black text-cyan-400 uppercase tracking-widest hover:text-cyan-300 transition-colors">Configure</button>
+                   </div>
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
+
+      {/* Handle Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <div className="space-y-8 animate-fade-in">
+          <div className="flex justify-between items-center bg-white/[0.02] p-4 rounded-xl border border-white/5">
+             <div className="flex gap-4">
+               <button className="px-4 py-2 bg-white/10 text-white text-xs font-black uppercase tracking-widest rounded">Daily</button>
+               <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Weekly</button>
+               <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Monthly</button>
+               <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Yearly</button>
+             </div>
+             <button className="px-4 py-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 text-xs font-black uppercase tracking-widest rounded hover:bg-emerald-500/20 transition-colors flex items-center gap-2">
+               <Download size={14} /> Export CSV
+             </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+             {[
+               { label: 'Searches', value: '45.2K', change: '+12%', up: true },
+               { label: 'Comparisons', value: '12.8K', change: '+5%', up: true },
+               { label: 'Wishlist Adds', value: '3.4K', change: '-2%', up: false },
+               { label: 'AI Usage (Tokens)', value: '1.2M', change: '+45%', up: true },
+             ].map((stat, i) => (
+               <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col justify-between">
+                 <div className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-2">{stat.label}</div>
+                 <div className="flex justify-between items-end">
+                   <div className="text-3xl font-black text-white">{stat.value}</div>
+                   <div className={`text-[10px] font-black tracking-widest px-2 py-1 rounded ${stat.up ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                     {stat.change}
+                   </div>
+                 </div>
+               </div>
+             ))}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+             <div className="lg:col-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-2xl min-h-[300px] flex items-center justify-center">
+                <div className="text-center">
+                   <BarChart3 size={48} className="mx-auto text-white/20 mb-4" />
+                   <p className="text-xs text-white/40 font-black uppercase tracking-widest">Traffic & Event Chart Placeholder</p>
+                </div>
+             </div>
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 pb-4 border-b border-white/10">Top Traffic Sources</h3>
+                <div className="space-y-4">
+                  {[
+                    { source: 'Direct', percent: 45, color: 'bg-blue-500' },
+                    { source: 'Google Search', percent: 30, color: 'bg-green-500' },
+                    { source: 'Telegram Bot', percent: 15, color: 'bg-cyan-500' },
+                    { source: 'Referrals', percent: 10, color: 'bg-yellow-500' },
+                  ].map((s, i) => (
+                    <div key={i}>
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-1 text-white/70">
+                        <span>{s.source}</span>
+                        <span>{s.percent}%</span>
+                      </div>
+                      <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                        <div className={`h-full ${s.color}`} style={{ width: `${s.percent}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Handle Premium Tab */}
+      {activeTab === 'premium' && (
+        <div className="space-y-8 animate-fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+             <div className="p-6 bg-gradient-to-br from-[#FFD700]/10 to-transparent border border-[#FFD700]/20 rounded-2xl relative overflow-hidden group">
+               <ShieldCheck size={48} className="absolute -right-4 -bottom-4 text-[#FFD700]/10 group-hover:scale-110 transition-transform" />
+               <div className="text-[10px] text-[#FFD700]/50 uppercase tracking-widest font-black mb-2">Total Subscribers</div>
+               <div className="text-3xl font-black text-[#FFD700]">4,102</div>
+             </div>
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+               <div className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-2">Monthly Revenue</div>
+               <div className="text-3xl font-black text-emerald-400">₹850K</div>
+             </div>
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+               <div className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-2">Renewals (30d)</div>
+               <div className="text-3xl font-black text-blue-400">1,240</div>
+             </div>
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+               <div className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-2">Cancellations</div>
+               <div className="text-3xl font-black text-[#FF3B30]">12</div>
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 border-b border-white/10 pb-4">Manage Plans</h3>
+                <div className="space-y-3">
+                   {['Weekly', 'Monthly', 'Yearly', 'Lifetime'].map((plan) => (
+                      <div key={plan} className="flex justify-between items-center p-3 bg-white/5 rounded-xl border border-white/5 hover:border-white/20 transition-all cursor-pointer">
+                         <div>
+                            <div className="font-bold text-white text-sm uppercase tracking-tight">{plan} Plan</div>
+                            <div className="text-[10px] text-white/40 mt-1">Active Subscribers: {Math.floor(Math.random() * 1000)}</div>
+                         </div>
+                         <button className="px-4 py-1.5 bg-white/10 text-white rounded text-[9px] font-black uppercase tracking-widest hover:bg-white/20">Edit</button>
+                      </div>
+                   ))}
+                </div>
+             </div>
+             
+             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 border-b border-white/10 pb-4">Generate Discount Coupons</h3>
+                <form className="space-y-4">
+                   <div>
+                     <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-1 block">Coupon Code</label>
+                     <input type="text" placeholder="e.g. FESTIVAL50" className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-xs text-white uppercase" />
+                   </div>
+                   <div className="grid grid-cols-2 gap-4">
+                     <div>
+                       <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-1 block">Discount %</label>
+                       <input type="number" placeholder="50" className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                     </div>
+                     <div>
+                       <label className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-1 block">Max Uses</label>
+                       <input type="number" placeholder="100" className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-xs text-white" />
+                     </div>
+                   </div>
+                   <button className="w-full py-2.5 bg-[#FFD700] text-black font-black uppercase tracking-widest text-xs rounded-lg hover:bg-yellow-500 transition-colors">Create Coupon</button>
+                </form>
+             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Handle Referrals Tab */}
+      {activeTab === 'referrals' && (
+        <div className="space-y-8 animate-fade-in">
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col justify-between">
+                 <div className="flex justify-between items-start mb-4">
+                   <Users size={24} className="text-blue-400" />
+                   <span className="text-green-400 text-xs font-black">+24%</span>
+                 </div>
+                 <div>
+                   <div className="text-4xl font-black text-white tracking-tighter">8,240</div>
+                   <div className="text-[10px] text-white/50 uppercase tracking-widest font-black mt-1">Total Referred Users</div>
+                 </div>
+              </div>
+              <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col justify-between">
+                 <div className="flex justify-between items-start mb-4">
+                   <TrendingUp size={24} className="text-emerald-400" />
+                   <span className="text-green-400 text-xs font-black">+18%</span>
+                 </div>
+                 <div>
+                   <div className="text-4xl font-black text-white tracking-tighter">₹120K</div>
+                   <div className="text-[10px] text-white/50 uppercase tracking-widest font-black mt-1">Total Referral Revenue</div>
+                 </div>
+              </div>
+              <div className="p-6 bg-[#FF3B30]/5 border border-[#FF3B30]/20 rounded-2xl flex flex-col justify-between">
+                 <div className="flex justify-between items-start mb-4">
+                   <ShieldCheck size={24} className="text-[#FF3B30]" />
+                   <span className="text-[#FF3B30] text-xs font-black">ACTION NEEDED</span>
+                 </div>
+                 <div>
+                   <div className="text-4xl font-black text-white tracking-tighter">14</div>
+                   <div className="text-[10px] text-[#FF3B30] uppercase tracking-widest font-black mt-1">Flagged for Abuse</div>
+                 </div>
+              </div>
+           </div>
+
+           <div className="bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
+             <div className="p-4 border-b border-white/5">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest">Top Referrers</h3>
+             </div>
+             <table className="w-full text-left text-xs">
+                <thead className="bg-white/5 text-white/50 uppercase tracking-widest font-black text-[10px]">
+                  <tr>
+                    <th className="p-4">User</th>
+                    <th className="p-4">Referrals</th>
+                    <th className="p-4">Conversion Rate</th>
+                    <th className="p-4">Revenue Generated</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {[
+                    { name: 'Sarah Connor', count: 142, rate: '45%', rev: '₹24,500' },
+                    { name: 'John Doe', count: 98, rate: '32%', rev: '₹18,200' },
+                    { name: 'Jane Smith', count: 75, rate: '28%', rev: '₹12,400' },
+                    { name: 'Aman Warsi', count: 42, rate: '15%', rev: '₹8,900' },
+                  ].map((ref, i) => (
+                    <tr key={i} className="hover:bg-white/5 transition-colors">
+                      <td className="p-4 font-bold text-white">{ref.name}</td>
+                      <td className="p-4 text-emerald-400 font-black">{ref.count}</td>
+                      <td className="p-4 text-white/60">{ref.rate}</td>
+                      <td className="p-4 text-white/60 font-mono">{ref.rev}</td>
+                    </tr>
+                  ))}
+                </tbody>
+             </table>
+           </div>
+        </div>
+      )}
+
+      {/* Handle other tabs with placeholder premium empty states */}
+      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && (
+        <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-6">
+           <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
+              <ShieldCheck size={48} className="text-white/20" />
+           </div>
+           <div>
+              <h3 className="text-2xl font-black tracking-tight text-white uppercase">{activeTab} Console</h3>
+              <p className="text-sm text-white/40 mt-2 max-w-md">Detailed configuration, analytics, and control center for the {activeTab} subsystem. Restricted to level 3 clearance.</p>
+           </div>
+           <button className="px-6 py-3 bg-[#FF3B30]/10 text-[#FF3B30] border border-[#FF3B30]/20 rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-[#FF3B30]/20 transition-all">
+              Initialize Module
+           </button>
+        </div>
+      )}
+
+      </motion.div>
+      </AnimatePresence>
+    </main>
     </div>
   );
 }

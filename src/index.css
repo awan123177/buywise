@@ -7,65 +7,70 @@
   --font-display: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-brand: #FF3B30;
-  --color-brand-dark: #cc0000;
-  --color-brand-light: #ff6b63;
+  --color-brand: #ffffff;
+  --color-brand-dark: #e5e5e5;
+  --color-brand-light: #ffffff;
+  
+  --color-secondary: #8b8b8b;
+  --color-accent: #ffffff;
+  --color-bg: #000000;
+  --color-card: #0a0a0a;
 }
 
 @layer base {
   :root {
-    --brand: #FF3B30;
-    --brand-glow: rgba(255, 59, 48, 0.15);
+    --brand: #ffffff;
+    --brand-glow: rgba(255, 255, 255, 0.08);
   }
 
   html {
     scroll-behavior: smooth;
-    scrollbar-color: #222222 #050505;
+    scrollbar-color: #333 #000;
     scrollbar-width: thin;
   }
 
   /* Custom Sleek Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: #050505;
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #222222;
-    border-radius: 3px;
-    border: 1px solid #050505;
+    background: #222;
+    border-radius: 4px;
+    border: 2px solid #000;
     transition: background 0.2s ease;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #FF3B30;
+    background: #555;
   }
 
   body {
-    @apply antialiased text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-white font-sans relative;
-    background-color: #050505;
+    @apply antialiased text-[#ececec] selection:bg-white selection:text-black font-sans relative;
+    background-color: #000000;
   }
 }
 
 @layer components {
   .brand-text {
-    @apply text-[#FF3B30] font-display font-black tracking-tighter;
+    @apply text-white font-display font-medium tracking-tight;
   }
 
   .terminal-card {
-    @apply bg-[#111111]/60 backdrop-blur-xl border border-white/5 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] transition-all hover:-translate-y-2 hover:border-[#FF3B30]/30;
+    @apply bg-[#0a0a0a]/90 backdrop-blur-2xl border border-white/5 rounded-3xl shadow-[0_4px_24px_0_rgba(0,0,0,1)] transition-all duration-300 hover:border-white/10;
   }
 
   .glass-card {
-    @apply bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl;
+    @apply bg-[#0a0a0a]/70 backdrop-blur-3xl border border-[rgba(255,255,255,0.04)] rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.8)];
   }
 
   .btn-brutalist {
-    @apply bg-[#FF3B30] text-white border border-[#FF3B30]/50 rounded-lg px-8 py-4 font-black uppercase tracking-widest text-xs transition-all hover:bg-white hover:text-black hover:border-white active:translate-y-[2px];
+    @apply bg-white text-black border border-transparent rounded-2xl px-6 py-3.5 font-medium tracking-wide text-sm transition-all duration-300 hover:bg-white/90 hover:scale-[0.98] active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.1)];
   }
 
   .massive-title {
@@ -80,8 +85,8 @@
   
   .grid-lines-anim {
     background-image: 
-      linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+      linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 60px 60px;
     transform: perspective(500px) rotateX(60deg) scale(2) translateY(-100px);
     animation: gridMove 20s linear infinite;
@@ -91,7 +96,7 @@
     background: linear-gradient(
       to bottom,
       transparent 50%,
-      rgba(255, 59, 48, 0.1) 51%,
+      rgba(255, 255, 255, 0.1) 51%,
       transparent 52%
     );
     background-size: 100% 8px;

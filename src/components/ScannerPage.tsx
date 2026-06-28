@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Scan, Camera, Laptop, HelpCircle, Loader2, ArrowRight, 
   Trash2, RefreshCw, Smartphone, TrendingUp, AlertCircle, 
-  Bell, Check, ChevronRight, ShieldAlert, Award, FileUp, Keyboard, ExternalLink, Sparkles
+  Bell, Check, ChevronRight, ShieldAlert, Award, FileUp, Keyboard, ExternalLink, Sparkles, Flashlight, Lightbulb
 } from 'lucide-react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { scanBarcode, fetchBarcodeHistory } from '../lib/api';
@@ -36,6 +36,8 @@ interface ScanResult {
   shopping_results: CompetitorDeal[];
   recommendation: string;
   priceHistory: { date: string; price: number }[];
+  alternatives?: { name: string; price: string; reason: string }[];
+  coupons?: { code: string; discount: string; description: string }[];
   lowestPriceEver: number;
   highestPriceEver: number;
 }
@@ -65,9 +67,8 @@ export default function ScannerPage() {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [scanHistory, setScanHistory] = useState<any[]>([]);
   
-  // Price alert settings
-  const [targetPrice, setTargetPrice] = useState<number>(0);
-  const [isAlertSet, setIsAlertSet] = useState(false);
+  // Flashlight state
+  const [isFlashlightOn, setIsFlashlightOn] = useState(false);
   
   // Offline & Queuing state
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -203,6 +204,20 @@ export default function ScannerPage() {
       }
     }
     setIsScanning(false);
+    setIsFlashlightOn(false);
+  };
+
+  const toggleFlashlight = async () => {
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      try {
+        await html5QrCodeRef.current.applyVideoConstraints({
+          advanced: [{ torch: !isFlashlightOn } as any]
+        });
+        setIsFlashlightOn(!isFlashlightOn);
+      } catch (e) {
+        toast.error("Flashlight not supported on this device's active camera.");
+      }
+    }
   };
 
   // Process newly decoded barcode text
@@ -226,13 +241,11 @@ export default function ScannerPage() {
     // Online: Call Server API
     setLoading(true);
     setScanResult(null);
-    setIsAlertSet(false);
 
     try {
       const response = await scanBarcode(trimmed, format);
       if (response.success && response.data) {
         setScanResult(response.data);
-        setTargetPrice(Math.round(response.data.lowestPrice * 0.95)); // Default alert to 5% below lowest price
         if (response.coinsAwarded) {
           setCoinsReward(response.coinsAwarded);
           // Auto clear reward pop after 4s
@@ -266,14 +279,6 @@ export default function ScannerPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const setupPriceAlert = () => {
-    if (!scanResult) return;
-    setIsAlertSet(true);
-    toast.success(`Alert Configured! We will notify you instantly when ${scanResult.productName} falls below ₹${targetPrice.toLocaleString()}!`, {
-      icon: "🔔"
-    });
   };
 
   return (
@@ -406,7 +411,7 @@ export default function ScannerPage() {
                   <button 
                     onClick={startCamera}
                     disabled={loading}
-                    className="btn-brutalist !py-3.5 !px-8 text-xs font-black tracking-widest flex items-center gap-3"
+                    className="bg-[#FF3B30] text-white hover:bg-red-600 !py-3.5 !px-8 rounded-xl text-xs font-black tracking-widest flex items-center justify-center gap-3 transition-colors"
                   >
                     {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Camera size={16} />}
                     ACTIVATE INTERCEPT
@@ -421,6 +426,17 @@ export default function ScannerPage() {
             {/* Camera Controls & Status */}
             {isScanning && (
               <div className="mt-6 flex justify-center gap-4">
+                <button 
+                  onClick={toggleFlashlight}
+                  className={`border px-6 py-3 rounded-xl font-mono text-xs uppercase tracking-wider font-black transition-all flex items-center gap-2 ${
+                    isFlashlightOn 
+                      ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-500 hover:bg-yellow-500/30' 
+                      : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <Lightbulb size={14} className={isFlashlightOn ? "fill-yellow-500" : ""} />
+                  FLASHLIGHT {isFlashlightOn ? 'ON' : 'OFF'}
+                </button>
                 <button 
                   onClick={stopCamera}
                   className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 hover:border-red-500/50 text-red-500 px-6 py-3 rounded-xl font-mono text-xs uppercase tracking-wider font-black transition-all flex items-center gap-2"
@@ -465,13 +481,10 @@ export default function ScannerPage() {
           
           {/* Interactive Demo Sandbox */}
           <div className="terminal-card bg-black/60 border border-white/10 p-6 rounded-2xl">
-            <h3 className="text-sm font-black text-white font-display tracking-widest uppercase mb-4 flex items-center gap-2 text-[#FF3B30]">
+            <h3 className="text-sm font-black text-white font-display tracking-widest uppercase mb-4 flex items-center gap-2 text-white/50">
               <Sparkles size={16} />
-              SCAN SIMULATION DECK
+              BARCODE DECODING
             </h3>
-            <p className="text-white/40 text-[11px] uppercase tracking-wider font-mono mb-4">
-              Don't have a physical package nearby? Select an emulator seed product to mock high-fidelity barcode decoding:
-            </p>
             
             <div className="space-y-2.5">
               {DEMO_PRODUCTS.map((demo) => (
@@ -780,76 +793,8 @@ export default function ScannerPage() {
                 </div>
               </div>
 
-              {/* Card 4: Price Drop Alert Setter */}
-              <div className="lg:col-span-1 terminal-card bg-black/60 border border-white/10 p-6 md:p-8 rounded-2xl flex flex-col justify-between">
-                <div>
-                  <h3 className="text-lg font-black text-white font-display tracking-wide uppercase mb-3 flex items-center gap-3">
-                    <Bell size={20} className="text-[#FF3B30]" />
-                    PRICE RADAR LOCK
-                  </h3>
-                  <p className="text-white/40 text-xs leading-relaxed mb-6">
-                    Configure a laser-precise price radar lock. BuyWise will track competitor pricing hourly and dispatch push notifications the second it hits your target threshhold.
-                  </p>
+              {/* Card 4: Price Drop Alert Setter (Removed) */}
 
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-white/40 text-[10px] font-mono uppercase tracking-wider block mb-2">TARGET PROBE PRICE (INR):</label>
-                      <div className="relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 font-mono text-sm">₹</span>
-                        <input 
-                          type="number"
-                          value={targetPrice}
-                          onChange={(e) => setTargetPrice(Number(e.target.value))}
-                          className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white font-mono text-sm tracking-wider focus:border-brand focus:bg-white/10 outline-none transition-all"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="bg-white/5 border border-white/5 rounded-xl p-3 flex justify-between text-[11px] font-mono">
-                      <span className="text-white/40 uppercase">CURRENT LOWEST:</span>
-                      <span className="text-[#FF3B30] font-bold">₹{scanResult.lowestPrice.toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  {isAlertSet ? (
-                    <div className="w-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 py-3.5 rounded-xl font-mono text-xs uppercase tracking-widest font-black flex items-center justify-center gap-2">
-                      <Check size={16} />
-                      RADAR LOCK ACTIVE
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={setupPriceAlert}
-                      className="w-full btn-brutalist !py-3.5 text-xs font-black tracking-widest flex items-center justify-center gap-2"
-                    >
-                      <Bell size={14} />
-                      LOCK TARGET VALUE
-                    </button>
-                  )}
-                </div>
-              </div>
-
-            </div>
-
-            {/* Card 5: AI Market Recommendation Terminal */}
-            <div className="terminal-card bg-[#111111]/80 border-2 border-brand/20 p-6 md:p-8 rounded-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-48 h-48 bg-[#FF3B30]/5 blur-[70px] rounded-full pointer-events-none" />
-              <div className="absolute -left-12 -bottom-12 w-32 h-32 bg-[#FF3B30]/5 blur-[50px] rounded-full pointer-events-none" />
-              
-              <div className="flex items-center gap-3.5 mb-4 border-b border-white/5 pb-4">
-                <div className="w-8 h-8 rounded-lg bg-[#FF3B30]/10 border border-[#FF3B30]/40 flex items-center justify-center text-[#FF3B30]">
-                  <Sparkles size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-white font-display tracking-widest uppercase">COGNITIVE RECOMMENDATION TERMINAL</h3>
-                  <p className="text-[10px] text-white/30 font-mono uppercase tracking-wider mt-0.5">Synthesized by Gemini-3.5-Flash Grounded Core</p>
-                </div>
-              </div>
-
-              <div className="text-white/80 font-mono text-xs md:text-sm leading-relaxed whitespace-pre-wrap pl-1">
-                {scanResult.recommendation}
-              </div>
             </div>
 
           </motion.div>

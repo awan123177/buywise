@@ -81,7 +81,7 @@ export default function SupportChat() {
         animate={{ scale: 1 }}
         whileHover={{ scale: 1.1 }}
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 md:bottom-12 md:right-12 w-14 h-14 md:w-16 md:h-16 bg-[#3081FF] rounded-full flex items-center justify-center text-white z-[200] group border border-white/20 shadow-xl"
+        className="fixed bottom-20 right-4 md:bottom-12 md:right-12 w-14 h-14 md:w-16 md:h-16 bg-[#0088cc] rounded-full flex items-center justify-center text-white z-[200] group border border-white/20 shadow-xl"
       >
         <MessageCircle size={24} className="relative z-[200] group-hover:scale-110 md:w-[28px] md:h-[28px] transition-transform" />
       </motion.button>
@@ -94,9 +94,9 @@ export default function SupportChat() {
             exit={{ opacity: 0, y: 50, scale: 0.9 }}
             className="fixed bottom-20 right-4 md:bottom-32 md:right-12 w-[calc(100vw-2rem)] md:w-[350px] h-[calc(100vh-8rem)] max-h-[500px] bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl flex flex-col z-[200] overflow-hidden shadow-2xl"
           >
-            <div className="p-4 bg-[#3081FF]/20 text-white flex items-center justify-between border-b border-[#3081FF]/30 shrink-0">
+            <div className="p-4 bg-[#0088cc]/20 text-white flex items-center justify-between border-b border-[#0088cc]/30 shrink-0">
               <div className="flex items-center gap-2">
-                <Bot size={18} className="text-[#3081FF] animate-pulse" />
+                <Bot size={18} className="text-[#0088cc] animate-pulse" />
                 <span className="font-black tracking-widest text-[10px] uppercase flex items-center gap-1.5">
                   BuyWise AI Support <Sparkles size={10} className="text-yellow-400" />
                 </span>
@@ -119,11 +119,11 @@ export default function SupportChat() {
                {messages.map((msg, i) => (
                  <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                    {msg.sender === 'bot' && (
-                     <div className="w-6 h-6 rounded-full bg-[#3081FF]/20 flex items-center justify-center mr-2 shrink-0">
-                       <Bot size={12} className="text-[#3081FF]" />
+                     <div className="w-6 h-6 rounded-full bg-[#0088cc]/20 flex items-center justify-center mr-2 shrink-0">
+                       <Bot size={12} className="text-[#0088cc]" />
                      </div>
                    )}
-                   <div className={`max-w-[85%] rounded-xl p-3 text-sm leading-relaxed ${msg.sender === 'user' ? 'bg-[#3081FF] text-white rounded-tr-sm font-medium' : 'bg-white/10 text-white/95 rounded-tl-sm'}`}>
+                   <div className={`max-w-[85%] rounded-xl p-3 text-sm leading-relaxed ${msg.sender === 'user' ? 'bg-[#0088cc] text-white rounded-tr-sm font-medium' : 'bg-white/10 text-white/95 rounded-tl-sm'}`}>
                      {msg.sender === 'bot' ? (
                        <div className="prose prose-invert prose-p:leading-snug prose-sm max-w-none">
                          <Markdown>{msg.text}</Markdown>
@@ -158,8 +158,8 @@ export default function SupportChat() {
 
                {isLoading && (
                  <div className="flex justify-start">
-                   <div className="w-6 h-6 rounded-full bg-[#3081FF]/20 flex items-center justify-center mr-2 shrink-0">
-                     <Bot size={12} className="text-[#3081FF] animate-spin" />
+                   <div className="w-6 h-6 rounded-full bg-[#0088cc]/20 flex items-center justify-center mr-2 shrink-0">
+                     <Bot size={12} className="text-[#0088cc] animate-spin" />
                    </div>
                    <div className="bg-white/5 rounded-xl p-3 text-xs text-white/40 flex items-center gap-2">
                      <Loader2 size={12} className="animate-spin" /> BuyWise intelligence analyzing...
@@ -213,13 +213,13 @@ export default function SupportChat() {
                    onChange={(e) => setInputValue(e.target.value)}
                    onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                    placeholder="Type your question..."
-                   className="flex-1 bg-white/10 border border-white/10 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-[#3081FF] transition-colors"
+                   className="flex-1 bg-white/10 border border-white/10 rounded-full px-4 py-2 text-sm text-white outline-none focus:border-[#0088cc] transition-colors"
                    disabled={isLoading}
                  />
                  <button 
                    onClick={() => handleSend()}
                    disabled={isLoading || !inputValue.trim()}
-                   className="w-10 h-10 bg-[#3081FF] rounded-full flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-[#3081FF]/80 transition-colors"
+                   className="w-10 h-10 bg-[#0088cc] rounded-full flex items-center justify-center text-white disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer hover:bg-[#0088cc]/80 transition-colors"
                  >
                    <Send size={16} className="ml-[-2px]" />
                  </button>

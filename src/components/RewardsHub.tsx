@@ -4,7 +4,7 @@ import {
   Award, Trophy, Users, Wallet, Calendar, Gift, 
   ChevronRight, Copy, CheckCircle, Search, HelpCircle, 
   ArrowUpRight, AlertTriangle, RefreshCw, BadgePercent,
-  Sparkles, Star, Target, ShieldAlert
+  Sparkles, Star, Target, ShieldAlert, Coins
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { 
@@ -12,7 +12,7 @@ import {
   fetchCoinTransactions, fetchAchievements, 
   submitReferral, fetchReferralsDashboard, 
   fetchLeaderboard, redeemCoinReward, logSocialShare, logReviewAction,
-  fetchReviews, submitUserReview, transferCoins
+  fetchReviews, submitUserReview, transferCoins, spinWheelDaily, submitMission
 } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -29,13 +29,15 @@ export default function RewardsHub() {
   const [loading, setLoading] = useState<boolean>(true);
   
   // Tab control
-  const [activeTab, setActiveTab] = useState<'wallet' | 'referrals' | 'achievements' | 'streaks' | 'leaderboard'>('wallet');
+  const [activeTab, setActiveTab] = useState<'wallet' | 'referrals' | 'missions' | 'achievements' | 'streaks' | 'leaderboard'>('wallet');
 
   // Input states
   const [refCodeInput, setRefCodeInput] = useState<string>('');
   const [claiming, setClaiming] = useState<string | null>(null);
   const [tippingUserId, setTippingUserId] = useState<string | null>(null);
   const [tipAmount, setTipAmount] = useState<string>('50');
+  const [isSpinning, setIsSpinning] = useState<boolean>(false);
+  const [spinResult, setSpinResult] = useState<{ reward: string, coinsAwarded: number, message: string } | null>(null);
 
   // Coins animation trigger
   const [particles, setParticles] = useState<any[]>([]);
@@ -69,6 +71,72 @@ export default function RewardsHub() {
       console.error("Failed to load gamification data:", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const triggerCoinAnimation = () => {
+    // 3D Coin explosion animation
+    const newParticles = Array.from({ length: 30 }).map((_, i) => ({
+      id: Date.now() + i,
+      x: (Math.random() - 0.5) * window.innerWidth,
+      y: Math.random() * -window.innerHeight,
+      rotation: Math.random() * 720 - 360,
+      scale: Math.random() * 0.5 + 0.5,
+      delay: Math.random() * 0.2
+    }));
+    setParticles(newParticles);
+    setTimeout(() => setParticles([]), 3000);
+  };
+
+  const handleSpin = async () => {
+    if (!user) return openLogin();
+    if (isSpinning) return;
+    
+    setIsSpinning(true);
+    setSpinResult(null);
+    try {
+      const result = await spinWheelDaily();
+      
+      // Simulate spinning delay
+      setTimeout(() => {
+        setIsSpinning(false);
+        if (result.success) {
+          setSpinResult(result);
+          if (result.coinsAwarded > 0) {
+            triggerCoinAnimation();
+            setProfile((prev: any) => ({ ...prev, coins: prev.coins + result.coinsAwarded, lastSpinDate: new Date().toISOString().split('T')[0] }));
+            toast.success(`You won ${result.coinsAwarded} Coins!`);
+          } else {
+             toast.success(result.message);
+          }
+        } else {
+          toast.error(result.message);
+        }
+      }, 3000); // 3 seconds spin animation
+      
+    } catch (error) {
+      setIsSpinning(false);
+      toast.error('Failed to spin. Try again later.');
+    }
+  };
+
+  const handleCompleteMission = async (missionId: string) => {
+    if (!user) return openLogin();
+    try {
+      const result = await submitMission(missionId);
+      if (result.success) {
+        toast.success(result.message);
+        triggerCoinAnimation();
+        setProfile((prev: any) => ({ 
+          ...prev, 
+          coins: prev.coins + result.coinsAwarded,
+          completedMissions: [...(prev.completedMissions || []), `${new Date().toISOString().split('T')[0]}_${missionId}`]
+        }));
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      toast.error('Failed to complete mission.');
     }
   };
 
@@ -265,18 +333,21 @@ export default function RewardsHub() {
         {particles.map((p) => (
           <motion.div
             key={p.id}
-            initial={{ y: p.y, x: p.x, rotate: 0, opacity: 1 }}
+            initial={{ y: p.y, x: p.x, rotateX: 0, rotateY: 0, opacity: 1, scale: p.scale }}
             animate={{ 
               y: window.innerHeight + 100, 
               x: p.x + (Math.random() * 200 - 100), 
-              rotate: p.rotation + 360,
+              rotateX: p.rotation * 2,
+              rotateY: p.rotation * 3,
               opacity: 0
             }}
             transition={{ duration: 2.5, ease: 'easeIn', delay: p.delay }}
-            className="fixed z-[1000] pointer-events-none select-none text-2xl"
-            style={{ scale: p.scale }}
+            className="fixed z-[1000] pointer-events-none select-none"
+            style={{ transformStyle: 'preserve-3d' }}
           >
-            🪙
+            <div className="w-10 h-10 rounded-full border-[3px] border-yellow-600 bg-gradient-to-br from-yellow-400 to-yellow-600 flex items-center justify-center shadow-[0_0_15px_rgba(250,204,21,0.6)]">
+              <span className="text-yellow-100 font-black text-xs">₹</span>
+            </div>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -302,6 +373,7 @@ export default function RewardsHub() {
           {[
             { id: 'wallet', label: '💼 WALLET', icon: Wallet },
             { id: 'referrals', label: '🤝 REFERRALS', icon: Users },
+            { id: 'missions', label: '🎯 MISSIONS', icon: Gift },
             { id: 'streaks', label: '🔥 STREAKS', icon: Calendar },
             { id: 'achievements', label: '🏆 MILITARY', icon: Award },
             { id: 'leaderboard', label: '🏅 RANKING', icon: Trophy },
@@ -341,11 +413,18 @@ export default function RewardsHub() {
                 <div className="text-xs uppercase font-black text-yellow-500/60 tracking-widest flex items-center gap-1.5">
                   <Wallet size={12} /> COINS BALANCE
                 </div>
-                {profile?.activeBadge && (
-                  <span className="text-[8px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded uppercase font-black tracking-widest font-mono">
-                    {profile.activeBadge}
-                  </span>
-                )}
+                <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {profile?.isPremium && (
+                    <span className="text-[8px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded uppercase font-black tracking-widest font-mono shadow-[0_0_8px_rgba(234,179,8,0.2)] animate-pulse">
+                      👑 PREMIUM
+                    </span>
+                  )}
+                  {profile?.activeBadge && (
+                    <span className="text-[8px] bg-blue-500/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded uppercase font-black tracking-widest font-mono">
+                      {profile.activeBadge}
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="text-4xl md:text-5xl font-black text-yellow-500 flex items-center gap-2 drop-shadow-[0_0_10px_rgba(234,179,8,0.2)]">
                 🪙 {profile?.coins || 0}
@@ -386,41 +465,46 @@ export default function RewardsHub() {
               </div>
             </div>
 
-            {/* Rewards Redemption Store */}
-            <div className="bg-[#111111]/40 p-5 rounded-2xl border border-white/5 space-y-4">
-              <div className="text-xs font-black uppercase text-[#FF3B30] tracking-widest flex items-center gap-1.5">
-                <Gift size={14} /> REDEMPTION STORE
+            {/* BuyWise Reward Store */}
+            <div className="bg-[#111111]/40 p-5 rounded-2xl border border-white/5 space-y-6 col-span-1 md:col-span-2">
+              <div className="text-sm font-black uppercase text-yellow-500 tracking-widest flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Gift size={18} /> BUYWISE REWARD STORE
+                </div>
+                <div className="text-[10px] text-white/40">SPEND COINS FOR REAL VALUE</div>
               </div>
-              <p className="text-[10px] text-white/40 leading-relaxed">
-                Unlock passes, discount sheets, and exclusive community badges.
-              </p>
 
-              <div className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
-                  { id: 'deal', label: '🔓 SECRET EXCLUSIVE DEAL', desc: 'Unlock access to hidden liquidation products', cost: 50, color: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' },
-                  { id: 'discount', label: '🎟️ 50% PREMIUM DISCOUNT', desc: 'Half-off on any premium license keys', cost: 100, color: 'bg-green-500/10 border-green-500/20 text-green-400' },
-                  { id: 'badge', label: '💎 COINS LEGEND CUSTOM BADGE', desc: 'Adds rare icon next to your name', cost: 150, color: 'bg-blue-500/10 border-blue-500/20 text-blue-400' },
-                  { id: 'trial', label: '👑 3-DAY PREMIUM TRIAL', desc: 'Full premium server access unlocked instantly', cost: 250, color: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' }
+                  { id: 'deal', label: '🔓 SECRET EXCLUSIVE DEAL', desc: 'Unlock access to hidden liquidation products.', cost: 50, color: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' },
+                  { id: 'discount', label: '🎟️ 50% PREMIUM DISCOUNT', desc: 'Half-off on any premium license keys.', cost: 100, color: 'bg-green-500/10 border-green-500/20 text-green-400' },
+                  { id: 'badge', label: '💎 COINS LEGEND BADGE', desc: 'Adds a legendary icon next to your name.', cost: 150, color: 'bg-blue-500/10 border-blue-500/20 text-blue-400' },
+                  { id: 'trial', label: '👑 3-DAY PREMIUM TRIAL', desc: 'Full premium server access unlocked instantly.', cost: 250, color: 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400' },
+                  { id: 'mystery', label: '🎁 MYSTERY BOX', desc: 'Could contain premium, badges, or massive coins.', cost: 200, color: 'bg-fuchsia-500/10 border-fuchsia-500/20 text-fuchsia-400' },
+                  { id: 'avatar', label: '🧑‍🚀 PREMIUM AVATAR', desc: 'Unlock an exclusive 3D animated avatar ring.', cost: 300, color: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400' }
                 ].map(item => {
                   const canRedeem = (profile?.coins || 0) >= item.cost;
                   return (
-                    <div key={item.id} className={`p-3 rounded-xl border flex justify-between items-center ${item.color}`}>
-                      <div className="space-y-0.5 flex-1 pr-3">
-                        <div className="text-[10px] font-black tracking-wider uppercase">{item.label}</div>
-                        <div className="text-[9px] text-white/40 leading-tight">{item.desc}</div>
+                    <div key={item.id} className={`p-4 rounded-xl border flex flex-col justify-between ${item.color} relative overflow-hidden group hover:border-opacity-50 transition-all`}>
+                      <div className="space-y-1 mb-4 z-10 relative">
+                        <div className="text-xs font-black tracking-wider uppercase drop-shadow-md">{item.label}</div>
+                        <div className="text-[10px] text-white/60 leading-relaxed font-medium">{item.desc}</div>
                       </div>
                       <motion.button
                         whileTap={{ scale: 0.95 }}
                         disabled={!canRedeem || claiming === item.id}
                         onClick={() => handleRedeem(item.id as any)}
-                        className={`px-3 py-1.5 rounded text-[9px] font-black tracking-wider uppercase cursor-pointer ${
+                        className={`w-full py-2 rounded text-[10px] font-black tracking-widest uppercase cursor-pointer z-10 transition-all ${
                           canRedeem 
-                            ? 'bg-yellow-500 text-black hover:bg-yellow-600 shadow-[0_0_10px_rgba(234,179,8,0.2)]' 
-                            : 'bg-white/5 text-white/30 border border-white/5 cursor-not-allowed'
+                            ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-black hover:from-yellow-500 hover:to-yellow-400 shadow-[0_0_15px_rgba(250,204,21,0.3)]' 
+                            : 'bg-black/40 text-white/30 border border-white/5 cursor-not-allowed'
                         }`}
                       >
-                        {claiming === item.id ? 'BUYING...' : `${item.cost} 🪙`}
+                        {claiming === item.id ? 'BUYING...' : `REDEEM FOR ${item.cost} 🪙`}
                       </motion.button>
+                      <div className="absolute -bottom-10 -right-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform duration-500">
+                         <Gift size={100} />
+                      </div>
                     </div>
                   );
                 })}
@@ -434,35 +518,80 @@ export default function RewardsHub() {
             
             {/* 1. WALLET DETAILS TAB */}
             {activeTab === 'wallet' && (
-              <div className="bg-white/[0.01] p-6 rounded-2xl border border-white/5 space-y-6">
-                <div>
-                  <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
-                    <Wallet size={18} className="text-[#FF3B30]" /> COINS TRANSACTION HISTORY
-                  </h3>
-                  <p className="text-xs text-white/40">Detailed ledger of your earnings and redemptions.</p>
+              <div className="space-y-6">
+                
+                {/* Spin to Win Section */}
+                <div className="bg-gradient-to-br from-[#FF3B30]/10 to-transparent p-6 rounded-2xl border border-[#FF3B30]/20 space-y-6 text-center relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                    <Gift size={120} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-white uppercase tracking-tight flex items-center justify-center gap-2">
+                      <Sparkles size={24} className="text-yellow-500" /> DAILY SPIN TO WIN
+                    </h3>
+                    <p className="text-sm text-white/60 mt-1">Spin the wheel every day for a chance to win up to 500 Coins or Premium!</p>
+                  </div>
+                  
+                  <div className="flex justify-center items-center py-4">
+                    <motion.div
+                      animate={{ rotate: isSpinning ? 3600 : 0 }}
+                      transition={{ duration: 3, ease: "circOut" }}
+                      className="w-32 h-32 rounded-full border-4 border-yellow-500 flex items-center justify-center bg-black/50 shadow-[0_0_30px_rgba(250,204,21,0.3)] relative"
+                    >
+                      <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,transparent_120deg,rgba(250,204,21,0.2)_120deg,rgba(250,204,21,0.2)_240deg,transparent_240deg)]" />
+                      <Coins size={48} className="text-yellow-500" />
+                    </motion.div>
+                  </div>
+                  
+                  {spinResult && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.8 }} 
+                      animate={{ opacity: 1, scale: 1 }} 
+                      className="text-lg font-bold text-yellow-400"
+                    >
+                      {spinResult.message}
+                    </motion.div>
+                  )}
+                  
+                  <button 
+                    onClick={handleSpin}
+                    disabled={isSpinning || profile?.lastSpinDate === new Date().toISOString().split('T')[0]}
+                    className="px-8 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-black uppercase tracking-widest text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(250,204,21,0.4)]"
+                  >
+                    {isSpinning ? 'SPINNING...' : profile?.lastSpinDate === new Date().toISOString().split('T')[0] ? 'COME BACK TOMORROW' : 'SPIN NOW'}
+                  </button>
                 </div>
 
-                {transactions.length === 0 ? (
-                  <div className="text-center py-16 text-white/30 text-xs">
-                    No transactions registered. Complete searches or log in daily to earn coins!
+                <div className="bg-white/[0.01] p-6 rounded-2xl border border-white/5 space-y-6">
+                  <div>
+                    <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+                      <Wallet size={18} className="text-[#FF3B30]" /> COINS TRANSACTION HISTORY
+                    </h3>
+                    <p className="text-xs text-white/40">Detailed ledger of your earnings and redemptions.</p>
                   </div>
-                ) : (
-                  <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                    {transactions.map((t) => (
-                      <div key={t.id} className="p-3 bg-white/[0.02] border border-white/5 rounded-lg flex justify-between items-center text-xs">
-                        <div>
-                          <div className="font-bold text-white/90">{t.reason}</div>
-                          <div className="text-[10px] text-white/40 font-mono mt-0.5">
-                            {new Date(t.timestamp).toLocaleDateString()} {new Date(t.timestamp).toLocaleTimeString()}
+
+                  {transactions.length === 0 ? (
+                    <div className="text-center py-16 text-white/30 text-xs">
+                      No transactions registered. Complete searches or log in daily to earn coins!
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                      {transactions.map((t) => (
+                        <div key={t.id} className="p-3 bg-white/[0.02] border border-white/5 rounded-lg flex justify-between items-center text-xs">
+                          <div>
+                            <div className="font-bold text-white/90">{t.reason}</div>
+                            <div className="text-[10px] text-white/40 font-mono mt-0.5">
+                              {new Date(t.timestamp).toLocaleDateString()} {new Date(t.timestamp).toLocaleTimeString()}
+                            </div>
+                          </div>
+                          <div className={`font-mono font-black ${t.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            {t.amount > 0 ? `+${t.amount}` : t.amount} 🪙
                           </div>
                         </div>
-                        <div className={`font-mono font-black ${t.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          {t.amount > 0 ? `+${t.amount}` : t.amount} 🪙
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -528,7 +657,25 @@ export default function RewardsHub() {
                 {/* Dashboard Stats */}
                 {referralStats && (
                   <div className="space-y-4">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-white">REFERRAL OVERVIEW</h3>
+                    <div className="flex justify-between items-end">
+                       <h3 className="text-xs font-black uppercase tracking-wider text-white">REFERRAL OVERVIEW</h3>
+                       {(() => {
+                         const count = referralStats.successful;
+                         let level = "Bronze";
+                         let color = "text-orange-400";
+                         if (count >= 50) { level = "Legend"; color = "text-purple-500 bg-purple-500/10"; }
+                         else if (count >= 25) { level = "Diamond"; color = "text-cyan-400 bg-cyan-400/10"; }
+                         else if (count >= 10) { level = "Platinum"; color = "text-slate-200 bg-slate-200/10"; }
+                         else if (count >= 5) { level = "Gold"; color = "text-yellow-400 bg-yellow-400/10"; }
+                         else if (count >= 1) { level = "Silver"; color = "text-gray-300 bg-gray-300/10"; }
+                         else { color = "text-orange-400 bg-orange-400/10"; }
+                         return (
+                           <div className={`px-3 py-1 rounded text-[10px] font-black uppercase tracking-widest ${color}`}>
+                             Level: {level}
+                           </div>
+                         )
+                       })()}
+                    </div>
                     
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                       {[
@@ -569,6 +716,104 @@ export default function RewardsHub() {
 
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* MISSIONS TAB */}
+            {activeTab === 'missions' && (
+              <div className="bg-white/[0.01] p-6 rounded-2xl border border-white/5 space-y-6">
+                <div>
+                  <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+                    <Target size={18} className="text-blue-500" /> MISSION CONTROL
+                  </h3>
+                  <p className="text-xs text-white/40">Complete daily, weekly, and monthly challenges to earn massive coin bounties.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Daily Missions */}
+                  <div className="space-y-4">
+                     <h4 className="font-black uppercase tracking-widest text-xs text-green-400">Daily Missions</h4>
+                     {[
+                       { id: 'daily_search', title: 'Compare 5 Products', reward: 20 },
+                       { id: 'daily_share', title: 'Share a Deal', reward: 15 },
+                       { id: 'daily_login', title: 'Login & Spin', reward: 10 }
+                     ].map(mission => {
+                       const isCompleted = profile?.completedMissions?.includes(`${new Date().toISOString().split('T')[0]}_${mission.id}`);
+                       return (
+                         <div key={mission.id} className="bg-black/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between h-32 relative overflow-hidden group hover:border-white/20 transition-all">
+                           {isCompleted && <div className="absolute inset-0 bg-green-500/10 pointer-events-none" />}
+                           <div>
+                             <h5 className="font-bold text-sm text-white">{mission.title}</h5>
+                             <div className="font-mono text-xs text-yellow-500 mt-1">+{mission.reward} 🪙</div>
+                           </div>
+                           <button 
+                             onClick={() => handleCompleteMission(mission.id)}
+                             disabled={isCompleted}
+                             className={`w-full py-2 text-[10px] font-black uppercase tracking-widest rounded ${isCompleted ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                           >
+                             {isCompleted ? 'CLAIMED' : 'CLAIM'}
+                           </button>
+                         </div>
+                       )
+                     })}
+                  </div>
+                  
+                  {/* Weekly Missions */}
+                  <div className="space-y-4">
+                     <h4 className="font-black uppercase tracking-widest text-xs text-blue-400">Weekly Missions</h4>
+                     {[
+                       { id: 'weekly_searches', title: '50 Comparisons', reward: 100 },
+                       { id: 'weekly_referrals', title: 'Refer 1 Friend', reward: 150 },
+                       { id: 'weekly_saves', title: 'Save ₹5000', reward: 100 }
+                     ].map(mission => {
+                       const isCompleted = profile?.completedMissions?.includes(`${new Date().toISOString().split('T')[0]}_${mission.id}`);
+                       return (
+                         <div key={mission.id} className="bg-black/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between h-32 relative overflow-hidden group hover:border-white/20 transition-all">
+                           {isCompleted && <div className="absolute inset-0 bg-blue-500/10 pointer-events-none" />}
+                           <div>
+                             <h5 className="font-bold text-sm text-white">{mission.title}</h5>
+                             <div className="font-mono text-xs text-yellow-500 mt-1">+{mission.reward} 🪙</div>
+                           </div>
+                           <button 
+                             onClick={() => handleCompleteMission(mission.id)}
+                             disabled={isCompleted}
+                             className={`w-full py-2 text-[10px] font-black uppercase tracking-widest rounded ${isCompleted ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                           >
+                             {isCompleted ? 'CLAIMED' : 'CLAIM'}
+                           </button>
+                         </div>
+                       )
+                     })}
+                  </div>
+
+                  {/* Monthly Missions */}
+                  <div className="space-y-4">
+                     <h4 className="font-black uppercase tracking-widest text-xs text-purple-400">Monthly Missions</h4>
+                     {[
+                       { id: 'monthly_streak', title: '20 Day Streak', reward: 500 },
+                       { id: 'monthly_referrals', title: 'Refer 5 Friends', reward: 1000 },
+                       { id: 'monthly_pro', title: 'Become Premium', reward: 500 }
+                     ].map(mission => {
+                       const isCompleted = profile?.completedMissions?.includes(`${new Date().toISOString().split('T')[0]}_${mission.id}`);
+                       return (
+                         <div key={mission.id} className="bg-black/40 border border-white/10 rounded-xl p-4 flex flex-col justify-between h-32 relative overflow-hidden group hover:border-white/20 transition-all">
+                           {isCompleted && <div className="absolute inset-0 bg-purple-500/10 pointer-events-none" />}
+                           <div>
+                             <h5 className="font-bold text-sm text-white">{mission.title}</h5>
+                             <div className="font-mono text-xs text-yellow-500 mt-1">+{mission.reward} 🪙</div>
+                           </div>
+                           <button 
+                             onClick={() => handleCompleteMission(mission.id)}
+                             disabled={isCompleted}
+                             className={`w-full py-2 text-[10px] font-black uppercase tracking-widest rounded ${isCompleted ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-white/10 hover:bg-white/20 text-white'}`}
+                           >
+                             {isCompleted ? 'CLAIMED' : 'CLAIM'}
+                           </button>
+                         </div>
+                       )
+                     })}
+                  </div>
+                </div>
               </div>
             )}
 
@@ -934,9 +1179,10 @@ export default function RewardsHub() {
                   reviews.map((rev, idx) => (
                     <motion.div 
                       key={rev.id} 
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: (idx % 10) * 0.05, duration: 0.3 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-20px" }}
+                      transition={{ delay: (idx % 10) * 0.08, duration: 0.5, ease: "easeOut" }}
                       className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-2 relative overflow-hidden group"
                     >
                       {/* Top row */}

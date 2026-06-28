@@ -1,6 +1,6 @@
 import toast from "react-hot-toast";
 
-export async function detectProduct(text: string): Promise<string> {
+export async function detectProduct(text: string): Promise<any> {
   try {
     const response = await fetch("/api/gemini/detect", {
       method: "POST",
@@ -11,7 +11,7 @@ export async function detectProduct(text: string): Promise<string> {
       throw new Error(`HTTP error ${response.status}`);
     }
     const data = await response.json();
-    return data.result || text;
+    return data;
   } catch (error: any) {
     const errorStr = (error?.message || error).toString();
     console.error("Detect Product Error:", errorStr);
@@ -21,7 +21,7 @@ export async function detectProduct(text: string): Promise<string> {
     } else {
       toast.error("AI Detection Error: " + errorStr);
     }
-    return text.substring(0, 100);
+    return { result: text.substring(0, 100), minPrice: null, maxPrice: null, brand: null };
   }
 }
 

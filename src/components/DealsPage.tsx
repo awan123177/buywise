@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Link } from 'react-router-dom';
 import { 
   Flame, TrendingUp, Sparkles, SlidersHorizontal, Bell, 
   Share2, Bookmark, CheckCircle, Smartphone, Globe, Clock, 
@@ -45,7 +46,6 @@ export default function DealsPage() {
 
   // Saved Deals list (local visual indicator)
   const [savedDeals, setSavedDeals] = useState<string[]>([]);
-  const [alertDeals, setAlertDeals] = useState<string[]>([]);
 
   // Fetch Deals
   const loadDeals = async () => {
@@ -144,22 +144,6 @@ export default function DealsPage() {
     } catch (e) {
       console.error(e);
       toast.error("Could not copy deal link.");
-    }
-  };
-
-  const handleSetAlert = (dealId: string, title: string) => {
-    if (!user) {
-      toast.error("Please sign in to enable alerts!");
-      openLogin();
-      return;
-    }
-
-    if (alertDeals.includes(dealId)) {
-      setAlertDeals(prev => prev.filter(id => id !== dealId));
-      toast.success("Price alerts disabled for this item");
-    } else {
-      setAlertDeals(prev => [...prev, dealId]);
-      toast.success(`Price Alert Set! We will ping you if "${title.substring(0, 20)}..." drops further! 🔔`);
     }
   };
 
@@ -346,69 +330,7 @@ export default function DealsPage() {
             </div>
           </div>
 
-          {/* Notifications Center */}
-          <div className="bg-gradient-to-b from-white/[0.03] to-transparent p-5 rounded-lg border border-white/5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-black uppercase tracking-widest text-[#FF3B30] flex items-center gap-2">
-                <Bell size={12} /> DEAL ALERTS
-              </h3>
-              <button 
-                onClick={handleToggleNotification}
-                className={`w-10 h-6 rounded-full p-0.5 transition-colors relative ${
-                  notificationsEnabled ? 'bg-green-500' : 'bg-white/10'
-                }`}
-              >
-                <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                  notificationsEnabled ? 'translate-x-4' : 'translate-x-0'
-                }`} />
-              </button>
-            </div>
-            
-            <p className="text-[10px] text-white/50 leading-relaxed">
-              Enable standard web and mobile alerts to receive pricing notifications instantly.
-            </p>
 
-            <AnimatePresence>
-              {notificationsEnabled && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: 'auto', opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="space-y-3 pt-2 border-t border-white/5 overflow-hidden text-xs"
-                >
-                  <div className="text-[10px] uppercase tracking-wider font-black text-white/40">Frequencies</div>
-                  
-                  {[
-                    { key: 'morning', label: '🌅 Morning Digest (9:00 AM)' },
-                    { key: 'afternoon', label: '☀️ Afternoon Flash (2:00 PM)' },
-                    { key: 'evening', label: '🌇 Evening Drop Alerts (8:00 PM)' }
-                  ].map(item => (
-                    <label key={item.key} className="flex items-center gap-2 cursor-pointer text-white/80 hover:text-white select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={notifPreferences[item.key as 'morning' | 'afternoon' | 'evening']}
-                        onChange={() => handlePreferenceChange(item.key as 'morning' | 'afternoon' | 'evening')}
-                        className="rounded border-white/10 text-[#FF3B30] bg-transparent focus:ring-0"
-                      />
-                      <span>{item.label}</span>
-                    </label>
-                  ))}
-
-                  <div className="text-[10px] uppercase tracking-wider font-black text-white/40 pt-2">Supported Platforms</div>
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-2 text-white/60">
-                      <Globe size={12} className="text-green-500" />
-                      <span>Web Browser Push <span className="text-[9px] text-green-500 font-bold bg-green-500/10 px-1 py-0.5 rounded ml-1">ACTIVE</span></span>
-                    </div>
-                    <div className="flex items-center gap-2 text-white/60">
-                      <Smartphone size={12} className="text-[#FF3B30]" />
-                      <span>Android App Pushes <span className="text-[9px] text-green-500 font-bold bg-green-500/10 px-1 py-0.5 rounded ml-1">ACTIVE</span></span>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
         </div>
 
@@ -504,19 +426,6 @@ export default function DealsPage() {
                     <Share2 size={14} />
                     SHARE (+2 COINS)
                   </motion.button>
-
-                  <motion.button
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => handleSetAlert(bestDeal.id, bestDeal.title)}
-                    className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-black tracking-widest cursor-pointer transition-all ${
-                      alertDeals.includes(bestDeal.id)
-                        ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/40'
-                        : 'bg-transparent text-white/60 border border-white/5 hover:border-white/20'
-                    }`}
-                  >
-                    <Bell size={14} />
-                    {alertDeals.includes(bestDeal.id) ? "ALERT ACTIVE" : "SET ALERT"}
-                  </motion.button>
                 </div>
               </div>
             </motion.div>
@@ -547,7 +456,6 @@ export default function DealsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {deals.map((deal) => {
                   const isSaved = savedDeals.includes(deal.id);
-                  const isAlert = alertDeals.includes(deal.id);
                   return (
                     <motion.div
                       layout
@@ -582,16 +490,10 @@ export default function DealsPage() {
                       </div>
 
                       {/* Main Deal Body */}
-                      <div 
-                        onClick={() => triggerRedirect({
-                          url: deal.link || "https://www.amazon.in",
-                          store: deal.source || "amazon",
-                          productId: deal.id,
-                          productTitle: deal.title,
-                          category: deal.category
-                        })}
-                        className="flex gap-4 items-start flex-1 mb-4 cursor-pointer"
-                      >
+                        <Link 
+                          to={`/product/${deal.id}`}
+                          className="flex gap-4 items-start flex-1 mb-4 cursor-pointer"
+                        >
                         <div className="w-20 h-20 bg-white rounded-lg p-1.5 shrink-0 flex items-center justify-center border border-white/10 overflow-hidden relative">
                           <img src={deal.thumbnail} alt={deal.title} className="w-full h-full object-contain filter group-hover:scale-105 transition-transform" referrerPolicy="no-referrer" />
                         </div>
@@ -613,7 +515,7 @@ export default function DealsPage() {
                             <span>💾 {deal.saves || 0} SAVES</span>
                           </div>
                         </div>
-                      </div>
+                      </Link>
 
                       {/* Action buttons footer */}
                       <div className="flex items-center gap-2 pt-3 border-t border-white/5">
@@ -641,17 +543,6 @@ export default function DealsPage() {
                           title="Save Deal"
                         >
                           <Bookmark size={14} fill={isSaved ? "currentColor" : "none"} />
-                        </motion.button>
-
-                        <motion.button
-                          whileTap={{ scale: 0.95 }}
-                          onClick={() => handleSetAlert(deal.id, deal.title)}
-                          className={`p-2 rounded bg-white/5 text-white cursor-pointer hover:bg-white/10 ${
-                            isAlert ? 'text-yellow-500 bg-yellow-500/10' : 'text-white/60'
-                          }`}
-                          title="Set Price Drop Alert"
-                        >
-                          <Bell size={14} />
                         </motion.button>
 
                         <motion.button

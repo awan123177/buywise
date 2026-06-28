@@ -101,14 +101,14 @@ export default function Premium() {
       name: 'Weekly Pass',
       price: formatPrice(planPrices.weekly),
       period: '/week',
-      features: ['Unlimited AI Insights', 'Price Drop Alerts', 'Flight & Train Scans']
+      features: ['Unlimited comparisons', 'Unlimited barcode scans', 'Flight & Train Scans']
     },
     {
       id: 'monthly',
       name: 'Monthly Elite',
       price: formatPrice(planPrices.monthly),
       period: '/mo',
-      features: ['All Weekly Features', 'Premium Badge', 'No Ads', 'Priority Support']
+      features: ['All Weekly Features', 'Premium Badge', 'Ad free', 'Priority support', 'Price prediction']
     },
     {
       id: 'yearly',
@@ -117,7 +117,8 @@ export default function Premium() {
       period: '/year',
       features: [
         'All Monthly Elite Features',
-        'Early Alpha & Beta Feature Access',
+        'Early deals',
+        'Exclusive coupons',
         '1.5x Daily Check-in Coin Multiplier 🪙',
         'Zero Commission Flight tracking',
       ]
@@ -129,12 +130,12 @@ export default function Premium() {
       period: '/forever',
       features: [
         'All Yearly Pro Features',
+        'Unlimited AI',
         'Super Premium Verified Badge 👑',
         '2x Daily Check-in Coin Multiplier 🪙',
         'Exclusive VIP Liquidation Drops',
-        'Unlimited AI Multi-model Insights',
         'Lifetime Referral Boost (+100 Coins/user)',
-        'Zero Commission Flight bookings & tracking'
+        '20% discount'
       ]
     }
   ];
@@ -188,58 +189,85 @@ export default function Premium() {
           {plans.map((plan) => (
             <motion.div 
               key={plan.id}
-              whileHover={{ scale: 1.02 }}
+              whileHover={{ y: -5, scale: 1.02 }}
+              transition={{ type: "spring", stiffness: 300 }}
               onClick={() => setSelectedPlan(plan.id as any)}
-              className={`p-6 md:p-8 border cursor-pointer transition-all duration-300 relative rounded-xl overflow-hidden flex flex-col justify-between ${
+              className={`p-6 md:p-8 border cursor-pointer transition-all duration-300 relative rounded-2xl overflow-hidden flex flex-col justify-between backdrop-blur-xl ${
                 selectedPlan === plan.id 
-                  ? 'border-[#FF3B30] bg-[#FF3B30]/10 shadow-[0_0_25px_rgba(255,59,48,0.15)]' 
+                  ? plan.id === 'lifetime'
+                    ? 'border-yellow-400 bg-yellow-900/20 shadow-[0_0_40px_rgba(250,204,21,0.2)]'
+                    : 'border-[#FF3B30] bg-[#FF3B30]/10 shadow-[0_0_30px_rgba(255,59,48,0.2)]' 
                   : plan.id === 'lifetime'
-                    ? 'border-yellow-500/20 bg-yellow-500/[0.02] shadow-[0_0_20px_rgba(234,179,8,0.05)] hover:border-yellow-500/40'
-                    : 'border-white/10 bg-white/5'
+                    ? 'border-yellow-500/30 bg-black/40 shadow-[0_0_20px_rgba(234,179,8,0.05)] hover:border-yellow-400/60'
+                    : 'border-white/10 bg-black/40 hover:border-white/20'
               }`}
             >
-              <div>
+              {/* Luxury Lighting Overlay */}
+              <div className={`absolute inset-0 opacity-20 pointer-events-none transition-opacity duration-300 ${
+                  selectedPlan === plan.id || plan.id === 'lifetime' ? 'opacity-40' : 'opacity-0 hover:opacity-20'
+                }`} 
+                style={{
+                  background: plan.id === 'lifetime' ? 'radial-gradient(circle at top right, rgba(250,204,21,0.4), transparent 70%)' : 'radial-gradient(circle at top right, rgba(255,255,255,0.1), transparent 70%)'
+                }}
+              />
+              
+              <div className="relative z-10">
                 {plan.id === 'lifetime' && (
-                  <div className="absolute top-0 right-0 bg-yellow-500 text-black text-[8px] font-black tracking-widest px-3 py-1 rounded-bl uppercase">
+                  <div className="absolute top-0 right-0 bg-gradient-to-r from-yellow-600 to-yellow-400 text-black text-[8px] font-black tracking-widest px-3 py-1 rounded-bl-xl uppercase shadow-lg">
                     👑 SUPER PREMIUM
                   </div>
                 )}
                 {plan.id === 'yearly' && (
-                  <div className="absolute top-0 right-0 bg-[#FF3B30] text-white text-[8px] font-black tracking-widest px-3 py-1 rounded-bl uppercase">
+                  <div className="absolute top-0 right-0 bg-gradient-to-r from-red-600 to-[#FF3B30] text-white text-[8px] font-black tracking-widest px-3 py-1 rounded-bl-xl uppercase shadow-lg">
                     ⭐ POPULAR
                   </div>
                 )}
                 <div className="flex justify-between items-start mb-6 md:mb-8">
                   <div>
-                    <h3 className={`text-xl md:text-2xl font-black uppercase tracking-tight ${plan.id === 'lifetime' ? 'text-yellow-500' : 'text-white'}`}>{plan.name}</h3>
-                    <div className="text-3xl font-black text-[#FF3B30] mt-2">
+                    <h3 className={`text-xl md:text-2xl font-black uppercase tracking-tight ${plan.id === 'lifetime' ? 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 to-yellow-500' : 'text-white'}`}>{plan.name}</h3>
+                    <motion.div 
+                      key={plan.price}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-3xl font-black text-white mt-2 drop-shadow-md"
+                    >
                       {plan.price}
-                      <span className="text-xs text-white/50 lowercase font-normal">{plan.period}</span>
-                    </div>
+                      <span className="text-xs text-white/50 lowercase font-normal ml-1">{plan.period}</span>
+                    </motion.div>
                   </div>
                   {selectedPlan === plan.id && (
-                    <ShieldCheck className={plan.id === 'lifetime' ? 'text-yellow-500' : 'text-[#FF3B30]'} size={32} />
+                    <motion.div
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 200 }}
+                    >
+                      <ShieldCheck className={plan.id === 'lifetime' ? 'text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]' : 'text-[#FF3B30] drop-shadow-[0_0_10px_rgba(255,59,48,0.5)]'} size={32} />
+                    </motion.div>
                   )}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f, i) => (
-                    <li key={i} className="flex gap-2.5 text-xs font-bold text-white/70 leading-normal">
-                      <Check size={14} className={plan.id === 'lifetime' ? 'text-yellow-500' : 'text-[#FF3B30]'} /> {f}
+                    <li key={i} className="flex gap-2.5 text-xs font-medium text-white/80 leading-normal items-start">
+                      <Check size={14} className={`mt-0.5 shrink-0 ${plan.id === 'lifetime' ? 'text-yellow-400' : 'text-[#FF3B30]'}`} /> 
+                      <span className={f.includes('Multiplier') || f.includes('Badge') ? 'font-bold text-white' : ''}>{f}</span>
                     </li>
                   ))}
                 </ul>
               </div>
               <button 
                 onClick={() => setShowPayment(true)}
-                className={`w-full py-3.5 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded ${
+                className={`w-full py-3.5 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-xl relative z-10 overflow-hidden group ${
                   selectedPlan === plan.id 
                     ? plan.id === 'lifetime' 
-                      ? 'bg-yellow-500 text-black hover:bg-yellow-600' 
-                      : 'bg-[#FF3B30] text-white hover:bg-red-600' 
-                    : 'bg-white/10 text-white hover:bg-white/20'
+                      ? 'bg-gradient-to-r from-yellow-600 to-yellow-500 text-black shadow-lg shadow-yellow-500/20' 
+                      : 'bg-gradient-to-r from-red-600 to-[#FF3B30] text-white shadow-lg shadow-red-500/20' 
+                    : 'bg-white/5 text-white border border-white/10 hover:bg-white/10'
                 }`}
               >
-                Select Plan
+                <span className="relative z-10">Select Plan</span>
+                {selectedPlan === plan.id && (
+                   <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+                )}
               </button>
             </motion.div>
           ))}

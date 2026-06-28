@@ -158,16 +158,18 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 28,
+      "coins": 15,
       "referralCode": "TEST256",
       "referredBy": null,
       "searchesCount": 0,
       "totalSaved": 0,
       "lastSearchDate": null,
-      "lastLoginDate": "2026-06-27",
-      "streakCount": 2,
-      "lastStreakCheckDate": "2026-06-27",
-      "achievements": [],
+      "lastLoginDate": "2026-06-28",
+      "streakCount": 3,
+      "lastStreakCheckDate": "2026-06-28",
+      "achievements": [
+        "streak_3"
+      ],
       "notificationsEnabled": true,
       "notificationPreferences": {
         "morning": true,
@@ -182,6 +184,34 @@
     }
   },
   "transactions": [
+    {
+      "id": "txn_1782622583814_516",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": -50,
+      "reason": "Redeemed reward: deal",
+      "timestamp": "2026-06-28T04:56:23.814Z"
+    },
+    {
+      "id": "txn_1782622564087_102",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 2,
+      "reason": "Scanned barcode 017817847774: Apple iPhone 15 Pro (128 GB) - Natural Titanium",
+      "timestamp": "2026-06-28T04:56:04.087Z"
+    },
+    {
+      "id": "txn_1782620141501_499",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 15,
+      "reason": "Unlocked achievement: 3-Day Fire",
+      "timestamp": "2026-06-28T04:15:41.501Z"
+    },
+    {
+      "id": "txn_1782620141500_636",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Daily login (Streak: 3 days) + 3-Day Streak bonus!",
+      "timestamp": "2026-06-28T04:15:41.500Z"
+    },
     {
       "id": "txn_1782569025450_830",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -465,13 +495,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 24728,
-    "totalUsers": 1423,
-    "productsCompared": 49303,
-    "priceAlertsTriggered": 1259,
+    "totalSearches": 24841,
+    "totalUsers": 1426,
+    "productsCompared": 49646,
+    "priceAlertsTriggered": 1280,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1845249
+    "totalSavedAmount": 1847333
   },
   "bannedUsers": [],
   "reviews": [
@@ -2477,6 +2507,19 @@
     }
   ],
   "scans": [
+    {
+      "id": "scan_1782622564088_134",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "userEmail": "mohammdsaeed24@gmail.com",
+      "userName": "test",
+      "barcode": "017817847774",
+      "productName": "Apple iPhone 15 Pro (128 GB) - Natural Titanium",
+      "category": "mobiles",
+      "brand": "Apple",
+      "lowestPrice": 124900,
+      "highestPrice": 134900,
+      "timestamp": "2026-06-28T04:56:04.088Z"
+    },
     {
       "id": "scan_1782568312775_362",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",

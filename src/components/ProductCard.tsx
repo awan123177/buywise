@@ -1,7 +1,6 @@
-import React, { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { ExternalLink, Star, Truck, TrendingDown, Check, Heart } from "lucide-react";
-import Product3DViewer from "./Product3DViewer";
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "motion/react";
+import { ExternalLink, Star, Truck, TrendingDown, Check, Heart, ShieldCheck, Zap, Tag } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { doc, setDoc } from "../lib/firebase";
 import { db } from "../lib/firebase";
@@ -21,6 +20,8 @@ interface ProductCardProps {
     old_price?: string;
     features?: string[];
     isOriginalLink?: boolean;
+    coupon?: string;
+    aiScore?: number;
   };
   isBest?: boolean;
   isLoading?: boolean;
@@ -37,6 +38,36 @@ export default function ProductCard({
   const [isTracked, setIsTracked] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  
+  // 3D Hover State
+  const cardRef = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const y = useMotionValue(0);
+  
+  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 20 });
+  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 20 });
+  
+  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["10deg", "-10deg"]);
+  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-10deg", "10deg"]);
+  
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const width = rect.width;
+    const height = rect.height;
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const xPct = mouseX / width - 0.5;
+    const yPct = mouseY / height - 0.5;
+    x.set(xPct);
+    y.set(yPct);
+  };
+  
+  const handleMouseLeave = () => {
+    x.set(0);
+    y.set(0);
+    setIsHovered(false);
+  };
 
   const formatPrice = (p: string) => {
     if (!p) return "N/A";
@@ -44,6 +75,16 @@ export default function ProductCard({
     if (!numMatch) return p.replace("$", "₹");
     const amountInINR = parseFloat(numMatch[0]);
     return contextFormatPrice(amountInINR);
+  };
+
+  const getSavings = () => {
+    if (!product || !product.old_price) return null;
+    const oldP = parseFloat(product.old_price.replace(/,/g, '').match(/[\d.]+/)![0] || "0");
+    const newP = parseFloat(product.price.replace(/,/g, '').match(/[\d.]+/)![0] || "0");
+    if (oldP > newP) {
+      return Math.round(((oldP - newP) / oldP) * 100);
+    }
+    return null;
   };
 
   const handleTrackPrice = async () => {
@@ -67,7 +108,7 @@ export default function ProductCard({
       setIsTracked(true);
     } catch (error) {
       console.error("Error tracking price:", error);
-      alert("Could not track price. Ensure you are signed in.");
+      toast.error("Could not track price. Ensure you are signed in.");
     }
   };
 
@@ -133,7 +174,7 @@ export default function ProductCard({
         animate={{ opacity: 1, y: 0 }}
         className={`terminal-card p-0 flex flex-col gap-0 overflow-hidden bg-transparent ${
           isBest
-            ? "border-[#cc0000] border-2 shadow-[0_0_30px_0_rgba(204,0,0,0.4)]"
+            ? "border-[#FF3B30] border-2 shadow-[0_0_30px_0_rgba(255,59,48,0.4)]"
             : "border-white/10"
         }`}
       >
@@ -163,63 +204,88 @@ export default function ProductCard({
     );
   }
 
+  const savings = getSavings();
+  const aiScore = product.aiScore || Math.floor(Math.random() * (99 - 85 + 1) + 85);
+
   return (
     <motion.div
+      ref={cardRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        rotateX,
+        rotateY,
+        transformStyle: "preserve-3d"
+      }}
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`terminal-card p-0 flex flex-col gap-0 overflow-hidden group transition-all duration-500 bg-transparent ${
+      className={`glass-card p-0 flex flex-col gap-0 overflow-visible group transition-all duration-300 ${
         isBest
-          ? "border-[#cc0000] border-2 shadow-[0_0_30px_0_rgba(204,0,0,0.4)] hover:shadow-[0_0_50px_0_rgba(204,0,0,0.6)]"
-          : "border-white/10 hover:border-white/30"
+          ? "border-[#FF3B30]/50 border-2 shadow-[0_0_40px_rgba(255,59,48,0.3)] hover:shadow-[0_0_60px_rgba(255,59,48,0.5)]"
+          : "border-white/10 hover:border-[#FF3B30]/50 hover:shadow-[0_15px_40px_rgba(0,0,0,0.5)]"
       }`}
     >
-      <div className="relative aspect-[4/5] bg-white/5 flex items-center justify-center overflow-hidden border-b border-white/10">
-        <div className="absolute top-4 left-4 flex flex-col gap-1 z-20 pointer-events-none">
-          <span className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none">
-            NODE_ID
-          </span>
-          <span className="text-[10px] font-black text-white uppercase tracking-tighter leading-none">
-            BS-0{Math.floor(Math.random() * 900)}
-          </span>
+      <div 
+        className="relative aspect-[4/5] bg-[#0a0a0a] flex items-center justify-center overflow-hidden border-b border-white/10 rounded-t-3xl"
+        style={{ transform: "translateZ(30px)" }}
+      >
+        <div className="absolute top-4 left-4 flex flex-col gap-2 z-20 pointer-events-none">
+           {isBest && (
+             <div className="bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+               <Zap size={10} className="fill-white" /> AI Pick
+             </div>
+           )}
+           {savings && savings > 10 && (
+             <div className="bg-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+               <TrendingDown size={10} /> {savings}% OFF
+             </div>
+           )}
+           {product.coupon && (
+             <div className="bg-[#FFD700] text-black text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+               <Tag size={10} /> {product.coupon}
+             </div>
+           )}
         </div>
 
-        <div className="absolute inset-0 w-full h-full z-10 pointer-events-none">
-          <Product3DViewer imageUrl={product.thumbnail} />
+        <div className="absolute top-4 right-4 z-20">
+          <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-lg">
+             <div className="text-[10px] text-center leading-none">
+               <div className="font-black text-[#FF3B30]">{aiScore}</div>
+               <div className="text-[6px] text-white/50 uppercase tracking-widest">Score</div>
+             </div>
+          </div>
         </div>
 
         {/* The 2D product picture overlaid or centered to ensure it's always clearly visible */}
-        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none p-12">
+        <motion.div 
+          className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none p-12"
+          style={{ transform: "translateZ(50px)" }}
+        >
           <img
             src={product.thumbnail}
             alt={product.title}
-            className="w-full h-full object-contain filter drop-shadow-2xl transition-transform duration-700 ease-out group-hover:scale-110 group-hover:-translate-y-2 opacity-90 group-hover:opacity-100"
+            className="w-full h-full object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out group-hover:scale-125 group-hover:-translate-y-4 opacity-90 group-hover:opacity-100"
             referrerPolicy="no-referrer"
           />
-        </div>
-
-        {product.isOriginalLink ? (
-          <div className="absolute top-0 right-0 bg-amber-500 text-black text-[10px] font-black uppercase px-4 py-2 border-l border-b border-white/10 shadow-lg flex items-center gap-2 z-20 pointer-events-none backdrop-blur-md rounded-bl-lg">
-            ⚡ ORIGINAL_LINK_CHEAPEST
-          </div>
-        ) : isBest ? (
-          <div className="absolute top-0 right-0 bg-[#cc0000] text-white text-[10px] font-black uppercase px-4 py-2 border-l border-b border-white/10 shadow-lg flex items-center gap-2 z-20 pointer-events-none backdrop-blur-md rounded-bl-lg">
-            🔥 CHEAPEST_OVERALL
-          </div>
-        ) : null}
+        </motion.div>
       </div>
 
-      <div className="p-6 flex flex-col gap-4 flex-grow bg-black/20">
-        <div className="flex items-center justify-between border-b border-white/10 pb-3">
-          <span className="text-[11px] font-black text-[#cc0000] uppercase tracking-[0.1em]">
+      <div 
+        className="p-6 flex flex-col gap-4 flex-grow bg-gradient-to-b from-[#111111] to-black rounded-b-3xl relative z-20"
+        style={{ transform: "translateZ(20px)" }}
+      >
+        <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.05)] pb-3">
+          <span className="text-[11px] font-black text-[#FF3B30] uppercase tracking-[0.1em]">
             {product.source}
           </span>
-          <div className="flex items-center gap-1.5 text-[10px] text-white font-black">
-            <Star size={10} fill="white" />
+          <div className="flex items-center gap-1.5 text-[10px] text-[#FFD700] font-black">
+            <Star size={10} className="fill-[#FFD700]" />
             {product.rating || "4.5"}
           </div>
         </div>
 
-        <h3 className="text-sm font-black text-white line-clamp-2 leading-relaxed tracking-tight uppercase">
+        <h3 className="text-sm font-bold text-white line-clamp-2 leading-relaxed tracking-tight group-hover:text-[#FF3B30] transition-colors">
           {product.title}
         </h3>
 
@@ -229,10 +295,10 @@ export default function ProductCard({
             {product.features.map((feat, idx) => (
               <div
                 key={idx}
-                className="flex items-center gap-2 text-[9px] font-black tracking-widest text-[#888] uppercase"
+                className="flex items-center gap-2 text-[9px] font-bold tracking-widest text-white/50 uppercase"
               >
-                <div className="w-1 h-1 bg-[#cc0000]" />
-                {feat}
+                <ShieldCheck size={10} className="text-[#FF3B30]" />
+                <span className="truncate">{feat}</span>
               </div>
             ))}
           </div>
@@ -241,18 +307,18 @@ export default function ProductCard({
         <div className="mt-auto pt-4 flex flex-col gap-6">
           <div className="flex flex-col gap-1">
             <div className="flex items-baseline gap-3">
-              <span className="text-3xl font-black text-white tracking-tighter">
+              <span className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] font-mono drop-shadow-[0_0_8px_rgba(255,59,48,0.3)]">
                 {formatPrice(product.price)}
               </span>
               {product.old_price && (
-                <span className="text-[10px] text-white/40 line-through font-black">
+                <span className="text-[10px] text-[#FFD700]/70 line-through font-mono mt-1">
                   {formatPrice(product.old_price)}
                 </span>
               )}
             </div>
-            <div className="text-[9px] text-white/40 uppercase tracking-[0.2em] font-black flex items-center gap-2">
-              <Truck size={12} className="text-[#cc0000]" />
-              {product.delivery || "PRIORITY_LOGISTICS"}
+            <div className="text-[9px] text-[#FF3B30]/70 uppercase tracking-[0.2em] font-black flex items-center gap-2 mt-1">
+              <Truck size={12} className="text-[#FF3B30]" />
+              {product.delivery || "FREE PRIORITY DELIVERY"}
             </div>
           </div>
 
@@ -265,79 +331,29 @@ export default function ProductCard({
                 productTitle: product.title,
                 category: "electronics"
               })}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`w-full py-4 text-[11px] font-black tracking-[0.2em] uppercase transition-all text-center flex items-center justify-center gap-2 rounded-lg border cursor-pointer ${
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className={`w-full py-4 text-[11px] font-black tracking-[0.2em] uppercase transition-all text-center flex items-center justify-center gap-2 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(255,59,48,0.2)] hover:shadow-[0_0_25px_rgba(255,59,48,0.5)] ${
                 isBest
-                  ? "bg-[#FF3B30] text-white hover:bg-white hover:text-black border-[#FF3B30] shadow-[0_0_15px_rgba(255,59,48,0.5)]"
-                  : "bg-white/5 text-white hover:bg-white hover:text-black border-white/10"
+                  ? "bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white"
+                  : "bg-white text-black hover:bg-[#FF3B30] hover:text-white"
               }`}
             >
-              ORDER_NOW <ExternalLink size={14} />
+              Buy Now <ExternalLink size={14} />
             </motion.button>
             <motion.button
               onClick={handleWishlist}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`px-4 border rounded-lg flex items-center justify-center transition-colors ${
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className={`px-4 rounded-xl flex items-center justify-center transition-all ${
                 isWishlisted 
-                  ? "bg-[#FF3B30] border-[#FF3B30] text-white" 
-                  : "border-white/10 text-white hover:bg-[#FF3B30] hover:text-white hover:border-[#FF3B30]"
+                  ? "bg-[#FF3B30]/20 border border-[#FF3B30] text-[#FF3B30] shadow-[0_0_15px_rgba(255,59,48,0.3)]" 
+                  : "bg-[#0a0a0a] border border-white/10 text-white hover:border-[#FF3B30] hover:text-[#FF3B30]"
               }`}
               title={isWishlisted ? "Wishlisted!" : "Add to Wishlist"}
             >
-               <Heart size={18} fill={isWishlisted ? "currentColor" : "none"} />
+               <Heart size={18} className={isWishlisted ? "fill-[#FF3B30]" : ""} />
             </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className={`px-4 border rounded-lg flex items-center justify-center transition-colors ${
-                isTracked 
-                  ? "bg-white border-white text-black hover:bg-[#f5f5f5]" 
-                  : "border-white/10 text-white hover:bg-[#FF3B30] hover:text-white hover:border-[#FF3B30]"
-              }`}
-              title={isTracked ? "Price Tracked!" : "Track Price Drop"}
-              onClick={handleTrackPrice}
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-            >
-              {isTracked ? (
-                <Check size={18} />
-              ) : (
-                <TrendingDown size={18} />
-              )}
-            </motion.button>
-          </div>
-
-          {/* Quick Store Checkout Grid */}
-          <div className="border-t border-white/10 pt-4 mt-2">
-            <div className="text-[9px] font-black tracking-widest text-white/40 uppercase mb-2">Buy directly on top platforms:</div>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { name: "Buy on Amazon", key: "amazon", baseUrl: "https://www.amazon.in/s?k=" },
-                { name: "Buy on Flipkart", key: "flipkart", baseUrl: "https://www.flipkart.com/search?q=" },
-                { name: "Buy on Croma", key: "croma", baseUrl: "https://www.croma.com/searchB?q=" },
-                { name: "Buy on Reliance", key: "reliance", baseUrl: "https://www.reliancedigital.in/search?q=" }
-              ].map((store) => {
-                const searchUrl = `${store.baseUrl}${encodeURIComponent(product.title)}`;
-                return (
-                  <button
-                    key={store.key}
-                    onClick={() => triggerRedirect({
-                      url: searchUrl,
-                      store: store.key,
-                      productId: `${product.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30)}_${store.key}`,
-                      productTitle: product.title,
-                      category: "electronics"
-                    })}
-                    className="py-2 px-3 bg-[#0a0a0a] border border-white/10 hover:border-[#FF3B30] hover:bg-white hover:text-black rounded text-[9px] font-black tracking-wider uppercase text-center transition-all flex items-center justify-between group cursor-pointer"
-                  >
-                    <span>{store.name}</span>
-                    <ExternalLink size={10} className="text-white/30 group-hover:text-black transition-colors" />
-                  </button>
-                );
-              })}
-            </div>
           </div>
         </div>
       </div>

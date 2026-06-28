@@ -395,12 +395,34 @@ export default function Radar() {
 
         {/* Wishlist Section */}
         <section>
-          <div className="flex items-center gap-4 mb-8 border-b border-white/10 pb-4">
-            <Heart className="text-white" size={24} />
-            <h2 className="text-2xl font-black uppercase tracking-widest text-white">WISHLIST</h2>
-            <div className="ml-auto bg-white/10 text-white text-[10px] font-black px-3 py-1 rounded-full border border-white/10">
-              {wishlistItems.length} SAVED
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 border-b border-white/10 pb-4">
+            <div className="flex items-center gap-4">
+              <Heart className="text-white" size={24} />
+              <h2 className="text-2xl font-black uppercase tracking-widest text-white">WISHLIST</h2>
+              <div className="bg-white/10 text-white text-[10px] font-black px-3 py-1 rounded-full border border-white/10">
+                {wishlistItems.length} SAVED
+              </div>
             </div>
+            <div className="sm:ml-auto flex items-center gap-2">
+              <button onClick={() => {
+                navigator.clipboard.writeText(window.location.origin + "/radar?share=" + user?.uid);
+                toast.success("Wishlist link copied to clipboard!");
+              }} className="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-colors">
+                <ExternalLink size={12} /> Share Wishlist
+              </button>
+            </div>
+          </div>
+
+          {/* Folder Tabs (Mock UI for display) */}
+          <div className="flex gap-2 overflow-x-auto pb-4 mb-4 scrollbar-none">
+            {['All Items', 'Electronics', 'Fashion', 'Home', 'Gifts'].map((folder, idx) => (
+              <button key={folder} className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest whitespace-nowrap transition-colors ${idx === 0 ? 'bg-white text-black' : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10 border border-white/10'}`}>
+                {folder}
+              </button>
+            ))}
+            <button className="px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest whitespace-nowrap bg-white/5 text-white/50 hover:text-white hover:bg-white/10 border border-white/10 flex items-center gap-2">
+              + New Folder
+            </button>
           </div>
           
           <div className="space-y-4">

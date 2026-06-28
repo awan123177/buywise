@@ -29,6 +29,8 @@ export interface UserProfile {
   bannedReferrals: boolean;
   createdAt: string;
   activeBadge?: string | null;
+  lastSpinDate?: string | null;
+  completedMissions?: string[]; // IDs of completed missions
 }
 
 export interface CoinTransaction {
@@ -284,258 +286,56 @@ const INITIAL_PROFILES: { [userId: string]: UserProfile } = {
 };
 
 // Initial Mock Reviews
-const INITIAL_REVIEWS: UserReview[] = [
-  {
-    id: "rev_1",
-    userId: "user_top_1",
-    userName: "Aman Kapoor",
-    userEmail: "aman.kapoor@gmail.com",
-    rating: 5,
-    comment: "Absolutely game-changing shopping app! I saved nearly ₹4,500 on my iPhone 15 using the real-time competitor price comparison. Highly recommended!",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_2",
-    userId: "user_top_2",
-    userName: "Priya Verma",
-    userEmail: "priya.verma@yahoo.com",
-    rating: 5,
-    comment: "The interactive 3D product viewer is incredible! It let me inspect the camera bump and port alignments of the phone before purchasing. Unbelievably high fidelity.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_3",
-    userId: "user_top_3",
-    userName: "Ritesh Sharma",
-    userEmail: "ritesh.sharma@gmail.com",
-    rating: 4,
-    comment: "Using the flight tracking tool, I planned my trip from Delhi to Mumbai and snagged flights at the lowest rate in INR. Excellent utility integrations.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_4",
-    userId: "user_rev_4",
-    userName: "Kavya Iyer",
-    userEmail: "kavya.iyer@gmail.com",
-    rating: 5,
-    comment: "The interface is gorgeous! Extremely seamless search engine. Love how the gamified system rewards coins for just scanning barcodes of local groceries.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_5",
-    userId: "user_rev_5",
-    userName: "Ananya Nair",
-    userEmail: "ananya.n@gmail.com",
-    rating: 5,
-    comment: "A magnificent super app! Handled my trip route building from Bengaluru to Goa with custom hotel trackers. Fully offline-capable database is so fast.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_6",
-    userId: "user_rev_6",
-    userName: "Suresh Patel",
-    userEmail: "suresh.patel@gmail.com",
-    rating: 5,
-    comment: "The barcode scanner works instantly! Scanned a detergent bottle and saved ₹80 comparing Amazon and Reliance Digital prices. Fantastic stuff.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_7",
-    userId: "user_rev_7",
-    userName: "Devendra Singh",
-    userEmail: "dev.singh@yahoo.co.in",
-    rating: 4,
-    comment: "Excellent deal updates in the trending feed. Secured a Prestige kettle for ₹650 less than the standard market retail price.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_8",
-    userId: "user_rev_8",
-    userName: "Meera Deshmukh",
-    userEmail: "meera.d@rediffmail.com",
-    rating: 5,
-    comment: "I used the dynamic price history tracker to see if the Sony headphones discount was genuine or inflated. Turns out, it's at its lowest-ever price!",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_9",
-    userId: "user_rev_9",
-    userName: "Rahul Joshi",
-    userEmail: "rahul.joshi@outlook.com",
-    rating: 5,
-    comment: "Redeemed the Coins Legend custom profile badge today! It looks exceptionally clean next to my name. Incredible UI work.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_10",
-    userId: "user_rev_10",
-    userName: "Vikram Malhotra",
-    userEmail: "vikram.m@gmail.com",
-    rating: 5,
-    comment: "As a budget traveler, the integrated route finder combined with smart local price scanner saves me hours of manual search. Highly efficient app.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_11",
-    userId: "user_rev_11",
-    userName: "Sneha Reddy",
-    userEmail: "sneha.reddy@gmail.com",
-    rating: 4,
-    comment: "The dark mode slate theme is so comfortable for night-time comparison shopping. Found an amazing tablet discount within 2 minutes.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_12",
-    userId: "user_rev_12",
-    userName: "Aditya Sen",
-    userEmail: "aditya.sen@gmail.com",
-    rating: 5,
-    comment: "Highly interactive! Sending coins to my friend was instant. Looking forward to hitting a 30-day streak to claim the major coin bonus.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_13",
-    userId: "user_rev_13",
-    userName: "Pooja Hegde",
-    userEmail: "pooja.h@yahoo.com",
-    rating: 5,
-    comment: "BuyWise has replaced multiple shopping apps on my phone. The real-time flight tracking comparison operates very fast and accurately.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_14",
-    userId: "user_rev_14",
-    userName: "Gaurav Mehta",
-    userEmail: "gaurav.mehta@gmail.com",
-    rating: 5,
-    comment: "Amazing super-app that does it all. Sourcing real-time prices makes sure I am never overpaying at retail counters ever again.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_15",
-    userId: "user_rev_15",
-    userName: "Nisha Gupta",
-    userEmail: "nisha.gupta@outlook.com",
-    rating: 5,
-    comment: "Using the price drop alerts has been a lifesaver. Saved ₹1,200 on an air purifier. Truly a masterpiece of utility design.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_16",
-    userId: "user_rev_16",
-    userName: "Rohan Das",
-    userEmail: "rohan.das@gmail.com",
-    rating: 4,
-    comment: "Very accurate barcode scanner database. Instantly detects most FMCG goods sold in supermarkets. Saves serious money.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 18 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_17",
-    userId: "user_rev_17",
-    userName: "Deepika Rao",
-    userEmail: "deepika.rao@gmail.com",
-    rating: 5,
-    comment: "I love the clean typography, intuitive menus, and instantaneous response. The best price-tracking ecosystem available in India.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 16 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_18",
-    userId: "user_rev_18",
-    userName: "Sanjay Dutta",
-    userEmail: "sanjay.dutta@gmail.com",
-    rating: 5,
-    comment: "Verified prices at three physical malls versus this app and saved thousands. Real-time sourcing operates accurately.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_19",
-    userId: "user_rev_19",
-    userName: "Kriti Saxena",
-    userEmail: "kriti.saxena@gmail.com",
-    rating: 5,
-    comment: "The support assistant resolved my query immediately. Love the premium membership features, totally ads-free, elite performance.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 22 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_20",
-    userId: "user_rev_20",
-    userName: "Arjun Pillai",
-    userEmail: "arjun.p@gmail.com",
-    rating: 4,
-    comment: "Dynamic price tracker is extremely reliable. Got automated alerts on telegram/discord setup, very well thought-out developer API.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 17 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_21",
-    userId: "user_rev_21",
-    userName: "Tanya Chawla",
-    userEmail: "tanya.chawla@gmail.com",
-    rating: 5,
-    comment: "Premium service at its best! Sourcing prices from Amazon, Flipkart, and Croma simultaneously in milliseconds is an incredible engineering feat.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 19 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_22",
-    userId: "user_rev_22",
-    userName: "Varun Bajaj",
-    userEmail: "varun.b@yahoo.com",
-    rating: 5,
-    comment: "Saved money on standard electronics easily. The clean UX makes comparison a pleasure rather than a chore.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_23",
-    userId: "user_rev_23",
-    userName: "Shreya Ghoshal",
-    userEmail: "shreya.g@gmail.com",
-    rating: 5,
-    comment: "Excellent gamification logic! Daily login rewards are exciting and encourage regular price Sniping.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_24",
-    userId: "user_rev_24",
-    userName: "Harish Kumar",
-    userEmail: "harish.k@gmail.com",
-    rating: 5,
-    comment: "The offline capability was handy during my trip. Truly robust architecture and lightning-fast searching.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 23 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: "rev_25",
-    userId: "user_rev_25",
-    userName: "Rhea Sen",
-    userEmail: "rhea.sen@gmail.com",
-    rating: 5,
-    comment: "Splendid experience! The customer support works extremely fast. Totally recommended.",
-    coinsEarned: 15,
-    timestamp: new Date(Date.now() - 24 * 24 * 60 * 60 * 1000).toISOString()
+const INITIAL_REVIEWS: UserReview[] = (() => {
+  const base: UserReview[] = [];
+  const firstNames = ["Rahul", "Sneha", "Vikram", "Pooja", "Arjun", "Tanya", "Rohan", "Meera", "Kavya", "Deepika", "Suresh", "Aditya", "Nisha", "Aman", "Priya"];
+  const lastNames = ["Sharma", "Verma", "Patel", "Singh", "Reddy", "Nair", "Das", "Rao", "Iyer", "Chawla", "Kapoor"];
+  const comments = [
+    "Absolutely game-changing shopping app! I saved nearly ₹4,500 on my iPhone 15 using the real-time competitor price comparison. Highly recommended!",
+    "The interactive 3D product viewer is incredible! It let me inspect the camera bump and port alignments of the phone before purchasing. Unbelievably high fidelity.",
+    "Using the flight tracking tool, I planned my trip from Delhi to Mumbai and snagged flights at the lowest rate in INR. Excellent utility integrations.",
+    "The interface is gorgeous! Extremely seamless search engine. Love how the gamified system rewards coins for just scanning barcodes of local groceries.",
+    "A magnificent super app! Handled my trip route building from Bengaluru to Goa with custom hotel trackers. Fully offline-capable database is so fast.",
+    "The barcode scanner works instantly! Scanned a detergent bottle and saved ₹80 comparing Amazon and Reliance Digital prices. Fantastic stuff.",
+    "Excellent deal updates in the trending feed. Secured a kettle for ₹650 less than the standard market retail price.",
+    "I used the dynamic price history tracker to see if the Sony headphones discount was genuine or inflated. Turns out, it's at its lowest-ever price!",
+    "Redeemed the Coins Legend custom profile badge today! It looks exceptionally clean next to my name. Incredible UI work.",
+    "As a budget traveler, the integrated route finder combined with smart local price scanner saves me hours of manual search. Highly efficient app.",
+    "The dark mode slate theme is so comfortable for night-time comparison shopping. Found an amazing tablet discount within 2 minutes.",
+    "Highly interactive! Sending coins to my friend was instant. Looking forward to hitting a 30-day streak to claim the major coin bonus.",
+    "BuyWise has replaced multiple shopping apps on my phone. The real-time flight tracking comparison operates very fast and accurately.",
+    "Amazing super-app that does it all. Sourcing real-time prices makes sure I am never overpaying at retail counters ever again.",
+    "Using the price drop alerts has been a lifesaver. Saved ₹1,200 on an air purifier. Truly a masterpiece of utility design.",
+    "Very accurate barcode scanner database. Instantly detects most FMCG goods sold in supermarkets. Saves serious money.",
+    "I love the clean typography, intuitive menus, and instantaneous response. The best price-tracking ecosystem available in India.",
+    "Verified prices at three physical malls versus this app and saved thousands. Real-time sourcing operates accurately.",
+    "The support assistant resolved my query immediately. Love the premium membership features, totally ads-free, elite performance.",
+    "Dynamic price tracker is extremely reliable. Got automated alerts on telegram/discord setup, very well thought-out developer API.",
+    "Premium service at its best! Sourcing prices from Amazon, Flipkart, and Croma simultaneously in milliseconds is an incredible engineering feat.",
+    "Saved money on standard electronics easily. The clean UX makes comparison a pleasure rather than a chore.",
+    "Excellent gamification logic! Daily login rewards are exciting and encourage regular price Sniping.",
+    "The offline capability was handy during my trip. Truly robust architecture and lightning-fast searching.",
+    "Splendid experience! The customer support works extremely fast. Totally recommended."
+  ];
+
+  for (let i = 1; i <= 200; i++) {
+    const fname = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const lname = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const comment = comments[Math.floor(Math.random() * comments.length)];
+    const rating = Math.random() > 0.85 ? 4 : 5;
+    base.push({
+      id: "rev_" + i,
+      userId: "user_rev_" + i,
+      userName: fname + " " + lname,
+      userEmail: fname.toLowerCase() + "." + lname.toLowerCase() + "@gmail.com",
+      rating,
+      comment,
+      coinsEarned: 15,
+      timestamp: new Date(Date.now() - Math.floor(Math.random() * 30 * 24 * 60 * 60 * 1000)).toISOString()
+    });
   }
-];
+  return base;
+})();
 
 // Default DB instance
 let dbData: DatabaseSchema = {
@@ -700,7 +500,9 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
       notificationPreferences: { morning: true, afternoon: true, evening: true },
       bannedReferrals: false,
       createdAt: new Date().toISOString(),
-      activeBadge: null
+      activeBadge: null,
+      lastSpinDate: null,
+      completedMissions: []
     };
     dbData.profiles[userId] = profile;
     dbData.publicStats.totalUsers += 1;
@@ -1168,6 +970,21 @@ export function redeemReward(userId: string, rewardType: string): { success: boo
     cost = 150;
     rewardMessage = "Coins Legend custom profile badge unlocked!";
     profile.activeBadge = "💎 COINS LEGEND";
+  } else if (rewardType === "mystery") {
+    cost = 200;
+    const isJackpot = Math.random() > 0.9;
+    if (isJackpot) {
+       profile.isPremium = true;
+       profile.premiumExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+       rewardMessage = "JACKPOT! You won 1-Month Premium from the Mystery Box!";
+    } else {
+       const bonusCoins = Math.floor(Math.random() * 300);
+       profile.coins += bonusCoins; // add back some coins
+       rewardMessage = `Mystery Box opened! You found ${bonusCoins} coins inside.`;
+    }
+  } else if (rewardType === "avatar") {
+    cost = 300;
+    rewardMessage = "Premium Animated Avatar unlocked! Go to profile to equip.";
   } else {
     return { success: false, message: "Invalid reward type", coinsRemaining: profile.coins };
   }
@@ -1467,4 +1284,101 @@ export function addDealDirectly(deal: Omit<Deal, "id" | "views" | "saves" | "pur
   dbData.deals.unshift(newDeal);
   saveDatabase();
   return newDeal;
+}
+
+// ---------------------- DAILY SPIN OPERATIONS ----------------------
+
+export function spinWheel(userId: string): { success: boolean, reward: string, coinsAwarded: number, message: string } {
+  const profile = dbData.profiles[userId];
+  if (!profile) return { success: false, reward: "", coinsAwarded: 0, message: "Profile not found" };
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (profile.lastSpinDate === todayStr) {
+    return { success: false, reward: "", coinsAwarded: 0, message: "You have already spun the wheel today!" };
+  }
+
+  profile.lastSpinDate = todayStr;
+  
+  // Possible rewards for spin to win
+  const outcomes = [
+    { type: "coins", amount: 10, label: "10 Coins", chance: 30 },
+    { type: "coins", amount: 50, label: "50 Coins", chance: 30 },
+    { type: "coins", amount: 100, label: "100 Coins", chance: 15 },
+    { type: "coins", amount: 500, label: "500 Coins", chance: 5 },
+    { type: "trial", amount: 0, label: "Premium Trial", chance: 5 },
+    { type: "badge", amount: 0, label: "Lucky Badge", chance: 5 },
+    { type: "coins", amount: 0, label: "Better Luck Tomorrow", chance: 10 },
+  ];
+
+  // Pick random based on chance
+  const rand = Math.random() * 100;
+  let cumulative = 0;
+  let selectedReward = outcomes[outcomes.length - 1];
+  for (const outcome of outcomes) {
+    cumulative += outcome.chance;
+    if (rand <= cumulative) {
+      selectedReward = outcome;
+      break;
+    }
+  }
+
+  let message = "";
+  if (selectedReward.type === "coins" && selectedReward.amount > 0) {
+    awardCoins(userId, selectedReward.amount, "Spin to Win daily reward");
+    message = `Congratulations! You won ${selectedReward.amount} Coins!`;
+  } else if (selectedReward.type === "trial") {
+    profile.isPremium = true;
+    const now = new Date();
+    now.setDate(now.getDate() + 3);
+    profile.premiumExpiry = now.toISOString();
+    message = "Jackpot! You won a 3-Day Premium Trial!";
+  } else if (selectedReward.type === "badge") {
+    profile.activeBadge = "🍀 LUCKY SPINNER";
+    message = "Awesome! You won the exclusive Lucky Spinner badge!";
+  } else {
+    message = "Ah, no reward this time. Spin again tomorrow!";
+  }
+
+  saveDatabase();
+
+  return {
+    success: true,
+    reward: selectedReward.label,
+    coinsAwarded: selectedReward.amount,
+    message
+  };
+}
+
+// ---------------------- MISSIONS OPERATIONS ----------------------
+
+export function completeMission(userId: string, missionId: string): { success: boolean, message: string, coinsAwarded: number } {
+  const profile = dbData.profiles[userId];
+  if (!profile) return { success: false, message: "Profile not found", coinsAwarded: 0 };
+  
+  if (!profile.completedMissions) {
+    profile.completedMissions = [];
+  }
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const uniqueMissionId = `${todayStr}_${missionId}`;
+
+  if (profile.completedMissions.includes(uniqueMissionId)) {
+    return { success: false, message: "Mission already completed today!", coinsAwarded: 0 };
+  }
+
+  // Define reward logic based on mission
+  let reward = 20;
+  if (missionId.includes("weekly")) reward = 100;
+  if (missionId.includes("monthly")) reward = 500;
+
+  profile.completedMissions.push(uniqueMissionId);
+  awardCoins(userId, reward, `Mission Completed: ${missionId.replace(/_/g, " ").toUpperCase()}`);
+  
+  saveDatabase();
+
+  return {
+    success: true,
+    message: `Mission completed! You earned ${reward} Coins.`,
+    coinsAwarded: reward
+  };
 }

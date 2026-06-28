@@ -31,7 +31,9 @@ import {
   updateAffiliateSettings,
   updateTelegramConfig,
   recordAffiliateClick,
-  addDealDirectly
+  addDealDirectly,
+  spinWheel,
+  completeMission
 } from "./src/server/gamificationDb.js";
 
 dotenv.config();
@@ -72,7 +74,7 @@ globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
 
   if (urlStr.includes("googleapis.com") && process.env.GEMINI_API_KEY) {
     const key = process.env.GEMINI_API_KEY.trim();
-    const isAccessToken = key.startsWith("ya29.") || key.startsWith("AQ.");
+    const isAccessToken = !key.startsWith("AIza");
     
     if (isAccessToken) {
       const url = new URL(urlStr);
@@ -139,7 +141,7 @@ function getAi() {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
   const key = process.env.GEMINI_API_KEY.trim();
-  const isAccessToken = key.startsWith("ya29.") || key.startsWith("AQ.");
+  const isAccessToken = !key.startsWith("AIza");
   
   const headers: Record<string, string> = {
     'User-Agent': 'aistudio-build',
@@ -348,6 +350,30 @@ async function startServer() {
     try {
       const txns = getTransactions(userId);
       res.json(txns);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Spin to Win
+  app.post("/api/gamification/spin", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const result = spinWheel(userId);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Complete Mission
+  app.post("/api/gamification/mission", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    const { missionId } = req.body;
+    try {
+      if (!missionId) return res.status(400).json({ error: "Missing missionId" });
+      const result = completeMission(userId, missionId);
+      res.json(result);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -666,6 +692,12 @@ Return a JSON object exactly matching this schema:
     {"date": "Apr", "price": 26200},
     {"date": "May", "price": 24990},
     {"date": "Jun", "price": 24990}
+  ],
+  "alternatives": [
+    { "name": "Similar Product Name", "price": "₹22,990", "reason": "Better value for money" }
+  ],
+  "coupons": [
+    { "code": "SAVE500", "discount": "₹500", "description": "Flat ₹500 off on Axis Bank cards" }
   ],
   "lowestPriceEver": 23990,
   "highestPriceEver": 29990
@@ -1104,15 +1136,33 @@ Telegram Message:
       const { text } = req.body;
       if (!text) return res.status(400).json({ error: "Missing text parameter" });
       const isUrl = text.startsWith('http');
-      let result = text;
+      
+      let parsed = { result: text, minPrice: null, maxPrice: null, brand: null };
+      
       try {
         const response = await getAi().models.generateContent({
           model: "gemini-2.0-flash",
-          contents: `Identify the main product being described or linked: "${text}". 
-          Return ONLY the concise product name with model number if applicable (no extra punctuation). 
-          Example: "iPhone 15 Pro", "Sony WH-1000XM5". ${isUrl ? 'If it is a URL, parse the product name from the slug.' : ''}`,
+          config: { responseMimeType: "application/json" },
+          contents: `Analyze the user's shopping search query: "${text}".
+          1. Identify the core product name (e.g. "iPhone 15 Pro", "Sony WH-1000XM5"). ${isUrl ? 'Parse it from the URL slug if needed.' : ''}
+          2. Detect any price constraints (e.g. "under 60000", "below 500", "between 1000 and 2000"). If mentioned in rupees or dollars, just output the numeric value.
+          3. Detect any specific brand mentioned.
+          
+          Return JSON matching:
+          {
+            "result": "Concise product name",
+            "minPrice": number or null,
+            "maxPrice": number or null,
+            "brand": "Brand name" or null
+          }`,
         });
-        result = response.text?.trim().replace(/^"|"$/g, '') || text;
+        
+        const resultText = response.text?.trim() || "{}";
+        const json = JSON.parse(resultText);
+        parsed.result = json.result || text;
+        parsed.minPrice = json.minPrice;
+        parsed.maxPrice = json.maxPrice;
+        parsed.brand = json.brand;
       } catch (err: any) {
         console.warn("Gemini Detect failed, using local parser:", err.message);
         if (isUrl) {
@@ -1120,15 +1170,13 @@ Telegram Message:
             const urlObj = new URL(text);
             const pathParts = urlObj.pathname.split('/').filter(Boolean);
             const lastPart = pathParts[pathParts.length - 1] || urlObj.hostname;
-            result = lastPart.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            parsed.result = lastPart.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
           } catch {
-            result = text;
+            parsed.result = text;
           }
-        } else {
-          result = text;
         }
       }
-      res.json({ result: result.split('\n')[0].substring(0, 80) });
+      res.json(parsed);
     } catch (e: any) {
       console.error("Gemini Detect Error:", e.message);
       res.status(500).json({ error: e.message || "Failed to detect product" });
@@ -1275,10 +1323,18 @@ The JSON must follow this exact structure:
       const { query, results } = req.body;
       const systemInstruction = `You are "BuyWise INDIA Intelligence Assistant", an elite AI with unparalleled, genius-level market intelligence and predictive pricing models.
      
-Your core identity is to guide users to the best purchasing decisions using the BuyWise App features. You know everything about the BuyWise platform:
+Your core identity is to act as the world's smartest AI shopping assistant (like ChatGPT combined with Google Shopping). You must guide users to the best purchasing decisions.
+You have the ability to:
+- Compare products (price, specifications, pros, cons, overall winner).
+- Explain technical specifications in simple terms.
+- Suggest better or cheaper alternatives.
+- Detect fake discounts (warn the user if a price drop seems artificially inflated).
+- Provide budget shopping advice and comprehensive buying guides.
+- Give daily shopping tips and recommendations.
+
 1. ABOUT THE BUYWISE APP:
    - It is a comprehensive AI-powered Shopping and Travel Super App.
-   - Primary features: AI Product Search & Real-time Comparison, Interactive 3D Product Viewer (which renders real-time 3D textures/meshes for physical assessment), Price Radar & Trend Tracking, Google Flights Integration & Travel Route Builder, and real-time Premium user sync.
+   - Primary features: AI Product Search & Real-time Comparison, Interactive 3D Product Viewer, Price Radar & Trend Tracking, Smart Barcode Scanner with local Offline Queuing, Google Flights Integration, and real-time Premium user sync.
    - Created by: mohammdsaeed24 (with lead developer awanwarsi).
 
 2. SUBSCRIPTION & PRICING PLANS:
@@ -1286,16 +1342,15 @@ Your core identity is to guide users to the best purchasing decisions using the 
      - Weekly Pass: ₹30 (Provides Unlimited AI Insights, Price Drop Alerts, & Flight/Train scans)
      - Monthly Elite: ₹100 (Adds a Premium Badge, Ad-free Experience, & Priority Support)
      - Forever Founder (Lifetime): ₹700 (Includes all features, Early Access, Lifetime Support)
-   - Users pay by scanning the QR code, entering the UTR transaction number, and submitting a premium request. Admin (mohammdsaeed24) approves requests from the Admin Panel. Once approved, the status is updated instantly in real-time. Admin can also revoke premium access if needed.
 
 3. POWERFUL SECTIONS WITHIN THE APP:
-   - PRODUCT SEARCH & COMPARE (Home): Searches Amazon, Flipkart, Croma, and Reliance Digital. It also uses Google Shopping (SerpApi) or falls back to mock intelligence. It displays rating, discount badge, delivery ETA, source, and a custom 3D viewer button.
-   - 3D VIEW (Interactive Viewer): Let users inspect high-fidelity 3D renderings of products to check specifications.
+   - PRODUCT SEARCH & COMPARE (Home): Searches top platforms.
+   - 3D VIEW (Interactive Viewer): Let users inspect high-fidelity 3D renderings of products.
+   - SMART SCANNER: Barcode scanning with Offline Queuing and real-time price intercept.
    - PRICE RADAR (Wishlist): Allows tracking of prices with alerts and AI price-trend predictions.
-   - TRAVEL ROUTE BUILDER: Under "/travel", users can search real-time flight routes, find prices in INR, check duration, and plan itineraries. It also has Google Flights autocomplete.
-   - ADMIN PANEL: Under "/admin", accessible by email "mohammdsaeed24@gmail.com". Has real-time stats and allows managing premium requests.
+   - TRAVEL ROUTE BUILDER: Under "/travel".
 
-Always respond professionally with genius-level insight. If analyzing product search results, deliver a cutting-edge, ruthless market synthesis for the user query. Identify precise value arbitrage (price vs hardware specs), pinpoint the exact platform yielding maximum ROI, and cite actual Rupee (₹) figures from the data. Expose marketing gimmicks. Be hyper-intelligent, authoritative, and visionary. Include details about BuyWise app features and plans whenever appropriate.`;
+Always respond professionally with genius-level insight. If analyzing product search results, deliver a cutting-edge, ruthless market synthesis for the user query. Identify precise value arbitrage (price vs hardware specs), pinpoint the exact platform yielding maximum ROI, and cite actual Rupee (₹) figures from the data. Expose marketing gimmicks and fake discounts. Be hyper-intelligent, authoritative, and visionary. Format your response elegantly using markdown (lists, bold text, etc.).`;
 
       let advice = "";
       try {
