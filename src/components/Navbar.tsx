@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
@@ -10,13 +10,14 @@ import { useCurrency } from '../contexts/CurrencyContext';
 
 export default function Navbar() {
   const location = useLocation();
-  const { user, openLogin, logout } = useAuth();
+  const { user, openLogin, logout, updateAvatar } = useAuth();
   const { currency, setCurrency, rates } = useCurrency();
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [coins, setCoins] = useState<number>(0);
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
+  const [showAvatarModal, setShowAvatarModal] = useState(false);
 
   useEffect(() => {
     if (user?.uid) {
@@ -83,6 +84,7 @@ export default function Navbar() {
             { name: 'SCANNER', path: '/scanner' },
             { name: 'RADAR', path: '/radar' },
             { name: 'TRAVEL', path: '/travel' },
+            { name: 'GIFTS', path: '/gifts' },
             { name: 'CLUB', path: '/rewards' },
             { name: 'PREMIUM', path: '/premium' },
             { name: 'ADMIN', path: '/admin' },
@@ -164,18 +166,31 @@ export default function Navbar() {
                      <span className="hidden sm:hidden md:block text-[8px] font-black tracking-widest uppercase">Premium</span>
                   </div>
                )}
-               <motion.button
-                 whileHover={{ scale: 1.05 }}
-                 whileTap={{ scale: 0.95 }}
-                 onClick={logout}
-                 title={`Logout ${user.displayName}`}
-                 className="w-10 h-10 md:w-12 md:h-12 border border-white/10 rounded-full p-0 group overflow-hidden bg-transparent relative shadow-[0_0_15px_rgba(0,0,0,0.5)] cursor-pointer"
-               >
-                 <img src={user.photoURL || undefined} alt="avatar" className="w-full h-full object-cover grayscale transition-all group-hover:grayscale-0 absolute inset-0" />
-                 <div className="absolute inset-0 bg-[#FF3B30]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                   <LogOut size={20} className="text-white" />
-                 </div>
-               </motion.button>
+               <div className="flex items-center gap-2">
+                                   <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setShowAvatarModal(true)}
+                    title={`Change Avatar`}
+                    className="w-10 h-10 md:w-12 md:h-12 rounded-full p-[2px] group overflow-hidden relative cursor-pointer bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.5)] hover:shadow-[0_0_20px_rgba(236,72,153,0.8)] transition-all"
+                  >
+                    <div className="w-full h-full rounded-full overflow-hidden relative bg-[#111]">
+                      <img src={user.photoURL || undefined} alt="avatar" className="w-full h-full object-cover transition-all absolute inset-0 z-10" />
+                      <div className="absolute inset-0 bg-[#FF3B30]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
+                        <span className="text-[10px] font-bold text-white tracking-widest uppercase">EDIT</span>
+                      </div>
+                    </div>
+                  </motion.button>
+                 <motion.button
+                   whileHover={{ scale: 1.05 }}
+                   whileTap={{ scale: 0.95 }}
+                   onClick={logout}
+                   title={`Logout`}
+                   className="w-10 h-10 md:w-12 md:h-12 border border-white/10 rounded-full flex items-center justify-center bg-white/5 hover:bg-[#FF3B30]/20 hover:text-[#FF3B30] hover:border-[#FF3B30]/50 transition-colors cursor-pointer"
+                 >
+                   <LogOut size={16} />
+                 </motion.button>
+               </div>
             </div>
           ) : (
             <motion.button
@@ -199,6 +214,7 @@ export default function Navbar() {
           { name: 'DEALS', path: '/deals', icon: Flame },
           { name: 'SCANNER', path: '/scanner', icon: Scan },
           { name: 'RADAR', path: '/radar', icon: Search },
+          { name: 'GIFTS', path: '/gifts', icon: Gift },
           { name: 'TRAVEL', path: '/travel', icon: Plane },
           { name: 'CLUB', path: '/rewards', icon: Trophy },
           { name: 'PREMIUM', path: '/premium', icon: Diamond },
@@ -215,6 +231,92 @@ export default function Navbar() {
           </Link>
         ))}
       </div>
+
+      <AnimatePresence>
+        {showAvatarModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.95 }}
+              className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-md"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-white font-bold">Choose Your Avatar</h3>
+                <button onClick={() => setShowAvatarModal(false)} className="text-white/50 hover:text-white">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                {[
+                  { type: 'dicebear', style: 'shapes', seed: 'Alpha' },
+                  { type: 'dicebear', style: 'shapes', seed: 'Beta' },
+                  { type: 'dicebear', style: 'shapes', seed: 'Gamma' },
+                  { type: 'dicebear', style: 'shapes', seed: 'Delta' },
+                  { type: 'dicebear', style: 'identicon', seed: 'Epsilon' },
+                  { type: 'dicebear', style: 'identicon', seed: 'Zeta' },
+                  { type: 'svg', url: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23ff00cc" /><stop offset="100%" stop-color="%23333399" /></linearGradient></defs><rect width="100" height="100" fill="url(%23g1)" /></svg>' },
+                  { type: 'svg', url: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="g2" x1="100%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="%23FDFC47" /><stop offset="100%" stop-color="%2324FE41" /></linearGradient></defs><rect width="100" height="100" fill="url(%23g2)" /></svg>' },
+                ].map((avatar, idx) => {
+                  const url = avatar.type === 'dicebear' 
+                    ? `https://api.dicebear.com/7.x/${avatar.style}/svg?seed=${avatar.seed}`
+                    : avatar.url!;
+                  
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        updateAvatar(url);
+                        setShowAvatarModal(false);
+                      }}
+                      className="aspect-square rounded-full border-2 border-transparent hover:border-[#FF3B30] overflow-hidden bg-white/5 transition-all"
+                    >
+                      <img src={url} alt="avatar option" className="w-full h-full object-cover" />
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs text-white/50 font-bold uppercase tracking-widest">Or enter custom URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    id="custom-avatar-url"
+                    placeholder="https://example.com/image.png"
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#FF3B30]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const url = (e.target as HTMLInputElement).value;
+                        if (url) {
+                          updateAvatar(url);
+                          setShowAvatarModal(false);
+                        }
+                      }
+                    }}
+                  />
+                  <button 
+                    onClick={() => {
+                      const el = document.getElementById('custom-avatar-url') as HTMLInputElement;
+                      if (el && el.value) {
+                        updateAvatar(el.value);
+                        setShowAvatarModal(false);
+                      }
+                    }}
+                    className="bg-[#FF3B30] hover:bg-[#FF3B30]/80 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

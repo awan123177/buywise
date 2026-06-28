@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import FounderPage from './FounderPage';
 
 const PAGES = {
   about: {
@@ -55,12 +56,12 @@ const PAGES = {
           <div className="bg-white/5 p-6 rounded-xl border border-white/10">
             <h4 className="text-white font-bold mb-2">Customer Support</h4>
             <p className="text-white/50 mb-4">For help with your account, premium subscription, or app issues.</p>
-            <a href="mailto:support@buywiser.store" className="text-[#FF3B30] font-mono">support@buywiser.store</a>
+            <a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30] font-mono">mohammdsaeed24@gmail.com</a>
           </div>
           <div className="bg-white/5 p-6 rounded-xl border border-white/10">
             <h4 className="text-white font-bold mb-2">Business Inquiries</h4>
             <p className="text-white/50 mb-4">For partnerships, affiliate integrations, and media.</p>
-            <a href="mailto:partners@buywiser.store" className="text-[#FF3B30] font-mono">partners@buywiser.store</a>
+            <a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30] font-mono">mohammdsaeed24@gmail.com</a>
           </div>
         </div>
       </>
@@ -155,6 +156,10 @@ export default function StaticPage() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [pageId]);
+
+  if (pageId === 'founder') {
+    return <FounderPage />;
+  }
 
   if (!pageData) {
     return (

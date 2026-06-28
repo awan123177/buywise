@@ -19,6 +19,7 @@ interface AuthContextType {
   openLogin: () => void;
   signIn: (email: string, password?: string, isSignUp?: boolean, name?: string) => Promise<void>;
   logout: () => Promise<void>;
+  updateAvatar: (url: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -30,6 +31,7 @@ const AuthContext = createContext<AuthContextType>({
   openLogin: () => {},
   signIn: async () => {},
   logout: async () => {},
+  updateAvatar: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -162,8 +164,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     await supabase.auth.signOut();
   };
 
+  const updateAvatar = async (url: string) => {
+    if (!user) return;
+    const { error } = await supabase.auth.updateUser({
+      data: { avatar_url: url }
+    });
+    if (!error) {
+      setUser({ ...user, photoURL: url });
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginOpen, setLoginOpen, openLogin, signIn, logout }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginOpen, setLoginOpen, openLogin, signIn, logout, updateAvatar }}>
       {children}
     </AuthContext.Provider>
   );

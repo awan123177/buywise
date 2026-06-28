@@ -271,6 +271,21 @@ export default function Home() {
               transition={{ delay: 0.3, duration: 0.8 }}
               className="flex flex-col gap-8 lg:pb-4"
             >
+              <div className="flex items-center gap-2 mb-2">
+                <div className="flex -space-x-2">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className={`w-8 h-8 rounded-full border-2 border-black bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center`}>
+                      <span className="text-[10px] font-bold text-white">★</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-col ml-2">
+                  <div className="flex text-yellow-400 text-sm">
+                    ★★★★★
+                  </div>
+                  <span className="text-white/60 text-xs font-bold uppercase tracking-wider">500+ Verified Reviews</span>
+                </div>
+              </div>
               <p className="text-xl font-medium text-white max-w-md leading-snug">
                 The global standard for real-time market sourcing and competitive intelligence.
               </p>
@@ -559,7 +574,7 @@ export default function Home() {
         <div className="bg-[#111111]/80 backdrop-blur-md p-10 flex flex-col md:flex-row items-center gap-12 rounded-3xl border border-white/10 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF3B30]/5 blur-[80px] rounded-full pointer-events-none" />
            <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
-              <img src="/founder.jpg" alt="Awan Warsi" className="w-full h-full object-cover object-top" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+              <img src="/founder.png?v=2" alt="Awan Warsi" className="w-full h-full object-cover object-top" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
               <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
            </div>
            <div>
@@ -613,7 +628,7 @@ export default function Home() {
               <a href="https://instagram.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Instagram</a>
               <a href="https://linkedin.com/company/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">LinkedIn</a>
               <a href="https://t.me/buywiseofficial" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Telegram</a>
-              <a href="https://youtube.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">YouTube</a>
+              <a href="https://youtube.com/@awanwarsi-n7h?si=e0ell5fmqVCIhWgQ" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">YouTube</a>
               <a href="https://x.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">X (Twitter)</a>
             </div>
           </div>

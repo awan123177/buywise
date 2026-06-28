@@ -1164,7 +1164,7 @@ export default function RewardsHub() {
             {/* Reviews List Feed */}
             <div className="lg:col-span-3 space-y-3">
               <h4 className="text-xs font-black uppercase text-white/40 tracking-widest flex items-center justify-between">
-                <span>// RECENT SAVER REVIEWS ({reviews.length})</span>
+                <span>// RECENT SAVER REVIEWS ({500 + reviews.length})</span>
                 <span className="text-[9px] text-green-400 font-mono tracking-tight flex items-center gap-1">
                   <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> Live Synced
                 </span>

@@ -6,6 +6,7 @@ import { doc, setDoc } from "../lib/firebase";
 import { db } from "../lib/firebase";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useAffiliate } from "../contexts/AffiliateContext";
+import toast from "react-hot-toast";
 
 interface ProductCardProps {
   product?: {

@@ -7,6 +7,7 @@ import AdminPanel from './components/AdminPanel';
 import Radar from './components/Radar';
 import Travel from './components/Travel';
 import Premium from './components/Premium';
+import GiftCards from './components/GiftCards';
 import DealsPage from './components/DealsPage';
 import RewardsHub from './components/RewardsHub';
 import SupportChat from './components/SupportChat';
@@ -58,6 +59,7 @@ export default function App() {
               <Route path="/radar" element={<Radar />} />
               <Route path="/travel" element={<Travel />} />
               <Route path="/premium" element={<Premium />} />
+              <Route path="/gifts" element={<GiftCards />} />
               <Route path="/deals" element={<DealsPage />} />
               <Route path="/rewards" element={<RewardsHub />} />
               <Route path="/scanner" element={<ScannerPage />} />

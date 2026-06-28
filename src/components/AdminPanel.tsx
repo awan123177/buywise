@@ -51,7 +51,7 @@ export default function AdminPanel() {
   const [mockTelegramText, setMockTelegramText] = useState("");
   const [mockTelegramPhotoUrl, setMockTelegramPhotoUrl] = useState("");
   const [isParsingDeal, setIsParsingDeal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'telegram' | 'ai' | 'analytics' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings'>('overview');
 
   const parseNameField = (nameStr: string) => {
     if (!nameStr) return { displayName: 'Unknown', screenshot: null };
@@ -297,6 +297,7 @@ export default function AdminPanel() {
     { id: 'coins', label: 'BuyWise Coins', icon: Award, group: 'Ecosystem' },
     { id: 'referrals', label: 'Referrals', icon: ExternalLink, group: 'Ecosystem' },
     { id: 'premium', label: 'Premium', icon: ShieldCheck, group: 'Ecosystem' },
+    { id: 'giftcards', label: 'Gift Cards', icon: Gift, group: 'Ecosystem' },
     { id: 'telegram', label: 'Telegram Bot', icon: Sparkles, group: 'Communication' },
     { id: 'ai', label: 'AI Control', icon: Activity, group: 'Advanced' },
     { id: 'analytics', label: 'Analytics', icon: Search, group: 'Advanced' },
@@ -1813,7 +1814,82 @@ export default function AdminPanel() {
       )}
 
       {/* Handle other tabs with placeholder premium empty states */}
-      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && (
+      {activeTab === 'giftcards' && (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-2xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+                <Gift className="text-[#FF3B30]" /> Gift Cards Engine
+              </h2>
+              <p className="text-sm text-white/50">Manage brands, denominations, commissions, and API integrations.</p>
+            </div>
+            <button className="bg-white text-black font-bold uppercase tracking-widest text-xs px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors">
+              + Add Brand
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-[#1a1a1a] p-6 rounded-xl border border-white/5">
+              <h4 className="text-white/50 uppercase text-[10px] font-bold tracking-widest mb-1">Total Sales (MTD)</h4>
+              <p className="text-3xl font-mono text-white">₹4,25,000</p>
+              <p className="text-green-400 text-xs mt-2">+12% vs last month</p>
+            </div>
+            <div className="bg-[#1a1a1a] p-6 rounded-xl border border-white/5">
+              <h4 className="text-white/50 uppercase text-[10px] font-bold tracking-widest mb-1">Active Brands</h4>
+              <p className="text-3xl font-mono text-white">48</p>
+              <p className="text-white/50 text-xs mt-2">API: PineLabs Woohoo</p>
+            </div>
+            <div className="bg-[#1a1a1a] p-6 rounded-xl border border-white/5">
+              <h4 className="text-white/50 uppercase text-[10px] font-bold tracking-widest mb-1">Avg Margin</h4>
+              <p className="text-3xl font-mono text-white">4.2%</p>
+              <p className="text-green-400 text-xs mt-2">Target: 5.0%</p>
+            </div>
+          </div>
+          <div className="bg-[#1a1a1a] border border-white/5 rounded-2xl overflow-hidden">
+            <div className="p-4 border-b border-white/5 bg-white/5 flex justify-between items-center">
+              <h3 className="font-bold text-sm uppercase tracking-widest">Active Inventory</h3>
+              <input type="text" placeholder="Search brands..." className="bg-black/50 border border-white/10 rounded px-3 py-1 text-sm text-white focus:outline-none" />
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/10 bg-black/40">
+                    <th className="p-4 text-[10px] uppercase tracking-widest text-white/50 font-bold">Brand</th>
+                    <th className="p-4 text-[10px] uppercase tracking-widest text-white/50 font-bold">Category</th>
+                    <th className="p-4 text-[10px] uppercase tracking-widest text-white/50 font-bold">Base Discount</th>
+                    <th className="p-4 text-[10px] uppercase tracking-widest text-white/50 font-bold">User Discount</th>
+                    <th className="p-4 text-[10px] uppercase tracking-widest text-white/50 font-bold">Status</th>
+                    <th className="p-4 text-[10px] uppercase tracking-widest text-white/50 font-bold">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {[
+                    { brand: 'Amazon Pay', cat: 'Shopping', base: '2.5%', user: '2.0%', status: 'Active' },
+                    { brand: 'Swiggy', cat: 'Food', base: '6.0%', user: '5.0%', status: 'Active' },
+                    { brand: 'MakeMyTrip', cat: 'Travel', base: '12.0%', user: '10.0%', status: 'Active' },
+                    { brand: 'Netflix', cat: 'Entertainment', base: '0.0%', user: '0.0%', status: 'Active' },
+                    { brand: 'PlayStation', cat: 'Gaming', base: '1.0%', user: '0.0%', status: 'Out of Stock' },
+                  ].map((b, i) => (
+                    <tr key={i} className="hover:bg-white/5 transition-colors">
+                      <td className="p-4 font-bold text-sm">{b.brand}</td>
+                      <td className="p-4 text-sm text-white/70">{b.cat}</td>
+                      <td className="p-4 font-mono text-sm text-green-400">{b.base}</td>
+                      <td className="p-4 font-mono text-sm text-yellow-400">{b.user}</td>
+                      <td className="p-4">
+                        <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-sm border ${b.status === 'Active' ? 'text-green-500 border-green-500/30 bg-green-500/10' : 'text-red-500 border-red-500/30 bg-red-500/10'}`}>{b.status}</span>
+                      </td>
+                      <td className="p-4">
+                        <button className="text-white/50 hover:text-white text-xs uppercase tracking-widest font-bold">Edit</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && (
         <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-6">
            <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
               <ShieldCheck size={48} className="text-white/20" />
