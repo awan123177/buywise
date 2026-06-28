@@ -2087,6 +2087,44 @@ Format each item exactly like this:
   });
 
   // Vite middleware for development
+  app.get("/robots.txt", (req, res) => {
+    res.type("text/plain");
+    res.send(`User-agent: *\nAllow: /\n\nSitemap: https://buywiser.store/sitemap.xml`);
+  });
+
+  app.get("/sitemap.xml", (req, res) => {
+    const pages = [
+      '',
+      '/radar',
+      '/travel',
+      '/premium',
+      '/deals',
+      '/rewards',
+      '/scanner',
+      '/about',
+      '/contact',
+      '/privacy',
+      '/terms',
+      '/founder',
+      '/faq',
+      '/disclaimer',
+      '/careers',
+      '/press'
+    ];
+    
+    const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${pages.map(page => `  <url>
+    <loc>https://buywiser.store${page}</loc>
+    <changefreq>daily</changefreq>
+    <priority>${page === '' ? '1.0' : '0.8'}</priority>
+  </url>`).join('\n')}
+</urlset>`;
+
+    res.type("application/xml");
+    res.send(sitemap);
+  });
+
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
