@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from "motion/react";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { ExternalLink, Star, Truck, TrendingDown, Check, Heart, ShieldCheck, Zap, Tag } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { doc, setDoc } from "../lib/firebase";
@@ -7,6 +7,7 @@ import { db } from "../lib/firebase";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useAffiliate } from "../contexts/AffiliateContext";
 import toast from "react-hot-toast";
+import TiltedCard from "./TiltedCard";
 
 interface ProductCardProps {
   product?: {
@@ -40,33 +41,7 @@ export default function ProductCard({
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   
-  // 3D Hover State
-  const cardRef = useRef<HTMLDivElement>(null);
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  
-  const mouseXSpring = useSpring(x, { stiffness: 300, damping: 20 });
-  const mouseYSpring = useSpring(y, { stiffness: 300, damping: 20 });
-  
-  const rotateX = useTransform(mouseYSpring, [-0.5, 0.5], ["10deg", "-10deg"]);
-  const rotateY = useTransform(mouseXSpring, [-0.5, 0.5], ["-10deg", "10deg"]);
-  
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const width = rect.width;
-    const height = rect.height;
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const xPct = mouseX / width - 0.5;
-    const yPct = mouseY / height - 0.5;
-    x.set(xPct);
-    y.set(yPct);
-  };
-  
   const handleMouseLeave = () => {
-    x.set(0);
-    y.set(0);
     setIsHovered(false);
   };
 
@@ -209,73 +184,75 @@ export default function ProductCard({
   const aiScore = product.aiScore || Math.floor(Math.random() * (99 - 85 + 1) + 85);
 
   return (
-    <motion.div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
-      style={{
-        rotateX,
-        rotateY,
-        transformStyle: "preserve-3d"
-      }}
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`glass-card p-0 flex flex-col gap-0 overflow-visible group transition-all duration-300 ${
-        isBest
-          ? "border-[#FF3B30]/50 border-2 shadow-[0_0_40px_rgba(255,59,48,0.3)] hover:shadow-[0_0_60px_rgba(255,59,48,0.5)]"
-          : "border-white/10 hover:border-[#FF3B30]/50 hover:shadow-[0_15px_40px_rgba(0,0,0,0.5)]"
-      }`}
-    >
-      <div 
-        className="relative aspect-[4/5] bg-[#0a0a0a] flex items-center justify-center overflow-hidden border-b border-white/10 rounded-t-3xl"
-        style={{ transform: "translateZ(30px)" }}
-      >
-        <div className="absolute top-4 left-4 flex flex-col gap-2 z-20 pointer-events-none">
-           {isBest && (
-             <div className="bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
-               <Zap size={10} className="fill-white" /> AI Pick
-             </div>
-           )}
-           {savings && savings > 10 && (
-             <div className="bg-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
-               <TrendingDown size={10} /> {savings}% OFF
-             </div>
-           )}
-           {product.coupon && (
-             <div className="bg-[#FFD700] text-black text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
-               <Tag size={10} /> {product.coupon}
-             </div>
-           )}
-        </div>
+    <div className="w-full h-full relative" onMouseEnter={() => setIsHovered(true)} onMouseLeave={handleMouseLeave}>
+      <TiltedCard
+        containerHeight="100%"
+        containerWidth="100%"
+        imageHeight="100%"
+        imageWidth="100%"
+        rotateAmplitude={12}
+        scaleOnHover={1.03}
+        showMobileWarning={false}
+        showTooltip={false}
+        displayOverlayContent={true}
+        overlayContent={
+          <div
+            className={`glass-card p-0 flex flex-col gap-0 overflow-visible group transition-all duration-300 w-full h-full ${
+              isBest
+                ? "border-[#FF3B30]/50 border-2 shadow-[0_0_40px_rgba(255,59,48,0.3)] hover:shadow-[0_0_60px_rgba(255,59,48,0.5)]"
+                : "border-white/10 hover:border-[#FF3B30]/50 hover:shadow-[0_15px_40px_rgba(0,0,0,0.5)]"
+            }`}
+            style={{ transformStyle: "preserve-3d" }}
+          >
+            <div 
+              className="relative aspect-[4/5] bg-[#0a0a0a] flex items-center justify-center overflow-hidden border-b border-white/10 rounded-t-3xl"
+              style={{ transform: "translateZ(30px)", transformStyle: "preserve-3d" }}
+            >
+              <div className="absolute top-4 left-4 flex flex-col gap-2 z-20 pointer-events-none">
+                 {isBest && (
+                   <div className="bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                     <Zap size={10} className="fill-white" /> AI Pick
+                   </div>
+                 )}
+                 {savings && savings > 10 && (
+                   <div className="bg-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                     <TrendingDown size={10} /> {savings}% OFF
+                   </div>
+                 )}
+                 {product.coupon && (
+                   <div className="bg-[#FFD700] text-black text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                     <Tag size={10} /> {product.coupon}
+                   </div>
+                 )}
+              </div>
 
-        <div className="absolute top-4 right-4 z-20">
-          <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-lg">
-             <div className="text-[10px] text-center leading-none">
-               <div className="font-black text-[#FF3B30]">{aiScore}</div>
-               <div className="text-[6px] text-white/50 uppercase tracking-widest">Score</div>
-             </div>
-          </div>
-        </div>
+              <div className="absolute top-4 right-4 z-20">
+                <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-lg">
+                   <div className="text-[10px] text-center leading-none">
+                     <div className="font-black text-[#FF3B30]">{aiScore}</div>
+                     <div className="text-[6px] text-white/50 uppercase tracking-widest">Score</div>
+                   </div>
+                </div>
+              </div>
 
-        {/* The 2D product picture overlaid or centered to ensure it's always clearly visible */}
-        <motion.div 
-          className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none p-12"
-          style={{ transform: "translateZ(50px)" }}
-        >
-          <img
-            src={product.thumbnail}
-            alt={product.title}
-            className="w-full h-full object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out group-hover:scale-125 group-hover:-translate-y-4 opacity-90 group-hover:opacity-100"
-            referrerPolicy="no-referrer"
-          />
-        </motion.div>
-      </div>
+              {/* The 2D product picture overlaid or centered to ensure it's always clearly visible */}
+              <div 
+                className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none p-12"
+                style={{ transform: "translateZ(50px)" }}
+              >
+                <img
+                  src={product.thumbnail}
+                  alt={product.title}
+                  className="w-full h-full object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out group-hover:scale-125 group-hover:-translate-y-4 opacity-90 group-hover:opacity-100"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </div>
 
-      <div 
-        className="p-6 flex flex-col gap-4 flex-grow bg-gradient-to-b from-[#111111] to-black rounded-b-3xl relative z-20"
-        style={{ transform: "translateZ(20px)" }}
-      >
+            <div 
+              className="p-6 flex flex-col gap-4 flex-grow bg-gradient-to-b from-[#111111] to-black rounded-b-3xl relative z-20"
+              style={{ transform: "translateZ(20px)" }}
+            >
         <div className="flex items-center justify-between border-b border-[rgba(255,255,255,0.05)] pb-3">
           <span className="text-[11px] font-black text-[#FF3B30] uppercase tracking-[0.1em]">
             {product.source}
@@ -373,6 +350,9 @@ export default function ProductCard({
           </div>
         </div>
       </div>
-    </motion.div>
+      </div>
+        }
+      />
+    </div>
   );
 }

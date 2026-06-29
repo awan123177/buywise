@@ -10,6 +10,9 @@ import ChatAssistant from './ChatAssistant';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../contexts/CurrencyContext';
 
+import Aurora from './Aurora';
+import ScrollStack, { ScrollStackItem } from './ScrollStack';
+
 const REALTIME_EVENTS = [
   "aman.kapoor*** saved ₹502 comparing iPhone 15 prices",
   "priya.verma*** compared Sony WH-1000XM5 in Mumbai",
@@ -247,6 +250,14 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative overflow-hidden bg-transparent">
+      <div className="absolute inset-0 z-0 pointer-events-none opacity-40 mix-blend-screen">
+        <Aurora 
+          colorStops={["#FF3B30", "#3A29FF", "#00E6C3"]}
+          blend={0.5}
+          amplitude={1.2}
+          speed={0.4}
+        />
+      </div>
       <div className="pt-32 md:pt-44 pb-32 px-4 md:px-12 relative z-10 max-w-[1400px] mx-auto">
         {/* Balanced Hero Section */}
         <header className="mb-20 md:mb-32 relative">
@@ -568,6 +579,48 @@ export default function Home() {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Features Scroll Stack */}
+      <section className="mb-32 relative z-20">
+        <div className="max-w-[1400px] mx-auto px-4 md:px-12 mb-12">
+          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white">
+            Why <span className="text-[#FF3B30]">BuyWise?</span>
+          </h2>
+        </div>
+        <div className="w-full max-w-[1000px] mx-auto relative px-4">
+          <ScrollStack
+            itemDistance={100}
+            itemScale={0.03}
+            itemStackDistance={30}
+            stackPosition="20%"
+            scaleEndPosition="10%"
+            baseScale={0.85}
+            scaleDuration={0.5}
+            rotationAmount={0}
+            blurAmount={0}
+            useWindowScroll={true}
+          >
+            <ScrollStackItem>
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-full flex flex-col justify-center">
+                <h3 className="text-2xl md:text-4xl font-black text-white mb-4">Real-time Price Tracking</h3>
+                <p className="text-white/60 text-lg">Compare prices instantly across hundreds of platforms. Our AI engines constantly scan for price drops.</p>
+              </div>
+            </ScrollStackItem>
+            <ScrollStackItem>
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-full flex flex-col justify-center">
+                <h3 className="text-2xl md:text-4xl font-black text-white mb-4">Smart Shopping Assistant</h3>
+                <p className="text-white/60 text-lg">Ask our conversational AI for shopping advice, alternative recommendations, and the best time to buy.</p>
+              </div>
+            </ScrollStackItem>
+            <ScrollStackItem>
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-full flex flex-col justify-center">
+                <h3 className="text-2xl md:text-4xl font-black text-[#FF3B30] mb-4">Gamified Rewards</h3>
+                <p className="text-white/60 text-lg">Earn coins for every search, share, and purchase. Redeem them for premium digital gift cards.</p>
+              </div>
+            </ScrollStackItem>
+          </ScrollStack>
+        </div>
+      </section>
 
       {/* Founder Section */}
       <section className="mb-20 px-4 md:px-12 relative z-20 max-w-[1400px] mx-auto">

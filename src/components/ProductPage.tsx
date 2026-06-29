@@ -227,7 +227,25 @@ export default function ProductPage() {
                 <button className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10">
                   <Heart size={18} />
                 </button>
-                <button className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10">
+                <button 
+                  onClick={async () => {
+                    try {
+                      if (navigator.share) {
+                        await navigator.share({
+                          title: product.name,
+                          text: `Check out ${product.name} on PriceVerse!`,
+                          url: window.location.href,
+                        });
+                      } else {
+                        await navigator.clipboard.writeText(window.location.href);
+                        alert("Link copied to clipboard!");
+                      }
+                    } catch (error) {
+                      console.error("Error sharing:", error);
+                    }
+                  }}
+                  className="p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors border border-white/10"
+                >
                   <Share2 size={18} />
                 </button>
               </div>

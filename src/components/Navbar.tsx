@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { fetchGamificationProfile } from '../lib/api';
 import { useCurrency } from '../contexts/CurrencyContext';
+import GooeyNav from './GooeyNav';
+import Dock from './Dock';
 
 export default function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, openLogin, logout, updateAvatar } = useAuth();
   const { currency, setCurrency, rates } = useCurrency();
   const [onlineCount, setOnlineCount] = useState<number>(1);
@@ -77,28 +80,22 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <div className="hidden lg:flex items-center space-x-0 border-l border-r border-white/5 h-full overflow-x-auto">
-          {[
-            { name: 'INDEX', path: '/' },
-            { name: 'DEALS', path: '/deals' },
-            { name: 'SCANNER', path: '/scanner' },
-            { name: 'RADAR', path: '/radar' },
-            { name: 'TRAVEL', path: '/travel' },
-            { name: 'GIFTS', path: '/gifts' },
-            { name: 'CLUB', path: '/rewards' },
-            { name: 'PREMIUM', path: '/premium' },
-            { name: 'ADMIN', path: '/admin' },
-          ].map((item) => (
-            <Link
-              key={item.name}
-              to={item.path}
-              className={`px-4 xl:px-6 h-full flex items-center text-[10px] font-black tracking-[0.2em] transition-all hover:bg-white/5 border-r border-white/5 last:border-r-0 ${
-                location.pathname === item.path ? 'bg-gradient-to-b from-[#FF3B30]/10 to-transparent text-[#FF3B30] border-b-2 border-b-[#FF3B30]' : 'text-[#f5f5f5]'
-              }`}
-            >
-              {item.name}
-            </Link>
-          ))}
+        <div className="hidden lg:flex items-center space-x-0 border-l border-r border-white/5 h-full overflow-visible">
+          <div className="h-full flex items-center">
+            <GooeyNav
+              items={[
+                { label: 'INDEX', href: '/' },
+                { label: 'DEALS', href: '/deals' },
+                { label: 'SCANNER', href: '/scanner' },
+                { label: 'RADAR', href: '/radar' },
+                { label: 'TRAVEL', href: '/travel' },
+                { label: 'GIFTS', href: '/gifts' },
+                { label: 'CLUB', href: '/rewards' },
+                { label: 'PREMIUM', href: '/premium' },
+                { label: 'ADMIN', href: '/admin' },
+              ]}
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-4 md:gap-8">
@@ -208,28 +205,22 @@ export default function Navbar() {
       </nav>
 
       {/* Bottom Mobile Tab Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-[#050505]/95 backdrop-blur-xl border-t border-white/10 z-[100] flex items-center justify-around px-1">
-        {[
-          { name: 'INDEX', path: '/', icon: LayoutDashboard },
-          { name: 'DEALS', path: '/deals', icon: Flame },
-          { name: 'SCANNER', path: '/scanner', icon: Scan },
-          { name: 'RADAR', path: '/radar', icon: Search },
-          { name: 'GIFTS', path: '/gifts', icon: Gift },
-          { name: 'TRAVEL', path: '/travel', icon: Plane },
-          { name: 'CLUB', path: '/rewards', icon: Trophy },
-          { name: 'PREMIUM', path: '/premium', icon: Diamond },
-        ].map((item) => (
-          <Link
-            key={item.name}
-            to={item.path}
-            className={`flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors ${
-              location.pathname === item.path ? 'text-[#FF3B30]' : 'text-[#f5f5f5]/50 hover:text-[#f5f5f5]'
-            }`}
-          >
-            <item.icon size={18} />
-            <span className="text-[7px] font-black uppercase tracking-widest">{item.name}</span>
-          </Link>
-        ))}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] pb-2 sm:pb-4 flex justify-center">
+        <Dock
+          items={[
+            { label: 'INDEX', icon: <LayoutDashboard size={18} />, onClick: () => navigate('/') },
+            { label: 'DEALS', icon: <Flame size={18} />, onClick: () => navigate('/deals') },
+            { label: 'SCANNER', icon: <Scan size={18} />, onClick: () => navigate('/scanner') },
+            { label: 'RADAR', icon: <Search size={18} />, onClick: () => navigate('/radar') },
+            { label: 'GIFTS', icon: <Gift size={18} />, onClick: () => navigate('/gifts') },
+            { label: 'TRAVEL', icon: <Plane size={18} />, onClick: () => navigate('/travel') },
+            { label: 'CLUB', icon: <Trophy size={18} />, onClick: () => navigate('/rewards') },
+            { label: 'PREM', icon: <Diamond size={18} />, onClick: () => navigate('/premium') },
+          ]}
+          panelHeight={55}
+          baseItemSize={typeof window !== 'undefined' && window.innerWidth < 400 ? 34 : 40}
+          magnification={60}
+        />
       </div>
 
       <AnimatePresence>

@@ -163,19 +163,24 @@ function getAi() {
     const anyAi = ai as any;
     const patchAuth = (authObj: any) => {
       if (authObj && typeof authObj.addAuthHeaders === "function") {
-        authObj.addAuthHeaders = async (headers: any) => {
-          headers.set("Authorization", `Bearer ${key}`);
+        authObj.addAuthHeaders = async (reqHeaders: any) => {
+          // Do not call the original to prevent x-goog-api-key injection
+          reqHeaders.set("Authorization", `Bearer ${key}`);
           const pId = cloudProjectId || "ais-asia-east1-7f4152bfb94e4ec";
-          headers.set("x-goog-user-project", pId);
+          reqHeaders.set("x-goog-user-project", pId);
         };
+        // The SDK checks for `googleAuth` to be truthy, or else throws "Trying to set google-auth headers but googleAuth is unset"
+        // if apiKey is missing, so we must set it to a dummy object.
+        authObj.googleAuth = {};
       }
     };
     
     if (anyAi.apiClient && anyAi.apiClient.clientOptions) {
+      if (anyAi.apiClient.clientOptions.auth) {
+        anyAi.apiClient.clientOptions.auth.apiKey = undefined;
+      }
+      anyAi.apiClient.clientOptions.apiKey = undefined;
       patchAuth(anyAi.apiClient.clientOptions.auth);
-    }
-    if (anyAi.live) {
-      patchAuth(anyAi.live.auth);
     }
   }
 

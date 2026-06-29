@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { BadgeCheck, Github, Instagram, Linkedin, Twitter, ArrowRight, Sparkles, Target, Zap, Shield, Globe, Users, ShoppingBag, Youtube, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SEO from './SEO';
+import Ferrofluid from './Ferrofluid';
 
 export default function FounderPage() {
   const navigate = useNavigate();
@@ -104,68 +105,54 @@ export default function FounderPage() {
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
           variants={fadeIn}
-          className="mb-32"
+          className="mb-32 flex flex-col md:flex-row items-center justify-center gap-12"
         >
-          <div className="relative group">
-            {/* Animated glowing border effect */}
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FF3B30]/50 to-purple-600/50 rounded-[2rem] blur opacity-30 group-hover:opacity-70 transition duration-1000 group-hover:duration-200" />
-            
-            <div className="relative bg-[#0A0A0A]/80 backdrop-blur-xl border border-white/10 rounded-[2rem] p-8 md:p-12 flex flex-col lg:flex-row gap-12 items-center lg:items-start shadow-2xl">
-              
-              {/* Left Side: Image */}
-              <motion.div 
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-                className="shrink-0 relative group/img cursor-pointer"
-              >
-                <div className="w-48 h-48 md:w-64 md:h-64 rounded-3xl overflow-hidden border border-white/20 bg-gradient-to-br from-white/5 to-white/0 shadow-[0_0_40px_rgba(255,59,48,0.15)]">
-                  <img 
-                    src="/founder.png?v=2" 
-                    alt="Awan Warsi" 
-                    className="w-full h-full object-cover object-top transition-transform duration-700 group-hover/img:scale-110"
-                    onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }}
-                  />
-                  <div className="hidden absolute inset-0 flex items-center justify-center text-4xl font-mono text-white/30 bg-[#111]">AW</div>
-                </div>
-              </motion.div>
-
-              {/* Right Side: Details */}
-              <div className="flex-1 flex flex-col justify-center lg:pt-4 text-center lg:text-left">
-                <div className="flex items-center justify-center lg:justify-start gap-3 mb-2">
-                  <h2 className="text-4xl md:text-5xl font-bold tracking-tight">Awan Warsi</h2>
-                  <BadgeCheck className="w-8 h-8 text-blue-500 shrink-0" />
-                </div>
-                <h3 className="text-lg md:text-xl text-white/50 font-medium mb-8">
-                  Founder • Owner • CEO of BuyWise
-                </h3>
-                
-                {/* Badges */}
-                <motion.div 
-                  variants={staggerContainer}
-                  initial="hidden"
-                  whileInView="visible"
-                  viewport={{ once: true }}
-                  className="flex flex-wrap justify-center lg:justify-start gap-3"
-                >
-                  {[
-                    { icon: "🚀", text: "Founder" },
-                    { icon: "🤖", text: "AI Innovator" },
-                    { icon: "💻", text: "Full Stack Developer" },
-                    { icon: "💰", text: "Entrepreneur" },
-                    { icon: "🌍", text: "Building Global Shopping Intelligence" }
-                  ].map((badge, idx) => (
-                    <motion.div 
-                      key={idx}
-                      variants={fadeIn}
-                      className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm md:text-base text-white/80 backdrop-blur-md shadow-lg"
-                    >
-                      <span>{badge.icon}</span>
-                      <span>{badge.text}</span>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              </div>
+          <div className="relative w-full md:w-1/2 aspect-square max-w-sm rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(255,59,48,0.2)]">
+            <Ferrofluid 
+              colors={["#FF3B30", "#3A29FF", "#00E6C3"]}
+              speed={0.5}
+              scale={1}
+              turbulence={1}
+              fluidity={0.1}
+            />
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <img 
+                src="/founder.png?v=2" 
+                alt="Awan Warsi" 
+                className="w-full h-full object-cover object-top opacity-80 mix-blend-screen"
+                onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }}
+              />
+              <div className="hidden absolute inset-0 flex items-center justify-center text-4xl font-mono text-white/30 bg-[#111]">AW</div>
             </div>
+          </div>
+          
+          <div className="flex-1 max-w-lg text-center md:text-left">
+            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-6">
+              Building Global <br/><span className="text-[#FF3B30]">Shopping Intelligence</span>
+            </h2>
+            <motion.div 
+              variants={staggerContainer}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="flex flex-wrap justify-center md:justify-start gap-3"
+            >
+              {[
+                { icon: "🚀", text: "Founder" },
+                { icon: "🤖", text: "AI Innovator" },
+                { icon: "💻", text: "Full Stack Developer" },
+                { icon: "💰", text: "Entrepreneur" }
+              ].map((badge, idx) => (
+                <motion.div 
+                  key={idx}
+                  variants={fadeIn}
+                  className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm md:text-base text-white/80 backdrop-blur-md shadow-lg"
+                >
+                  <span>{badge.icon}</span>
+                  <span>{badge.text}</span>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
         </motion.section>
 

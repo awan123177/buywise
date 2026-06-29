@@ -7,6 +7,7 @@ import { db, doc, setDoc } from '../lib/firebase';
 import toast from 'react-hot-toast';
 import QRCode from 'react-qr-code';
 import { useCurrency } from '../contexts/CurrencyContext';
+import TiltedCard from './TiltedCard';
 
 export default function Premium() {
   const { user } = useAuth();
@@ -187,12 +188,12 @@ export default function Premium() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {plans.map((plan) => (
-            <motion.div 
+            <motion.div
               key={plan.id}
               whileHover={{ y: -5, scale: 1.02 }}
               transition={{ type: "spring", stiffness: 300 }}
               onClick={() => setSelectedPlan(plan.id as any)}
-              className={`p-6 md:p-8 border cursor-pointer transition-all duration-300 relative rounded-2xl overflow-hidden flex flex-col justify-between backdrop-blur-xl ${
+              className={`p-6 md:p-8 border cursor-pointer transition-all duration-300 relative rounded-2xl overflow-hidden flex flex-col justify-between backdrop-blur-xl h-full ${
                 selectedPlan === plan.id 
                   ? plan.id === 'lifetime'
                     ? 'border-yellow-400 bg-yellow-900/20 shadow-[0_0_40px_rgba(250,204,21,0.2)]'
@@ -255,7 +256,10 @@ export default function Premium() {
                 </ul>
               </div>
               <button 
-                onClick={() => setShowPayment(true)}
+                onClick={(e) => {
+                   e.stopPropagation();
+                   setShowPayment(true);
+                }}
                 className={`w-full py-3.5 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-xl relative z-10 overflow-hidden group ${
                   selectedPlan === plan.id 
                     ? plan.id === 'lifetime' 
