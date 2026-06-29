@@ -158,15 +158,15 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 15,
+      "coins": 20,
       "referralCode": "TEST256",
       "referredBy": null,
       "searchesCount": 0,
       "totalSaved": 0,
       "lastSearchDate": null,
-      "lastLoginDate": "2026-06-28",
-      "streakCount": 3,
-      "lastStreakCheckDate": "2026-06-28",
+      "lastLoginDate": "2026-06-29",
+      "streakCount": 4,
+      "lastStreakCheckDate": "2026-06-29",
       "achievements": [
         "streak_3"
       ],
@@ -184,6 +184,13 @@
     }
   },
   "transactions": [
+    {
+      "id": "txn_1782742778302_880",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 5,
+      "reason": "Daily login (Streak: 4 days)",
+      "timestamp": "2026-06-29T14:19:38.302Z"
+    },
     {
       "id": "txn_1782622583814_516",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -495,13 +502,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 24841,
-    "totalUsers": 1426,
-    "productsCompared": 49646,
-    "priceAlertsTriggered": 1280,
+    "totalSearches": 24851,
+    "totalUsers": 1428,
+    "productsCompared": 49672,
+    "priceAlertsTriggered": 1283,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1847333
+    "totalSavedAmount": 1847524
   },
   "bannedUsers": [],
   "reviews": [

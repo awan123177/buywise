@@ -59,136 +59,18 @@ async function fetchMetadataProjectId() {
 }
 fetchMetadataProjectId();
 
-// Global fetch interceptor to handle Google OAuth and Federated access tokens correctly,
-// stripping key query params and x-goog-api-key headers that get appended by the SDK.
-const originalFetch = globalThis.fetch;
-globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-  let urlStr = "";
-  if (typeof input === "string") {
-    urlStr = input;
-  } else if (input instanceof URL) {
-    urlStr = input.toString();
-  } else if (input && typeof input === "object" && "url" in input) {
-    urlStr = (input as any).url;
-  }
-
-  if (urlStr.includes("googleapis.com") && process.env.GEMINI_API_KEY) {
-    const key = process.env.GEMINI_API_KEY.trim();
-    const isAccessToken = key.startsWith("ya29.") || key.startsWith("AQ.");
-    
-    if (isAccessToken) {
-      const url = new URL(urlStr);
-      if (url.searchParams.has("key")) {
-        url.searchParams.delete("key");
-      }
-      urlStr = url.toString();
-      
-      const newInit: any = { ...init };
-      const newHeaders = new Headers();
-
-      // Extract existing headers from input Request object if it is one
-      if (input && typeof input === 'object' && 'headers' in input && input.headers) {
-        if (typeof (input.headers as any).forEach === 'function') {
-          (input.headers as any).forEach((val: string, k: string) => {
-            newHeaders.set(k, val);
-          });
-        } else {
-          for (const [k, val] of Object.entries(input.headers)) {
-            newHeaders.set(k, val as string);
-          }
-        }
-      }
-
-      // Merge headers from init
-      if (init && init.headers) {
-        const initHeaders = new Headers(init.headers);
-        initHeaders.forEach((val, k) => {
-          newHeaders.set(k, val);
-        });
-      }
-      
-      newHeaders.delete("x-goog-api-key");
-      newHeaders.set("Authorization", `Bearer ${key}`);
-      newHeaders.set("x-goog-user-project", cloudProjectId || "ais-asia-east1-7f4152bfb94e4ec");
-      newInit.headers = newHeaders;
-      
-      if (input && typeof input === 'object' && input.constructor.name === 'Request') {
-        const reqObj = input as any;
-        newInit.method = reqObj.method;
-        newInit.credentials = reqObj.credentials;
-        newInit.mode = reqObj.mode;
-        newInit.referrer = reqObj.referrer;
-        newInit.signal = reqObj.signal;
-        if (reqObj.method !== 'GET' && reqObj.method !== 'HEAD' && !newInit.body) {
-          try {
-            newInit.body = reqObj.clone().body;
-          } catch (e) {
-            // Ignore clone error
-          }
-        }
-        return originalFetch(new Request(urlStr, newInit));
-      } else {
-        return originalFetch(urlStr, newInit);
-      }
-    }
-  }
-  
-  return originalFetch(input, init);
-};
-
+// Helper function to safely process history for Gemini API multi-turn conversation
+// It ensures that the sequence starts with a "user" message and strictly alternates.
 function getAi() {
   if (!process.env.GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured on the server.");
   }
-  const key = process.env.GEMINI_API_KEY.trim();
-  const isAccessToken = key.startsWith("ya29.") || key.startsWith("AQ.");
   
-  const headers: Record<string, string> = {
-    'User-Agent': 'aistudio-build',
-  };
-  
-  if (isAccessToken) {
-    headers['Authorization'] = `Bearer ${key}`;
-    headers['x-goog-user-project'] = cloudProjectId || "ais-asia-east1-7f4152bfb94e4ec";
-  }
-
-  const ai = new GoogleGenAI({
-    apiKey: isAccessToken ? "dummy" : key,
-    httpOptions: {
-      headers
-    }
+  return new GoogleGenAI({
+    apiKey: process.env.GEMINI_API_KEY.trim()
   });
-
-  if (isAccessToken) {
-    const anyAi = ai as any;
-    const patchAuth = (authObj: any) => {
-      if (authObj && typeof authObj.addAuthHeaders === "function") {
-        authObj.addAuthHeaders = async (reqHeaders: any) => {
-          // Do not call the original to prevent x-goog-api-key injection
-          reqHeaders.set("Authorization", `Bearer ${key}`);
-          const pId = cloudProjectId || "ais-asia-east1-7f4152bfb94e4ec";
-          reqHeaders.set("x-goog-user-project", pId);
-        };
-        // The SDK checks for `googleAuth` to be truthy, or else throws "Trying to set google-auth headers but googleAuth is unset"
-        // if apiKey is missing, so we must set it to a dummy object.
-        authObj.googleAuth = {};
-      }
-    };
-    
-    if (anyAi.apiClient && anyAi.apiClient.clientOptions) {
-      if (anyAi.apiClient.clientOptions.auth) {
-        anyAi.apiClient.clientOptions.auth.apiKey = undefined;
-      }
-      anyAi.apiClient.clientOptions.apiKey = undefined;
-      patchAuth(anyAi.apiClient.clientOptions.auth);
-    }
-  }
-
-  return ai;
 }
 
-// Helper function to safely process history for Gemini API multi-turn conversation
-// It ensures that the sequence starts with a "user" message and strictly alternates.
 function formatGeminiContents(messages: any[]) {
   const firstUserIdx = messages.findIndex((m: any) => m.sender === 'user');
   if (firstUserIdx === -1) {
@@ -714,7 +596,7 @@ Return a JSON object exactly matching this schema:
       if (isAccessToken) {
         console.log("[Barcode Scan API] OAuth token detected. Bypassing Google Search grounding tool to avoid auth issues.");
         response = await aiClient.models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json"
@@ -723,7 +605,7 @@ Return a JSON object exactly matching this schema:
       } else {
         try {
           response = await aiClient.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.5-flash",
             contents: prompt,
             config: {
               responseMimeType: "application/json",
@@ -733,7 +615,7 @@ Return a JSON object exactly matching this schema:
         } catch (searchErr: any) {
           console.warn("[Barcode Scan API] Gemini Search Grounding failed, retrying without grounding tool:", searchErr.message);
           response = await aiClient.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.5-flash",
             contents: prompt,
             config: {
               responseMimeType: "application/json"
@@ -912,7 +794,7 @@ Telegram Message:
 "${text}"`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         contents: [prompt],
         config: {
           responseMimeType: "application/json"
@@ -1146,7 +1028,7 @@ Telegram Message:
       
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash",
           config: { responseMimeType: "application/json" },
           contents: `Analyze the user's shopping search query: "${text}".
           1. Identify the core product name (e.g. "iPhone 15 Pro", "Sony WH-1000XM5"). ${isUrl ? 'Parse it from the URL slug if needed.' : ''}
@@ -1195,7 +1077,7 @@ Telegram Message:
       let features: string[] = [];
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash",
           config: {
             systemInstruction: "You are an elite hardware/software analyst."
           },
@@ -1262,7 +1144,7 @@ The JSON must follow this exact structure:
       let planJsonStr = "";
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash",
           config: {
             systemInstruction: systemInstruction,
             temperature: 0.2,
@@ -1360,7 +1242,7 @@ Always respond professionally with genius-level insight. If analyzing product se
       let advice = "";
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash",
           config: {
             systemInstruction: systemInstruction,
           },
@@ -1426,7 +1308,7 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
       let trendData: any = null;
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash",
           config: {
             systemInstruction: "You are BuyWise Predictor, an elite AI market analyst."
           },
@@ -1555,7 +1437,7 @@ Current logged-in user email: ${userEmail || "anonymous / guest"}`;
           throw new Error("GEMINI_API_KEY is not configured.");
         }
         const response = await getAi().models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash",
           config: {
             systemInstruction: systemInstruction,
           },
@@ -1739,7 +1621,7 @@ Format each item exactly like this:
       if (isAccessToken) {
         console.log("[API Search] OAuth token detected. Bypassing Google Search grounding tool to avoid auth issues.");
         response = await aiClient.models.generateContent({
-          model: "gemini-2.0-flash",
+          model: "gemini-2.5-flash",
           contents: contentsPrompt,
           config: {
             responseMimeType: "application/json"
@@ -1748,7 +1630,7 @@ Format each item exactly like this:
       } else {
         try {
           response = await aiClient.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.5-flash",
             contents: contentsPrompt,
             config: {
               responseMimeType: "application/json",
@@ -1758,7 +1640,7 @@ Format each item exactly like this:
         } catch (searchErr: any) {
           console.warn("[API Search] Gemini Search Grounding failed, retrying without grounding tool:", searchErr.message);
           response = await aiClient.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-2.5-flash",
             contents: contentsPrompt,
             config: {
               responseMimeType: "application/json"
