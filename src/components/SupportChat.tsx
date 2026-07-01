@@ -55,7 +55,7 @@ export default function SupportChat() {
 
       // Trigger escalation to human if the bot suggests live support or user requests direct agent
       const lowerBotText = botText.toLowerCase();
-      if (lowerBotText.includes('live support') || lowerBotText.includes('escalate') || lowerBotText.includes('primary support agent') || lowerBotText.includes('whatsapp') || lowerBotText.includes('email') || lowerBotText.includes('awanwarsi') || lowerBotText.includes('avanvarsi')) {
+      if (lowerBotText.includes('live support') || lowerBotText.includes('escalate') || lowerBotText.includes('primary support agent') || lowerBotText.includes('whatsapp') || lowerBotText.includes('email') || lowerBotText.includes('mohammdsaeed') || lowerBotText.includes('saeed') || lowerBotText.includes('awanwarsi')) {
         setHandover(true);
       }
     } catch (err) {
@@ -181,15 +181,15 @@ export default function SupportChat() {
                         <a href="#" onClick={(e) => e.preventDefault()} className="flex items-center gap-2.5 p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group block">
                            <Mail size={14} className="text-white/50 group-hover:text-green-500 transition-colors" />
                            <div className="flex flex-col">
-                             <span className="text-[8px] uppercase tracking-widest font-bold text-white/50">Owner & Developer</span>
-                             <span className="text-[11px] font-medium text-white">Awanwarsi</span>
+                             <span className="text-[8px] uppercase tracking-widest font-bold text-white/50">Owner & Chairman</span>
+                             <span className="text-[11px] font-medium text-white">Awan Warsi</span>
                            </div>
                         </a>
-                        <a href="mailto:awanwarsi790@gmail.com" className="hidden flex items-center gap-2.5 p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group block">
+                        <a href="mailto:mohammdsaeed24@gmail.com" className="hidden flex items-center gap-2.5 p-2.5 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-colors group block">
                            <Mail size={14} className="text-white/50 group-hover:text-green-500 transition-colors" />
                            <div className="flex flex-col">
                              <span className="text-[8px] uppercase tracking-widest font-bold text-white/50">Lead Engineer</span>
-                             <span className="text-[11px] font-medium text-white">awanwarsi790@gmail.com</span>
+                             <span className="text-[11px] font-medium text-white">mohammdsaeed24@gmail.com</span>
                            </div>
                         </a>
                         <a href="https://wa.me/917760449306" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2.5 p-2.5 bg-green-500/10 border border-green-500/20 rounded-xl hover:bg-green-500/20 transition-colors group block">

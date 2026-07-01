@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import FounderPage from './FounderPage';
+import OwnerPage from './OwnerPage';
 
 const PAGES = {
   about: {
@@ -19,31 +19,26 @@ const PAGES = {
       </>
     )
   },
-  founder: {
-    title: "Founder",
+  owner: {
+    title: "Founder, Owner & Chairman",
     content: (
       <>
         <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
           <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
-             <img src="/founder.jpg" alt="Awan Warsi" className="w-full h-full object-cover object-top" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+             <img src="/founder.png?v=2" alt="Awan Warsi" className="w-full h-full object-cover object-top absolute inset-0" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
              <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
           </div>
           <div>
             <h2 className="text-3xl font-black font-display text-white mb-2">Awan Warsi</h2>
-            <h3 className="text-sm font-medium text-white/50 mb-4 uppercase tracking-widest">Founder, Owner & CEO of BuyWise</h3>
-            <p className="text-white/70 mb-4">Awan Warsi founded BuyWise to solve a problem he faced every day: the sheer difficulty of finding the real lowest price online. After years of dealing with fake sales and dynamic pricing, he set out to build an AI platform that would level the playing field for consumers.</p>
+            <h3 className="text-sm font-medium text-white/50 mb-4 uppercase tracking-widest">Founder, Owner, CEO & Chairman of BuyWise</h3>
+            <p className="text-white/70 mb-4">Awan Warsi is the Founder, Owner, CEO, and Chairman of BuyWise, directing executive strategy, core engineering, and product vision. He built the unified platform to restore price clarity and leverage intelligent comparison tools for consumers globally.</p>
             <div className="flex gap-4 mt-4">
-              <a href="https://www.instagram.com/awanwarsi?igsh=NmFsODc2dnd1bzM=" target="_blank" rel="noopener noreferrer" className="text-[#FF3B30] hover:underline text-sm">Instagram</a>
-              <a href="https://x.com/warsi_awan" target="_blank" rel="noopener noreferrer" className="text-[#FF3B30] hover:underline text-sm">X (Twitter)</a>
+              <a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30] hover:underline text-sm">Email</a>
             </div>
           </div>
         </div>
         <h3 className="text-xl font-bold mb-4">The Mission</h3>
-        <p className="text-white/70 mb-6">Awan's mission is simple: to make AI-powered price intelligence accessible to everyone. The goal is to build an ecosystem where transparency is the default, not a luxury.</p>
-        
-        <div className="mt-8 pt-6 border-t border-white/10">
-           <img src="/signature.jpg" alt="Awan Warsi Signature" className="h-16 opacity-80 invert mix-blend-screen" onError={(e) => e.currentTarget.style.display = 'none'} />
-        </div>
+        <p className="text-white/70 mb-6">Our mission is simple: to make AI-powered price intelligence accessible to everyone. The goal is to build an ecosystem where transparency is the default, not a luxury.</p>
       </>
     )
   },
@@ -157,8 +152,8 @@ export default function StaticPage() {
     window.scrollTo(0, 0);
   }, [pageId]);
 
-  if (pageId === 'founder') {
-    return <FounderPage />;
+  if (pageId === 'founder' || pageId === 'owner') {
+    return <OwnerPage />;
   }
 
   if (!pageData) {
@@ -173,7 +168,7 @@ export default function StaticPage() {
   // Generate structured data for this page
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": pageId === 'faq' ? 'FAQPage' : pageId === 'founder' ? 'ProfilePage' : 'WebPage',
+    "@type": pageId === 'faq' ? 'FAQPage' : (pageId === 'founder' || pageId === 'owner') ? 'ProfilePage' : 'WebPage',
     "name": pageData.title,
     "url": `https://buywiser.store/${pageId}`,
     "publisher": {

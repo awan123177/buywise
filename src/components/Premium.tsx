@@ -290,7 +290,7 @@ export default function Premium() {
                 Saturdays & Sundays
               </div>
               <p className="text-white/70">
-                Real-time validation! Approved manually by owner <strong className="text-white font-semibold">Awanwarsi</strong> in <span className="text-[#FF3B30] font-black">5 to 10 minutes</span>.
+                Real-time validation! Approved manually by owner <strong className="text-white font-semibold">Awan Warsi</strong> in <span className="text-[#FF3B30] font-black">5 to 10 minutes</span>.
               </p>
             </div>
             <div className="bg-black/40 p-4 border border-white/5 rounded-lg space-y-2">
@@ -329,7 +329,7 @@ export default function Premium() {
             <div className="bg-black/30 p-4 border border-white/5 rounded-lg space-y-1.5">
               <h4 className="font-black uppercase text-yellow-500 text-[10px] tracking-wider">VIP Support Circle</h4>
               <p className="text-white/60 leading-relaxed text-[11px]">
-                Direct priority communication loop with Awanwarsi for immediate deal verification and troubleshooting.
+                Direct priority communication loop with Awan Warsi for immediate deal verification and troubleshooting.
               </p>
             </div>
           </div>

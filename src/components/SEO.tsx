@@ -46,7 +46,7 @@ const SEO: React.FC<SEOProps> = ({
         "founder": {
           "@type": "Person",
           "name": "Awan Warsi",
-          "jobTitle": "Founder, Owner & CEO"
+          "jobTitle": "Founder, Owner, CEO & Chairman"
         },
         "brand": {
           "@type": "Brand",

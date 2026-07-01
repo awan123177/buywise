@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import SEO from './SEO';
 import Ferrofluid from './Ferrofluid';
 
-export default function FounderPage() {
+export default function OwnerPage() {
   const navigate = useNavigate();
 
   const fadeIn = {
@@ -26,9 +26,9 @@ export default function FounderPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-white overflow-hidden relative selection:bg-[#FF3B30] selection:text-white">
       <SEO 
-        title="Awan Warsi | Founder & CEO of BuyWise"
-        description="Meet Awan Warsi, Founder and CEO of BuyWise, the AI-powered shopping platform helping users compare prices, discover deals and save money."
-        canonicalUrl="https://buywiser.store/founder"
+        title="Founder, Owner & Chairman | BuyWise"
+        description="Meet Awan Warsi, the sole Founder, Owner, CEO, and Chairman of BuyWise, the AI-powered shopping platform helping users compare prices and save money."
+        canonicalUrl="https://buywiser.store/owner"
       />
       
       {/* Structured Data for Founder */}
@@ -38,19 +38,16 @@ export default function FounderPage() {
           "@graph": [
             {
               "@type": "Person",
-              "@id": "https://buywiser.store/founder#person",
+              "@id": "https://buywiser.store/owner#person-warsi",
               "name": "Awan Warsi",
-              "jobTitle": ["Founder", "CEO", "Owner"],
+              "jobTitle": ["Founder", "Owner", "CEO", "Chairman"],
               "worksFor": {
                 "@type": "Organization",
                 "name": "BuyWise",
                 "url": "https://buywiser.store"
               },
               "sameAs": [
-                "https://www.instagram.com/awanwarsi",
-                "https://x.com/warsi_awan",
-                "https://github.com/awan123177/buywise.git",
-                "https://linkedin.com/in/awanwarsi"
+                "mailto:mohammdsaeed24@gmail.com"
               ]
             },
             {
@@ -65,8 +62,8 @@ export default function FounderPage() {
                 {
                   "@type": "ListItem",
                   "position": 2,
-                  "name": "Founder",
-                  "item": "https://buywiser.store/founder"
+                  "name": "Owner",
+                  "item": "https://buywiser.store/owner"
                 }
               ]
             }
@@ -89,72 +86,78 @@ export default function FounderPage() {
           initial="hidden"
           animate="visible"
           variants={staggerContainer}
-          className="flex flex-col items-center justify-center text-center mb-32 pt-10"
+          className="flex flex-col items-center justify-center text-center mb-24 pt-10"
         >
-          <motion.h1 variants={fadeIn} className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50 mb-6">
-            Founder
+          <motion.h1 variants={fadeIn} className="text-4xl md:text-6xl lg:text-7xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-b from-white to-white/50 mb-6">
+            Founder, Owner & Chairman
           </motion.h1>
           <motion.p variants={fadeIn} className="text-lg md:text-2xl text-white/60 font-medium tracking-wide max-w-2xl">
-            Meet the Founder Behind BuyWise
+            Meet the driving force behind BuyWise, creating transparent, intelligent global commerce.
           </motion.p>
         </motion.section>
 
-        {/* FOUNDER CARD */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={fadeIn}
-          className="mb-32 flex flex-col md:flex-row items-center justify-center gap-12"
-        >
-          <div className="relative w-full md:w-1/2 aspect-square max-w-sm rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_50px_rgba(255,59,48,0.2)]">
-            <Ferrofluid 
-              colors={["#FF3B30", "#3A29FF", "#00E6C3"]}
-              speed={0.5}
-              scale={1}
-              turbulence={1}
-              fluidity={0.1}
-            />
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {/* SINGLE FEATURED OWNER SHOWCASE */}
+        <div className="max-w-4xl mx-auto mb-32">
+          <motion.div 
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: "-100px" }}
+            variants={fadeIn}
+            className="bg-[#0f0f0f]/60 backdrop-blur-md rounded-3xl border border-white/10 p-8 md:p-12 flex flex-col md:flex-row gap-12 items-center hover:border-white/20 transition-all duration-300 relative group overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF3B30]/5 blur-[80px] rounded-full pointer-events-none group-hover:bg-[#FF3B30]/10 transition-colors duration-500" />
+            
+            {/* Image Container */}
+            <div className="relative w-full aspect-square max-w-[280px] rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-[#151515] to-[#0a0a0a] shadow-[0_0_30px_rgba(255,59,48,0.15)] flex items-center justify-center shrink-0 group/photo">
+              <Ferrofluid 
+                colors={["#FF3B30", "#3A29FF", "#00E6C3"]}
+                speed={0.5}
+                scale={1}
+                turbulence={1}
+                fluidity={0.1}
+              />
               <img 
                 src="/founder.png?v=2" 
                 alt="Awan Warsi" 
-                className="w-full h-full object-cover object-top opacity-80 mix-blend-screen"
-                onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }}
+                className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-500 group-hover/photo:scale-105"
+                onError={(e) => { 
+                  e.currentTarget.style.display = 'none'; 
+                }} 
               />
-              <div className="hidden absolute inset-0 flex items-center justify-center text-4xl font-mono text-white/30 bg-[#111]">AW</div>
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none mix-blend-difference">
+                <div className="text-5xl font-mono text-white/10 tracking-wider font-bold font-display">AW</div>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex-1 max-w-lg text-center md:text-left">
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mb-6">
-              Building Global <br/><span className="text-[#FF3B30]">Shopping Intelligence</span>
-            </h2>
-            <motion.div 
-              variants={staggerContainer}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
-              className="flex flex-wrap justify-center md:justify-start gap-3"
-            >
-              {[
-                { icon: "🚀", text: "Founder" },
-                { icon: "🤖", text: "AI Innovator" },
-                { icon: "💻", text: "Full Stack Developer" },
-                { icon: "💰", text: "Entrepreneur" }
-              ].map((badge, idx) => (
-                <motion.div 
-                  key={idx}
-                  variants={fadeIn}
-                  className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 text-sm md:text-base text-white/80 backdrop-blur-md shadow-lg"
-                >
-                  <span>{badge.icon}</span>
-                  <span>{badge.text}</span>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </motion.section>
+
+            {/* Biography */}
+            <div className="text-center md:text-left flex-grow">
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FF3B30] mb-2">Executive Leadership & Creator</div>
+              <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight mb-2">Awan Warsi</h2>
+              <h3 className="text-base font-semibold text-white/50 uppercase tracking-widest mb-6">Founder, Owner, CEO & Chairman</h3>
+              
+              <p className="text-white/70 leading-relaxed text-sm md:text-base mb-6">
+                Awan Warsi is the sole Founder, Owner, CEO, and Chairman of BuyWise, directing technical innovation, platform engineering, executive strategy, and product design. He crafted the unified AI shopping algorithms, travel comparison engines, and direct support systems to level the playing field for consumers globally.
+              </p>
+
+              <div className="flex flex-wrap justify-center md:justify-start gap-3">
+                {[
+                  { icon: "👑", text: "Owner & Chairman" },
+                  { icon: "🚀", text: "Founder & CEO" },
+                  { icon: "🤖", text: "AI Architect" },
+                  { icon: "💻", text: "Full Stack Creator" }
+                ].map((badge, idx) => (
+                  <div 
+                    key={idx}
+                    className="flex items-center gap-2 bg-red-500/5 border border-red-500/10 rounded-full px-3.5 py-1.5 text-xs text-red-300 backdrop-blur-md"
+                  >
+                    <span>{badge.icon}</span>
+                    <span>{badge.text}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        </div>
 
         {/* ABOUT & MISSION */}
         <div className="grid lg:grid-cols-2 gap-12 mb-32">
@@ -169,16 +172,16 @@ export default function FounderPage() {
               <Sparkles className="text-[#FF3B30]" /> The Vision
             </h3>
             <p className="text-white/70 leading-relaxed mb-6">
-              Awan Warsi founded BuyWise with one mission: to make online shopping transparent, intelligent and affordable.
+              Awan Warsi established BuyWise with one primary mission: to make online shopping transparent, intelligent, and affordable for everyone.
             </p>
             <p className="text-white/70 leading-relaxed mb-6">
-              After experiencing fake discounts, misleading pricing and difficult product comparisons, he decided to build an AI-powered platform that gives consumers complete pricing transparency.
+              After experiencing fake discounts, misleading pricing models, and tedious dynamic rate manipulation, he built a fully secure platform that restores complete pricing clarity back to consumers.
             </p>
             <p className="text-white/70 leading-relaxed mb-6">
-              Today BuyWise combines artificial intelligence, price comparison, barcode scanning, flight search, hotel booking and smart shopping tools into one intelligent ecosystem.
+              Today, BuyWise integrates state-of-the-art AI shopping helpers, immediate barcode tracking, flight scanners, hotel registries, and loyalty programs into a single elegant platform.
             </p>
             <p className="text-white/90 font-medium leading-relaxed">
-              The vision is to become the world's smartest shopping assistant.
+              We aim to make transparency the default for consumer purchasing worldwide.
             </p>
           </motion.section>
 
@@ -191,9 +194,9 @@ export default function FounderPage() {
             <div className="bg-gradient-to-br from-[#111111] to-[#0a0a0a] border border-white/10 rounded-[2rem] p-10 h-full flex flex-col justify-center relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF3B30]/10 blur-[80px] rounded-full pointer-events-none transition-opacity duration-500 group-hover:opacity-100 opacity-50" />
               <Target className="w-12 h-12 text-[#FF3B30] mb-6" />
-              <h3 className="text-3xl font-bold mb-6">Mission</h3>
+              <h3 className="text-3xl font-bold mb-6">Our Mission</h3>
               <p className="text-2xl md:text-3xl font-light text-white/90 leading-snug">
-                Empower millions of shoppers through AI, transparency and intelligent price comparison while helping everyone save money every day.
+                Empower millions of shoppers through AI, absolute price transparency, and intelligent cross-retailer comparison to help everyone save money.
               </p>
             </div>
           </motion.section>
@@ -217,14 +220,14 @@ export default function FounderPage() {
             
             <div className="space-y-6 md:space-y-12">
               {[
-                { year: "2026", title: "BuyWise Founded" },
-                { title: "AI Shopping Assistant" },
+                { year: "2026", title: "BuyWise Established by Awan Warsi" },
+                { title: "AI Shopping Assistant Launch" },
                 { title: "Price Comparison Engine" },
-                { title: "Flight Search" },
-                { title: "Hotel Search" },
-                { title: "Barcode Scanner" },
-                { title: "Premium Membership" },
-                { title: "Global Expansion" }
+                { title: "Flight Search Integration" },
+                { title: "Hotel Search Integration" },
+                { title: "Smart Barcode Scanner" },
+                { title: "Premium Lifetime Memberships" },
+                { title: "Global Expansion Strategy" }
               ].map((item, idx) => (
                 <motion.div 
                   key={idx}
@@ -287,11 +290,11 @@ export default function FounderPage() {
           <div className="relative">
             <span className="absolute -top-12 -left-8 text-8xl text-white/10 font-serif leading-none">"</span>
             <blockquote className="text-2xl md:text-4xl font-light leading-tight text-white/90 italic mb-8 relative z-10">
-              Technology should help people spend less time searching and more time living.
+              Technology should empower people to search less, save immediately, and shop wiser.
             </blockquote>
             <span className="absolute -bottom-16 -right-8 text-8xl text-white/10 font-serif leading-none">"</span>
           </div>
-          <p className="text-xl font-medium text-[#FF3B30]">— Awan Warsi</p>
+          <p className="text-xl font-medium text-[#FF3B30]">— Awan Warsi, Founder, Owner & Chairman</p>
         </motion.section>
 
         {/* VALUES */}
@@ -330,24 +333,21 @@ export default function FounderPage() {
           variants={fadeIn}
           className="mb-32 flex flex-col items-center"
         >
-          <h3 className="text-xl text-white/50 mb-8 uppercase tracking-widest font-medium">Connect</h3>
+          <h3 className="text-xl text-white/50 mb-8 uppercase tracking-widest font-medium">Connect with Awan</h3>
           <div className="flex flex-wrap justify-center gap-6">
             <a href="mailto:mohammdsaeed24@gmail.com" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#EA4335]/20 hover:border-[#EA4335] hover:shadow-[0_0_20px_rgba(234,67,53,0.4)] transition-all duration-300 group">
               <Mail className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
             </a>
-            <a href="https://youtube.com/@awanwarsi-n7h?si=e0ell5fmqVCIhWgQ" target="_blank" rel="noopener noreferrer" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#FF0000]/20 hover:border-[#FF0000] hover:shadow-[0_0_20px_rgba(255,0,0,0.4)] transition-all duration-300 group">
+            <a href="https://youtube.com" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#FF0000]/20 hover:border-[#FF0000] hover:shadow-[0_0_20px_rgba(255,0,0,0.4)] transition-all duration-300 group">
               <Youtube className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
             </a>
-            <a href="https://www.instagram.com/awanwarsi" target="_blank" rel="noopener noreferrer" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#E1306C]/20 hover:border-[#E1306C] hover:shadow-[0_0_20px_rgba(225,48,108,0.4)] transition-all duration-300 group">
+            <a href="https://instagram.com" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#E1306C]/20 hover:border-[#E1306C] hover:shadow-[0_0_20px_rgba(225,48,108,0.4)] transition-all duration-300 group">
               <Instagram className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
             </a>
-            <a href="https://x.com/warsi_awan" target="_blank" rel="noopener noreferrer" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#1DA1F2]/20 hover:border-[#1DA1F2] hover:shadow-[0_0_20px_rgba(29,161,242,0.4)] transition-all duration-300 group">
+            <a href="https://x.com" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#1DA1F2]/20 hover:border-[#1DA1F2] hover:shadow-[0_0_20px_rgba(29,161,242,0.4)] transition-all duration-300 group">
               <Twitter className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
             </a>
-            <a href="#" target="_blank" rel="noopener noreferrer" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-[#0077B5]/20 hover:border-[#0077B5] hover:shadow-[0_0_20px_rgba(0,119,181,0.4)] transition-all duration-300 group">
-              <Linkedin className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
-            </a>
-            <a href="https://github.com/awan123177/buywise.git" target="_blank" rel="noopener noreferrer" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all duration-300 group">
+            <a href="https://github.com" className="w-14 h-14 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 hover:border-white hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all duration-300 group">
               <Github className="w-6 h-6 group-hover:scale-110 transition-transform duration-300" />
             </a>
           </div>

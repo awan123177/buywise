@@ -631,14 +631,14 @@ export default function Home() {
               <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
            </div>
            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FF3B30] mb-2">Founded By</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#FF3B30] mb-2">Founder & Chairman</div>
               <h2 className="text-3xl md:text-5xl font-black font-display text-white mb-2 tracking-tight">Awan Warsi</h2>
-              <h3 className="text-sm md:text-base font-medium text-white/50 mb-6 uppercase tracking-widest">Founder, Owner & CEO of BuyWise</h3>
+              <h3 className="text-sm md:text-base font-medium text-white/50 mb-6 uppercase tracking-widest">Founder, Owner, CEO & Chairman of BuyWise</h3>
               <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-2xl">
                 Building an AI-powered shopping and travel platform that helps people save money through smart comparisons, affiliate deals, and intelligent recommendations.
               </p>
               
-              <button onClick={() => navigate('/founder')} className="mt-8 text-xs font-black uppercase tracking-widest text-white flex items-center gap-2 hover:text-[#FF3B30] transition-colors pb-1 w-fit">
+              <button onClick={() => navigate('/owner')} className="mt-8 text-xs font-black uppercase tracking-widest text-white flex items-center gap-2 hover:text-[#FF3B30] transition-colors pb-1 w-fit">
                  Read Founder Story <ArrowRight size={14} />
               </button>
            </div>
@@ -660,7 +660,7 @@ export default function Home() {
             <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Company</h4>
             <div className="flex flex-col gap-2">
               <a href="/about" onClick={(e) => { e.preventDefault(); navigate('/about'); }} className="hover:text-white transition-colors">About BuyWise</a>
-              <a href="/founder" onClick={(e) => { e.preventDefault(); navigate('/founder'); }} className="hover:text-white transition-colors">Founder (Awan Warsi)</a>
+              <a href="/owner" onClick={(e) => { e.preventDefault(); navigate('/owner'); }} className="hover:text-white transition-colors">Founder, Owner & Chairman (Awan Warsi)</a>
               <a href="/careers" onClick={(e) => { e.preventDefault(); navigate('/careers'); }} className="hover:text-white transition-colors">Careers</a>
               <a href="/press" onClick={(e) => { e.preventDefault(); navigate('/press'); }} className="hover:text-white transition-colors">Press & Media</a>
               <a href="/contact" onClick={(e) => { e.preventDefault(); navigate('/contact'); }} className="hover:text-white transition-colors">Contact Us</a>
@@ -681,7 +681,7 @@ export default function Home() {
               <a href="https://instagram.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Instagram</a>
               <a href="https://linkedin.com/company/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">LinkedIn</a>
               <a href="https://t.me/buywiseofficial" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Telegram</a>
-              <a href="https://youtube.com/@awanwarsi-n7h?si=e0ell5fmqVCIhWgQ" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">YouTube</a>
+              <a href="https://youtube.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">YouTube</a>
               <a href="https://x.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">X (Twitter)</a>
             </div>
           </div>
