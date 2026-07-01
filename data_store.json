@@ -158,17 +158,18 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 20,
+      "coins": 37,
       "referralCode": "TEST256",
       "referredBy": null,
-      "searchesCount": 0,
-      "totalSaved": 0,
-      "lastSearchDate": null,
-      "lastLoginDate": "2026-06-29",
-      "streakCount": 4,
-      "lastStreakCheckDate": "2026-06-29",
+      "searchesCount": 1,
+      "totalSaved": 213,
+      "lastSearchDate": "2026-07-01",
+      "lastLoginDate": "2026-07-01",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-07-01",
       "achievements": [
-        "streak_3"
+        "streak_3",
+        "first_search"
       ],
       "notificationsEnabled": true,
       "notificationPreferences": {
@@ -184,6 +185,27 @@
     }
   },
   "transactions": [
+    {
+      "id": "txn_1782901380858_268",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 10,
+      "reason": "Unlocked achievement: First Search",
+      "timestamp": "2026-07-01T10:23:00.858Z"
+    },
+    {
+      "id": "txn_1782901380857_699",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 2,
+      "reason": "First search of the day bonus",
+      "timestamp": "2026-07-01T10:23:00.857Z"
+    },
+    {
+      "id": "txn_1782901363007_729",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 5,
+      "reason": "Daily login reward (Streak reset)",
+      "timestamp": "2026-07-01T10:22:43.007Z"
+    },
     {
       "id": "txn_1782742778302_880",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -502,13 +524,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 24851,
+    "totalSearches": 24860,
     "totalUsers": 1428,
-    "productsCompared": 49672,
-    "priceAlertsTriggered": 1283,
+    "productsCompared": 49703,
+    "priceAlertsTriggered": 1284,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1847524
+    "totalSavedAmount": 1847974
   },
   "bannedUsers": [],
   "reviews": [
