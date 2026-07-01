@@ -159,7 +159,7 @@ export default function ChatAssistant({ results }: { results: any[] }) {
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 100 }}
-            className="fixed bottom-32 right-24 w-[450px] max-w-[calc(100vw-8rem)] h-[700px] max-h-[calc(100vh-12rem)] bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-white/10 rounded-3xl flex flex-col z-50 overflow-hidden shadow-2xl"
+            className="fixed bottom-20 right-4 md:bottom-32 md:right-24 w-[calc(100vw-2rem)] md:w-[450px] h-[calc(100vh-8rem)] md:h-[700px] max-h-[500px] md:max-h-[calc(100vh-12rem)] bg-[#0a0a0a]/90 backdrop-blur-2xl border-2 border-white/10 rounded-3xl flex flex-col z-50 overflow-hidden shadow-2xl"
           >
             <div className="p-6 bg-gradient-to-r from-black/50 to-transparent text-white flex items-center justify-between border-b border-[rgba(255,255,255,0.05)]">
               <div className="flex items-center gap-3">
@@ -185,7 +185,12 @@ export default function ChatAssistant({ results }: { results: any[] }) {
               </div>
             </div>
 
-            <div ref={scrollRef} className="flex-grow overflow-y-auto p-6 space-y-6 bg-transparent relative custom-scrollbar">
+            <div 
+              ref={scrollRef} 
+              data-lenis-prevent 
+              className="flex-grow overflow-y-auto p-6 space-y-6 bg-transparent relative custom-scrollbar touch-pan-y" 
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
               {!user?.isPremium && (
                 <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 p-8 text-center text-white flex flex-col items-center gap-4 bg-[#111111]/90 backdrop-blur-md m-4 border border-[#FF3B30]/30 rounded-2xl z-20 shadow-[0_0_40px_rgba(255,59,48,0.2)]">
                   <ShieldCheck size={48} className="text-[#FF3B30]" />

@@ -115,7 +115,11 @@ export default function SupportChat() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div 
+              data-lenis-prevent 
+              className="flex-1 overflow-y-auto p-4 space-y-4 touch-pan-y" 
+              style={{ WebkitOverflowScrolling: 'touch' }}
+            >
                {messages.map((msg, i) => (
                  <div key={i} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                    {msg.sender === 'bot' && (
