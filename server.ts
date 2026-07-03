@@ -59,6 +59,21 @@ async function fetchMetadataProjectId() {
 }
 fetchMetadataProjectId();
 
+// Simple server-side in-memory cache to save API quota on identical queries
+const geminiCache: {
+  detect: Record<string, any>;
+  extractFeatures: Record<string, string[]>;
+  shopperPlan: Record<string, any>;
+  shoppingAdvice: Record<string, string>;
+  predictTrend: Record<string, any>;
+} = {
+  detect: {},
+  extractFeatures: {},
+  shopperPlan: {},
+  shoppingAdvice: {},
+  predictTrend: {}
+};
+
 // Helper function to safely process history for Gemini API multi-turn conversation
 // It ensures that the sequence starts with a "user" message and strictly alternates.
 function getAi() {
@@ -1114,6 +1129,12 @@ Telegram Message:
       let { text } = req.body;
       if (!text) return res.status(400).json({ error: "Missing text parameter" });
       
+      const cacheKey = text.trim().toLowerCase();
+      if (geminiCache.detect[cacheKey]) {
+        console.log(`[Detect Cache Hit] Returning cached results for query: "${text}"`);
+        return res.json(geminiCache.detect[cacheKey]);
+      }
+      
       const urlMatch = text.match(/(https?:\/\/[^\s]+)/i);
       let isUrl = false;
       let urlStr = "";
@@ -1157,6 +1178,7 @@ Telegram Message:
         parsed.minPrice = json.minPrice;
         parsed.maxPrice = json.maxPrice;
         parsed.brand = json.brand;
+        geminiCache.detect[cacheKey] = parsed;
       } catch (err: any) {
         console.warn("Gemini Detect failed, using local parser:", err.message);
         if (isUrl) {
@@ -1169,6 +1191,7 @@ Telegram Message:
             parsed.result = text;
           }
         }
+        geminiCache.detect[cacheKey] = parsed;
       }
       res.json(parsed);
     } catch (e: any) {
@@ -1181,6 +1204,13 @@ Telegram Message:
     try {
       const { productName } = req.body;
       if (!productName) return res.status(400).json({ error: "Missing productName parameter" });
+      
+      const cacheKey = productName.trim().toLowerCase();
+      if (geminiCache.extractFeatures[cacheKey]) {
+        console.log(`[Features Cache Hit] Returning cached specs for: "${productName}"`);
+        return res.json({ features: geminiCache.extractFeatures[cacheKey] });
+      }
+
       let features: string[] = [];
       try {
         const response = await getAi().models.generateContent({
@@ -1192,6 +1222,7 @@ Telegram Message:
         });
         const text = response.text?.trim() || "";
         features = text.split(',').map((s: string) => s.trim()).filter(Boolean).slice(0, 3);
+        geminiCache.extractFeatures[cacheKey] = features;
       } catch (err: any) {
         console.warn("Gemini Extract Features failed, using local database:", err.message);
         const lowerName = productName.toLowerCase();
@@ -1204,6 +1235,7 @@ Telegram Message:
         } else {
           features = ["Premium Industrial Build", "Optimized Custom Performance", "Smart AI Super Integration"];
         }
+        geminiCache.extractFeatures[cacheKey] = features;
       }
       res.json({ features });
     } catch (e: any) {
@@ -1215,6 +1247,14 @@ Telegram Message:
   app.post("/api/gemini/shopper-plan", async (req, res) => {
     try {
       const { query } = req.body;
+      if (!query) return res.status(400).json({ error: "Missing query parameter" });
+
+      const cacheKey = query.trim().toLowerCase();
+      if (geminiCache.shopperPlan[cacheKey]) {
+        console.log(`[Shopper Plan Cache Hit] Returning cached plan for: "${query}"`);
+        return res.json(geminiCache.shopperPlan[cacheKey]);
+      }
+
       const systemInstruction = `You are the BuyWise AI Personal Shopper. You receive natural language queries like "I have ₹30,000. Build me the best gaming setup."
 You must output ONLY valid JSON representing a complete shopping plan. Do NOT output markdown code blocks.
 The JSON must follow this exact structure:
@@ -1265,10 +1305,11 @@ The JSON must follow this exact structure:
            planJsonStr = planJsonStr.replace(/^```json\n/, "").replace(/\n```$/, "");
         }
         const plan = JSON.parse(planJsonStr);
+        geminiCache.shopperPlan[cacheKey] = plan;
         res.json(plan);
       } catch (err: any) {
         console.warn("Gemini Shopper Plan failed:", err.message);
-        res.json({
+        const fallbackPlan = {
           title: "Optimized Custom Plan",
           totalBudget: 50000,
           totalCost: 45000,
@@ -1304,7 +1345,9 @@ The JSON must follow this exact structure:
               link: "https://flipkart.com/"
             }
           ]
-        });
+        };
+        geminiCache.shopperPlan[cacheKey] = fallbackPlan;
+        res.json(fallbackPlan);
       }
     } catch (e: any) {
       console.error("Shopper Plan Error:", e.message);
@@ -1315,6 +1358,12 @@ The JSON must follow this exact structure:
   app.post("/api/gemini/shopping-advice", async (req, res) => {
     try {
       const { query, results } = req.body;
+      const cacheKey = `${(query || "").trim().toLowerCase()}_${JSON.stringify(results?.slice(0, 3) || [])}`;
+      if (geminiCache.shoppingAdvice[cacheKey]) {
+        console.log(`[Advice Cache Hit] Returning cached advice for: "${query}"`);
+        return res.json({ advice: geminiCache.shoppingAdvice[cacheKey] });
+      }
+
       const systemInstruction = `You are "BuyWise INDIA Intelligence Assistant", an elite AI with unparalleled, genius-level market intelligence and predictive pricing models.
      
 Your core identity is to act as the world's smartest AI shopping assistant (like ChatGPT combined with Google Shopping). You must guide users to the best purchasing decisions.
@@ -1356,6 +1405,7 @@ Always respond professionally with genius-level insight. If analyzing product se
           contents: `User Query: "${query}"\n\nMarket Search Results Data: ${JSON.stringify(results?.slice(0, 5) || [])}`,
         });
         advice = response.text?.trim() || "Analyzing macro-economic market vectors...";
+        geminiCache.shoppingAdvice[cacheKey] = advice;
       } catch (err: any) {
         console.warn("Gemini Shopping Advice failed, using local intelligence engine:", err.message);
         
@@ -1401,6 +1451,7 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
      - **Weekly Pass**: Only ₹30 (Perfect for immediate shopping sprints)
      - **Monthly Elite**: ₹100 (Unlocks premium status, priority developer support, and zero ads)
      - **Forever Founder (Lifetime)**: ₹700 (Direct lifetime updates, lifetime developer contact, and ultimate status)`;
+        geminiCache.shoppingAdvice[cacheKey] = advice;
       }
       res.json({ advice });
     } catch (e: any) {
@@ -1412,6 +1463,12 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
   app.post("/api/gemini/predict-trend", async (req, res) => {
     try {
       const { productTitle, currentPriceStr } = req.body;
+      const cacheKey = `${(productTitle || "").trim().toLowerCase()}_${(currentPriceStr || "").trim().toLowerCase()}`;
+      if (geminiCache.predictTrend[cacheKey]) {
+        console.log(`[Trend Cache Hit] Returning cached trend for: "${productTitle}"`);
+        return res.json(geminiCache.predictTrend[cacheKey]);
+      }
+
       let trendData: any = null;
       try {
         const response = await getAi().models.generateContent({
@@ -1431,6 +1488,7 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
         const text = response.text?.trim() || "";
         const jsonStr = text.replace(/```json/g, "").replace(/```/g, "").trim();
         trendData = JSON.parse(jsonStr);
+        geminiCache.predictTrend[cacheKey] = trendData;
       } catch (err: any) {
         console.warn("Gemini Predict Trend failed, using local predictor:", err.message);
         const priceNum = parseInt((currentPriceStr || "₹45,000").replace(/[^0-9]/g, "")) || 45000;
@@ -1459,6 +1517,7 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
           predictedPrice: formattedPrice,
           explanation
         };
+        geminiCache.predictTrend[cacheKey] = trendData;
       }
       res.json(trendData);
     } catch (e: any) {
