@@ -158,15 +158,15 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 37,
+      "coins": 44,
       "referralCode": "TEST256",
       "referredBy": null,
-      "searchesCount": 1,
-      "totalSaved": 213,
-      "lastSearchDate": "2026-07-01",
-      "lastLoginDate": "2026-07-01",
+      "searchesCount": 4,
+      "totalSaved": 746,
+      "lastSearchDate": "2026-07-10",
+      "lastLoginDate": "2026-07-10",
       "streakCount": 1,
-      "lastStreakCheckDate": "2026-07-01",
+      "lastStreakCheckDate": "2026-07-10",
       "achievements": [
         "streak_3",
         "first_search"
@@ -185,6 +185,20 @@
     }
   },
   "transactions": [
+    {
+      "id": "txn_1783690073927_973",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 2,
+      "reason": "First search of the day bonus",
+      "timestamp": "2026-07-10T13:27:53.927Z"
+    },
+    {
+      "id": "txn_1783688285691_162",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 5,
+      "reason": "Daily login reward (Streak reset)",
+      "timestamp": "2026-07-10T12:58:05.691Z"
+    },
     {
       "id": "txn_1782901380858_268",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -524,13 +538,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 24860,
-    "totalUsers": 1428,
-    "productsCompared": 49703,
-    "priceAlertsTriggered": 1284,
+    "totalSearches": 24889,
+    "totalUsers": 1429,
+    "productsCompared": 49789,
+    "priceAlertsTriggered": 1287,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1847974
+    "totalSavedAmount": 1848967
   },
   "bannedUsers": [],
   "reviews": [
@@ -2672,7 +2686,7 @@
       }
     },
     "clicks": {
-      "total": 350,
+      "total": 354,
       "byStore": {
         "amazon": 154,
         "flipkart": 112,
@@ -2681,7 +2695,8 @@
         "vijaysales": 12,
         "tatacliq": 8,
         "myntra": 5,
-        "ajio": 3
+        "ajio": 3,
+        "amazon.in": 4
       },
       "byProduct": {
         "deal_iphone_15": {
@@ -2695,10 +2710,18 @@
         "deal_sony_xm5": {
           "title": "Sony WH-1000XM5 Headphones",
           "clicks": 65
+        },
+        "Highway_Plastic_Chair": {
+          "title": "Highway Plastic Chair",
+          "clicks": 3
+        },
+        "Bharat_Sales_Turbo_Plastic_Arm_Chair": {
+          "title": "Bharat Sales Turbo Plastic Arm Chair",
+          "clicks": 1
         }
       },
       "byCategory": {
-        "electronics": 210,
+        "electronics": 214,
         "mobiles": 80,
         "laptops": 35,
         "fashion": 15,
@@ -2711,11 +2734,13 @@
         "2026-06-24": 62,
         "2026-06-25": 70,
         "2026-06-26": 68,
-        "2026-06-27": 5
+        "2026-06-27": 5,
+        "2026-07-10": 4
       },
       "monthlyClicks": {
         "2026-05": 1120,
-        "2026-06": 350
+        "2026-06": 350,
+        "2026-07": 4
       }
     }
   },

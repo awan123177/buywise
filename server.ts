@@ -66,13 +66,103 @@ const geminiCache: {
   shopperPlan: Record<string, any>;
   shoppingAdvice: Record<string, string>;
   predictTrend: Record<string, any>;
+  search: Record<string, any>;
 } = {
   detect: {},
   extractFeatures: {},
   shopperPlan: {},
   shoppingAdvice: {},
-  predictTrend: {}
+  predictTrend: {},
+  search: {}
 };
+
+// Helper function to extract direct merchant product URLs from Google Shopping/Google redirect links
+function extractDirectUrl(urlStr: string): string | null {
+  if (!urlStr) return null;
+  try {
+    const urlObj = new URL(urlStr);
+    for (const key of ["url", "q", "adurl", "r", "redirect", "dest", "destination"]) {
+      const val = urlObj.searchParams.get(key);
+      if (val && val.startsWith("http")) {
+        // Recursively extract in case of multiple redirects
+        const nested = extractDirectUrl(val);
+        return nested || val;
+      }
+    }
+  } catch (_) {}
+
+  // Regular expression fallback search for any http/https URL nested within the encoded string
+  try {
+    const dec = decodeURIComponent(urlStr);
+    const matches = dec.match(/https?:\/\/[^\s"'><]+/g);
+    if (matches) {
+      for (const m of matches) {
+        // Skip tracking domains and search indices
+        if (!m.includes("google.com") && !m.includes("serpapi.com") && !m.includes("googleadservices.com")) {
+          return m;
+        }
+      }
+    }
+  } catch (_) {}
+
+  return null;
+}
+
+// Generate fallback search URL on the merchant's actual platform domain
+function getFallbackPlatformLink(source: string, title: string, queryStr: string): string {
+  const encodeQ = encodeURIComponent(title || queryStr);
+  const src = source.toLowerCase();
+
+  if (src.includes("amazon")) {
+    return `https://www.amazon.in/s?k=${encodeQ}`;
+  }
+  if (src.includes("flipkart")) {
+    return `https://www.flipkart.com/search?q=${encodeQ}`;
+  }
+  if (src.includes("croma")) {
+    return `https://www.croma.com/searchB?q=${encodeQ}`;
+  }
+  if (src.includes("reliance")) {
+    return `https://www.reliancedigital.in/search?q=${encodeQ}`;
+  }
+  if (src.includes("ikea")) {
+    return `https://www.ikea.com/in/en/search/?q=${encodeQ}`;
+  }
+  if (src.includes("urban ladder") || src.includes("urbanladder")) {
+    return `https://www.urbanladder.com/products/search?q=${encodeQ}`;
+  }
+  if (src.includes("wakefit")) {
+    return `https://www.wakefit.co/search?q=${encodeQ}`;
+  }
+  if (src.includes("tata cliq") || src.includes("tatacliq")) {
+    return `https://www.tatacliq.com/search/?text=${encodeQ}`;
+  }
+  if (src.includes("home centre") || src.includes("homecentre")) {
+    return `https://www.homecentre.in/in/en/search?text=${encodeQ}`;
+  }
+  if (src.includes("myntra")) {
+    return `https://www.myntra.com/search?q=${encodeQ}`;
+  }
+  if (src.includes("ajio")) {
+    return `https://www.ajio.com/search/?text=${encodeQ}`;
+  }
+  if (src.includes("vijay sales") || src.includes("vijaysales")) {
+    return `https://www.vijaysales.com/search/${encodeQ}`;
+  }
+  if (src.includes("jiomart") || src.includes("jio mart")) {
+    return `https://www.jiomart.com/search/${encodeQ}`;
+  }
+
+  // Domain fallback (e.g., decathlon.in -> www.decathlon.in/search)
+  const domainMatch = src.match(/([a-z0-9\-]+\.[a-z]{2,})/i);
+  if (domainMatch) {
+    const domain = domainMatch[1];
+    return `https://www.${domain}/search?q=${encodeQ}`;
+  }
+
+  // Google site search fallback
+  return `https://www.google.com/search?q=site:${src.replace(/\s+/g, '')}+${encodeQ}`;
+}
 
 // Helper function to safely process history for Gemini API multi-turn conversation
 // It ensures that the sequence starts with a "user" message and strictly alternates.
@@ -204,6 +294,20 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // CORS Middleware to allow requests from any origin (including sandboxed iframes)
+  app.use((req: any, res: any, next: any) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization, x-user-id, x-user-email, x-user-name"
+    );
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
 
   // ==========================================
   // --- BUYWISE GAMIFICATION API ENDPOINTS ---
@@ -1709,6 +1813,12 @@ Please feel free to ask a specific question, or select one of our suggested ques
     let queryStr = typeof q === 'string' ? q : '';
     const origUrlStr = typeof originalUrl === 'string' ? originalUrl : '';
 
+    const cacheKey = `${queryStr.trim().toLowerCase()}_${origUrlStr.trim().toLowerCase()}`;
+    if (geminiCache.search && geminiCache.search[cacheKey]) {
+      console.log(`[Search Cache Hit] Returning cached results for: "${queryStr}"`);
+      return res.json({ shopping_results: geminiCache.search[cacheKey] });
+    }
+
     console.log(`[API Search] Product name: "${queryStr}", originalUrl: "${origUrlStr}"`);
 
     let urlToAnalyze = (origUrlStr.startsWith('http') ? origUrlStr : (queryStr.startsWith('http') ? queryStr : ''));
@@ -1765,17 +1875,17 @@ Please feel free to ask a specific question, or select one of our suggested ques
         if (serpResponse.data && Array.isArray(serpResponse.data.shopping_results) && serpResponse.data.shopping_results.length > 0) {
           results = serpResponse.data.shopping_results.map((item: any) => {
             let originalLink = item.link || item.product_link;
-            if (item.source && originalLink && originalLink.includes("google.com")) {
-              const encodeQ = encodeURIComponent(item.title || queryStr);
-              if (item.source.toLowerCase().includes("amazon")) {
-                originalLink = `https://www.amazon.in/s?k=${encodeQ}`;
-              } else if (item.source.toLowerCase().includes("flipkart")) {
-                originalLink = `https://www.flipkart.com/search?q=${encodeQ}`;
-              } else if (item.source.toLowerCase().includes("croma")) {
-                originalLink = `https://www.croma.com/searchB?q=${encodeQ}`;
-              } else if (item.source.toLowerCase().includes("reliance")) {
-                originalLink = `https://www.reliancedigital.in/search?q=${encodeQ}`;
+            
+            // Attempt to extract the direct merchant/product URL first
+            if (originalLink) {
+              const extracted = extractDirectUrl(originalLink);
+              if (extracted) {
+                originalLink = extracted;
               }
+            }
+
+            if (item.source && originalLink && (originalLink.includes("google.com") || originalLink.includes("serpapi.com") || originalLink.includes("googleadservices.com"))) {
+              originalLink = getFallbackPlatformLink(item.source, item.title, queryStr);
             }
 
             // Extract price and calculate a beautiful, realistic old_price if missing
@@ -2110,6 +2220,11 @@ Format each item exactly like this:
       };
       return getVal(a) - getVal(b);
     });
+
+    if (!geminiCache.search) {
+      geminiCache.search = {};
+    }
+    geminiCache.search[cacheKey] = results;
 
     res.json({ shopping_results: results });
   });

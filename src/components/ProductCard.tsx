@@ -116,27 +116,54 @@ export default function ProductCard({
     if (!product) return "#";
     let orderLink = product.link || (product as any).product_link;
     
-    // Extract actual destination from google.com/url?q=... or url=...
-    if (orderLink && orderLink.includes("google.com/url")) {
+    // Helper to extract nested redirect URLs
+    const extractUrl = (str: string): string | null => {
+      if (!str) return null;
       try {
-        const urlObj = new URL(orderLink);
-        const actualUrl = urlObj.searchParams.get("url") || urlObj.searchParams.get("q");
-        if (actualUrl) {
-          return actualUrl;
+        const urlObj = new URL(str);
+        for (const key of ["url", "q", "adurl", "r", "redirect", "dest", "destination"]) {
+          const val = urlObj.searchParams.get(key);
+          if (val && val.startsWith("http")) {
+            const nested = extractUrl(val);
+            return nested || val;
+          }
         }
-      } catch (e) {
-        console.error("Failed to parse Google redirect URL", e);
+      } catch (_) {}
+
+      try {
+        const dec = decodeURIComponent(str);
+        const matches = dec.match(/https?:\/\/[^\s"'><]+/g);
+        if (matches) {
+          for (const m of matches) {
+            if (!m.includes("google.com") && !m.includes("serpapi.com") && !m.includes("googleadservices.com")) {
+              return m;
+            }
+          }
+        }
+      } catch (_) {}
+      return null;
+    };
+
+    if (orderLink) {
+      const extracted = extractUrl(orderLink);
+      if (extracted) {
+        orderLink = extracted;
       }
     }
 
-    // Force direct links based on source if link is missing
-    if (!orderLink || orderLink.includes("serpapi.com") || orderLink.includes("google.com/shopping")) {
+    // Force direct links based on source if link is missing or still a tracking domain
+    if (!orderLink || orderLink.includes("serpapi.com") || orderLink.includes("google.com") || orderLink.includes("googleadservices.com")) {
       const encodeQ = encodeURIComponent(product.title);
       const src = product.source.toLowerCase();
       if (src.includes("amazon")) return `https://www.amazon.in/s?k=${encodeQ}`;
       if (src.includes("flipkart")) return `https://www.flipkart.com/search?q=${encodeQ}`;
       if (src.includes("croma")) return `https://www.croma.com/searchB?q=${encodeQ}`;
       if (src.includes("reliance")) return `https://www.reliancedigital.in/search?q=${encodeQ}`;
+      if (src.includes("ikea")) return `https://www.ikea.com/in/en/search/?q=${encodeQ}`;
+      if (src.includes("urban ladder") || src.includes("urbanladder")) return `https://www.urbanladder.com/products/search?q=${encodeQ}`;
+      if (src.includes("wakefit")) return `https://www.wakefit.co/search?q=${encodeQ}`;
+      if (src.includes("myntra")) return `https://www.myntra.com/search?q=${encodeQ}`;
+      if (src.includes("ajio")) return `https://www.ajio.com/search/?text=${encodeQ}`;
       // Fallback
       return `https://www.google.com/search?q=${encodeQ}`;
     }

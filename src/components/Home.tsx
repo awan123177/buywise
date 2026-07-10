@@ -256,6 +256,7 @@ export default function Home() {
           blend={0.5}
           amplitude={1.2}
           speed={0.4}
+          paused={results.length > 0 || loading}
         />
       </div>
       <div className="pt-32 md:pt-44 pb-32 px-4 md:px-12 relative z-10 max-w-[1400px] mx-auto">

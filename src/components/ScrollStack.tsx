@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useCallback, ReactNode } from 'react';
-import Lenis from 'lenis';
 import './ScrollStack.css';
 
 interface ScrollStackItemProps {
@@ -45,7 +44,6 @@ const ScrollStack = ({
   const scrollerRef = useRef<HTMLDivElement>(null);
   const stackCompletedRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
-  const lenisRef = useRef<Lenis | null>(null);
   const cardsRef = useRef<HTMLElement[]>([]);
   const lastTransformsRef = useRef<Map<number, any>>(new Map());
   const isUpdatingRef = useRef(false);
@@ -93,20 +91,12 @@ const ScrollStack = ({
   );
 
   const updateCardTransforms = useCallback(() => {
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) return;
+
     if (!cardsRef.current.length || isUpdatingRef.current) return;
 
     isUpdatingRef.current = true;
-
-    const isMobile = window.innerWidth < 768;
-    if (isMobile) {
-      cardsRef.current.forEach((card) => {
-        if (!card) return;
-        card.style.transform = 'none';
-        card.style.filter = 'none';
-      });
-      isUpdatingRef.current = false;
-      return;
-    }
 
     const { scrollTop, containerHeight } = getScrollData();
     const stackPositionPx = parsePercentage(stackPosition, containerHeight);
@@ -211,69 +201,6 @@ const ScrollStack = ({
     getElementOffset
   ]);
 
-  const handleScroll = useCallback(() => {
-    updateCardTransforms();
-  }, [updateCardTransforms]);
-
-  const setupLenis = useCallback(() => {
-    if (useWindowScroll) {
-      const lenis = new Lenis({
-        duration: 1.2,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        touchMultiplier: 2,
-        infinite: false,
-        wheelMultiplier: 1,
-        lerp: 0.1,
-        syncTouch: true,
-        syncTouchLerp: 0.075
-      } as any);
-
-      lenis.on('scroll', handleScroll);
-
-      const raf = (time: number) => {
-        lenis.raf(time);
-        animationFrameRef.current = requestAnimationFrame(raf);
-      };
-      animationFrameRef.current = requestAnimationFrame(raf);
-
-      lenisRef.current = lenis;
-      return lenis;
-    } else {
-      const scroller = scrollerRef.current;
-      if (!scroller) return;
-
-      const lenis = new Lenis({
-        wrapper: scroller,
-        content: scroller.querySelector('.scroll-stack-inner') as HTMLElement,
-        duration: 1.2,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        touchMultiplier: 2,
-        infinite: false,
-        gestureOrientationHandler: true,
-        normalizeWheel: true,
-        wheelMultiplier: 1,
-        touchInertiaMultiplier: 35,
-        lerp: 0.1,
-        syncTouch: true,
-        syncTouchLerp: 0.075,
-        touchInertia: 0.6
-      } as any);
-
-      lenis.on('scroll', handleScroll);
-
-      const raf = (time: number) => {
-        lenis.raf(time);
-        animationFrameRef.current = requestAnimationFrame(raf);
-      };
-      animationFrameRef.current = requestAnimationFrame(raf);
-
-      lenisRef.current = lenis;
-      return lenis;
-    }
-  }, [handleScroll, useWindowScroll]);
-
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
@@ -301,16 +228,42 @@ const ScrollStack = ({
       (card.style as any).webkitPerspective = isMobile ? 'none' : '1000px';
     });
 
-    setupLenis();
+    if (!isMobile) {
+      const scrollTarget = useWindowScroll ? window : scroller;
+      const handleNativeScroll = () => {
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+        animationFrameRef.current = requestAnimationFrame(() => {
+          updateCardTransforms();
+        });
+      };
 
-    updateCardTransforms();
+      scrollTarget.addEventListener('scroll', handleNativeScroll, { passive: true });
+      updateCardTransforms();
+
+      // Recalculate on window resize as layout sizes change
+      const handleResize = () => {
+        updateCardTransforms();
+      };
+      window.addEventListener('resize', handleResize, { passive: true });
+
+      return () => {
+        scrollTarget.removeEventListener('scroll', handleNativeScroll);
+        window.removeEventListener('resize', handleResize);
+        if (animationFrameRef.current) {
+          cancelAnimationFrame(animationFrameRef.current);
+        }
+        stackCompletedRef.current = false;
+        cardsRef.current = [];
+        transformsCache.clear();
+        isUpdatingRef.current = false;
+      };
+    }
 
     return () => {
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
-      }
-      if (lenisRef.current) {
-        lenisRef.current.destroy();
       }
       stackCompletedRef.current = false;
       cardsRef.current = [];
@@ -324,12 +277,8 @@ const ScrollStack = ({
     stackPosition,
     scaleEndPosition,
     baseScale,
-    scaleDuration,
-    rotationAmount,
-    blurAmount,
     useWindowScroll,
     onStackComplete,
-    setupLenis,
     updateCardTransforms
   ]);
 
