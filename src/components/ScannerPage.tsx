@@ -5,7 +5,7 @@ import {
   Trash2, RefreshCw, Smartphone, TrendingUp, AlertCircle, 
   Bell, Check, ChevronRight, ShieldAlert, Award, FileUp, Keyboard, ExternalLink, Sparkles, Flashlight, Lightbulb
 } from 'lucide-react';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { scanBarcode, fetchBarcodeHistory } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
@@ -160,7 +160,20 @@ export default function ScannerPage() {
     // Tiny delay to ensure DOM element is mounted before starting scanner
     setTimeout(async () => {
       try {
-        const html5QrCode = new Html5Qrcode(qrCodeId);
+        const html5QrCode = new Html5Qrcode(qrCodeId, {
+          verbose: false,
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_93,
+            Html5QrcodeSupportedFormats.ITF,
+            Html5QrcodeSupportedFormats.QR_CODE
+          ]
+        });
         html5QrCodeRef.current = html5QrCode;
         
         await html5QrCode.start(
@@ -170,8 +183,8 @@ export default function ScannerPage() {
             qrbox: (width, height) => {
               const size = Math.min(width, height) * 0.75;
               return { width: size, height: size * 0.45 }; // Wide rectangular target box suited for barcodes
-            },
-            aspectRatio: 1.777778
+            }
+            // Let native camera aspect ratios flow naturally to avoid strict OverconstrainedErrors on diverse devices
           },
           (decodedText, decodedResult) => {
             // Success callback
@@ -195,12 +208,13 @@ export default function ScannerPage() {
 
   // Stop Camera Streaming
   const stopCamera = async () => {
-    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+    if (html5QrCodeRef.current) {
       try {
+        // Safe check for isScanning or call stop directly within try-catch
         await html5QrCodeRef.current.stop();
         html5QrCodeRef.current.clear();
       } catch (err) {
-        console.error("Stop camera error:", err);
+        console.warn("Stop camera warning:", err);
       }
     }
     setIsScanning(false);
@@ -270,7 +284,20 @@ export default function ScannerPage() {
 
     setLoading(true);
     try {
-      const html5QrCode = new Html5Qrcode("scanner-file-hidden");
+      const html5QrCode = new Html5Qrcode("scanner-file-hidden", {
+        verbose: false,
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ]
+      });
       const decodedText = await html5QrCode.scanFile(file, true);
       handleBarcodeFound(decodedText, "IMAGE_FILE");
     } catch (err: any) {
@@ -283,6 +310,25 @@ export default function ScannerPage() {
 
   return (
     <div className="min-h-screen pt-24 pb-20 px-4 md:px-8 max-w-7xl mx-auto relative overflow-hidden bg-transparent">
+      {/* Under Working Overlay to "fully close" the page */}
+      <div className="fixed inset-0 z-50 bg-[#000000]/90 backdrop-blur-xl flex flex-col items-center justify-center p-4">
+        <div className="bg-[#111] border border-[#FF3B30]/30 p-8 rounded-3xl max-w-md w-full text-center shadow-[0_0_50px_rgba(255,59,48,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#FF3B30]/0 via-[#FF3B30] to-[#FF3B30]/0"></div>
+          <Scan size={48} className="text-[#FF3B30] mx-auto mb-6 animate-pulse" />
+          <h2 className="text-2xl font-black uppercase tracking-widest mb-2 text-white font-display">Under Working</h2>
+          <p className="text-white/50 text-sm mb-6 leading-relaxed">
+            The Smart Barcode Scanner is currently undergoing high-speed database upgrades and hardware synchronization. Check back soon for lightning-fast offline scans and instant price comparisons!
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button 
+              onClick={() => toast.success("Notification request received. We'll update you once the barcode scanning system is fully operational!")}
+              className="px-6 py-3 bg-[#FF3B30]/10 text-[#FF3B30] font-bold uppercase tracking-widest text-xs rounded-xl border border-[#FF3B30]/20 w-full hover:bg-[#FF3B30]/20 transition-colors"
+            >
+              Notify Me When Live
+            </button>
+          </div>
+        </div>
+      </div>
       
       {/* Background Ambience */}
       <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-[#FF3B30]/5 blur-[120px] rounded-full pointer-events-none -z-10" />

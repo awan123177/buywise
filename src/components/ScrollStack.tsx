@@ -97,6 +97,17 @@ const ScrollStack = ({
 
     isUpdatingRef.current = true;
 
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      cardsRef.current.forEach((card) => {
+        if (!card) return;
+        card.style.transform = 'none';
+        card.style.filter = 'none';
+      });
+      isUpdatingRef.current = false;
+      return;
+    }
+
     const { scrollTop, containerHeight } = getScrollData();
     const stackPositionPx = parsePercentage(stackPosition, containerHeight);
     const scaleEndPositionPx = parsePercentage(scaleEndPosition, containerHeight);
@@ -276,17 +287,18 @@ const ScrollStack = ({
     cardsRef.current = cards;
     const transformsCache = lastTransformsRef.current;
 
+    const isMobile = window.innerWidth < 768;
     cards.forEach((card, i) => {
       if (i < cards.length - 1) {
-        card.style.marginBottom = `${itemDistance}px`;
+        card.style.marginBottom = isMobile ? '15px' : `${itemDistance}px`;
       }
-      card.style.willChange = 'transform, filter';
+      card.style.willChange = isMobile ? 'auto' : 'transform, filter';
       card.style.transformOrigin = 'top center';
       card.style.backfaceVisibility = 'hidden';
-      card.style.transform = 'translateZ(0)';
-      (card.style as any).webkitTransform = 'translateZ(0)';
-      card.style.perspective = '1000px';
-      (card.style as any).webkitPerspective = '1000px';
+      card.style.transform = isMobile ? 'none' : 'translateZ(0)';
+      (card.style as any).webkitTransform = isMobile ? 'none' : 'translateZ(0)';
+      card.style.perspective = isMobile ? 'none' : '1000px';
+      (card.style as any).webkitPerspective = isMobile ? 'none' : '1000px';
     });
 
     setupLenis();

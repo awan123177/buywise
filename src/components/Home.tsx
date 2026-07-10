@@ -601,19 +601,19 @@ export default function Home() {
             useWindowScroll={true}
           >
             <ScrollStackItem>
-              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-full flex flex-col justify-center">
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-auto md:h-full flex flex-col justify-center">
                 <h3 className="text-2xl md:text-4xl font-black text-white mb-4">Real-time Price Tracking</h3>
                 <p className="text-white/60 text-lg">Compare prices instantly across hundreds of platforms. Our AI engines constantly scan for price drops.</p>
               </div>
             </ScrollStackItem>
             <ScrollStackItem>
-              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-full flex flex-col justify-center">
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-auto md:h-full flex flex-col justify-center">
                 <h3 className="text-2xl md:text-4xl font-black text-white mb-4">Smart Shopping Assistant</h3>
                 <p className="text-white/60 text-lg">Ask our conversational AI for shopping advice, alternative recommendations, and the best time to buy.</p>
               </div>
             </ScrollStackItem>
             <ScrollStackItem>
-              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-full flex flex-col justify-center">
+              <div className="bg-[#111] border border-white/10 rounded-3xl p-8 md:p-12 h-auto md:h-full flex flex-col justify-center">
                 <h3 className="text-2xl md:text-4xl font-black text-[#FF3B30] mb-4">Gamified Rewards</h3>
                 <p className="text-white/60 text-lg">Earn coins for every search, share, and purchase. Redeem them for premium digital gift cards.</p>
               </div>

@@ -104,6 +104,26 @@ export default function Travel() {
 
   return (
     <div className="pt-24 pb-20 px-4 max-w-7xl mx-auto min-h-screen text-white relative z-10">
+      {/* Under Working Overlay to "fully close" the page */}
+      <div className="fixed inset-0 z-50 bg-[#000000]/95 backdrop-blur-xl flex flex-col items-center justify-center p-4">
+        <div className="bg-[#111] border border-[#FF3B30]/30 p-8 rounded-3xl max-w-md w-full text-center shadow-[0_0_50px_rgba(255,59,48,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#FF3B30]/0 via-[#FF3B30] to-[#FF3B30]/0"></div>
+          <Plane size={48} className="text-[#FF3B30] mx-auto mb-6 animate-pulse" />
+          <h2 className="text-2xl font-black uppercase tracking-widest mb-2 text-white font-display">Under Working</h2>
+          <p className="text-white/50 text-sm mb-6 leading-relaxed">
+            The BuyWise Flights engine is currently undergoing system upgrades and API key sync. Check back soon for live airfare comparisons, real-time ticket bookings, and exclusive premium flight rewards!
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button 
+              onClick={() => toast.success("Notification request received. We'll update you once the flights module is fully active!")}
+              className="px-6 py-3 bg-[#FF3B30]/10 text-[#FF3B30] font-bold uppercase tracking-widest text-xs rounded-xl border border-[#FF3B30]/20 w-full hover:bg-[#FF3B30]/20 transition-colors"
+            >
+              Notify Me When Live
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="text-center mb-10 mt-6">
         <motion.div
