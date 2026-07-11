@@ -182,7 +182,7 @@
       "createdAt": "2026-06-26T06:59:49.010Z",
       "activeBadge": "💎 COINS LEGEND",
       "isPremium": true,
-      "premiumExpiry": "2026-06-30T16:58:34.001Z",
+      "premiumExpiry": "2099-12-31T00:00:00.000Z",
       "lastSpinDate": "2026-07-11"
     },
     "6022454b-b82f-4478-927c-310f7964f4c1": {
@@ -610,13 +610,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 24998,
+    "totalSearches": 24999,
     "totalUsers": 1433,
-    "productsCompared": 50121,
+    "productsCompared": 50125,
     "priceAlertsTriggered": 1303,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1851203
+    "totalSavedAmount": 1851235
   },
   "bannedUsers": [],
   "reviews": [

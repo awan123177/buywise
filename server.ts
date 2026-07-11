@@ -36,7 +36,7 @@ import {
   spinWheel,
   completeMission,
   deleteUserProfile
-} from "./src/server/gamificationDb.js";
+} from "./src/server/gamificationDb.ts";
 
 dotenv.config();
 

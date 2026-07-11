@@ -1296,12 +1296,12 @@ export function spinWheel(userId: string): { success: boolean, reward: string, c
   const profile = dbData.profiles[userId];
   if (!profile) return { success: false, reward: "", coinsAwarded: 0, message: "Profile not found" };
 
-  const todayStr = new Date().toISOString().split("T")[0];
-  if (profile.lastSpinDate === todayStr) {
-    return { success: false, reward: "", coinsAwarded: 0, message: "You have already spun the wheel today!" };
-  }
-
-  profile.lastSpinDate = todayStr;
+  // Removed daily limit so users can spin multiple times
+  // const todayStr = new Date().toISOString().split("T")[0];
+  // // if (profile.lastSpinDate === todayStr) {
+  //   // return { success: false, reward: "", coinsAwarded: 0, message: "You have already spun the wheel today!" };
+  // }
+  // // profile.lastSpinDate = todayStr;
   
   // Possible rewards for spin to win
   const outcomes = [

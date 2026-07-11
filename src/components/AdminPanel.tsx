@@ -326,6 +326,19 @@ export default function AdminPanel() {
       {/* Main Content Area */}
       <main className="flex-1 md:ml-64 p-6 md:p-10 max-w-[1600px] mx-auto w-full">
         <header className="mb-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          {/* Mobile Tab Selector */}
+          <div className="w-full md:hidden mb-4">
+            <select 
+              value={activeTab} 
+              onChange={(e) => setActiveTab(e.target.value as any)}
+              className="w-full bg-[#111] border border-white/10 rounded-xl p-3 text-white text-sm font-bold uppercase tracking-widest focus:border-[#FF3B30] transition-colors outline-none"
+            >
+              {adminTabsList.map(tab => (
+                <option key={tab.id} value={tab.id} className="bg-[#111]">{tab.label}</option>
+              ))}
+            </select>
+          </div>
+
           <div>
             <h1 className="text-3xl font-black text-white tracking-tight uppercase flex items-center gap-3">
               {adminTabsList.find(t => t.id === activeTab)?.label || 'Dashboard'}
