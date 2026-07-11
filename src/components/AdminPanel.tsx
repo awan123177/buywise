@@ -54,7 +54,7 @@ export default function AdminPanel() {
   const [isParsingDeal, setIsParsingDeal] = useState(false);
   const [founderImage, setFounderImage] = useState<string | null>(null);
   const [isUploadingFounder, setIsUploadingFounder] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder'>('overview');
 
   const parseNameField = (nameStr: string) => {
     if (!nameStr) return { displayName: 'Unknown', screenshot: null };
@@ -295,6 +295,7 @@ export default function AdminPanel() {
     { id: 'ai', label: 'AI Control', icon: Activity, group: 'Advanced' },
     { id: 'analytics', label: 'Analytics', icon: Search, group: 'Advanced' },
     { id: 'settings', label: 'System Settings', icon: Settings, group: 'Advanced' },
+    { id: 'founder', label: 'Owner Photo', icon: Upload, group: 'Management' },
   ];
 
   return (
@@ -1883,16 +1884,16 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {activeTab === 'settings' && (
+      
+      {activeTab === 'founder' && (
         <div className="space-y-6">
           <div className="mb-6">
             <h2 className="text-2xl font-black uppercase tracking-widest text-white flex items-center gap-2">
-              <Settings className="text-[#FF3B30]" /> System Settings & Assets
+              <Upload className="text-[#FF3B30]" /> Owner Photo
             </h2>
-            <p className="text-sm text-white/50">Manage system assets, founder profiles, global images, and branding assets.</p>
+            <p className="text-sm text-white/50">Change the owner/founder photo. The new photo will appear instantly across the app.</p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="max-w-2xl">
             {/* Founder Photo Panel */}
             <div className="bg-[#111111]/90 border border-white/10 p-6 rounded-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF3B30]/5 blur-[40px] rounded-full pointer-events-none" />
@@ -1969,6 +1970,21 @@ export default function AdminPanel() {
               </div>
             </div>
 
+            
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+              <Settings className="text-[#FF3B30]" /> System Settings & Assets
+            </h2>
+            <p className="text-sm text-white/50">Manage system assets, founder profiles, global images, and branding assets.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Quick Actions Panel */}
             <div className="bg-[#111111]/90 border border-white/10 p-6 rounded-2xl relative overflow-hidden">
               <h3 className="font-bold text-lg uppercase tracking-widest text-white mb-2 flex items-center gap-2">
@@ -1995,7 +2011,7 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && (
+      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'founder' && (
         <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-6">
            <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
               <ShieldCheck size={48} className="text-white/20" />
