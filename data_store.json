@@ -610,13 +610,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 24965,
-    "totalUsers": 1430,
-    "productsCompared": 50019,
-    "priceAlertsTriggered": 1297,
+    "totalSearches": 24998,
+    "totalUsers": 1433,
+    "productsCompared": 50121,
+    "priceAlertsTriggered": 1303,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1850591
+    "totalSavedAmount": 1851203
   },
   "bannedUsers": [],
   "reviews": [

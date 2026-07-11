@@ -98,7 +98,7 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <div className="hidden xl:flex items-center space-x-0 border-l border-r border-white/5 h-full overflow-visible">
+        <div className="hidden xl:flex items-center space-x-0 border-l border-r border-white/5 h-full overflow-visible shrink overflow-x-auto no-scrollbar">
           <div className="h-full flex items-center">
             <GooeyNav
               items={[
@@ -118,8 +118,8 @@ export default function Navbar() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-8">
-          <div className="hidden lg:flex items-center gap-4 border-r border-white/5 pr-8 relative">
+        <div className="flex items-center gap-3 md:gap-6 shrink-0">
+          <div className="hidden lg:flex items-center gap-4 border-r border-white/5 pr-8 relative shrink-0">
             <button 
               onClick={() => setIsDark(!isDark)}
               className="text-white/50 hover:text-white transition-colors mr-2"
@@ -162,17 +162,8 @@ export default function Navbar() {
             </AnimatePresence>
           </div>
           </div>
-          <div className="text-right hidden xl:block border-r border-white/5 pr-8">
-            <div className="text-[10px] text-[#f5f5f5] uppercase tracking-widest leading-none mb-1 font-black opacity-30">Live Users</div>
-            <div className="text-xs text-[#FF3B30] font-mono font-black border-l-2 border-[#FF3B30] pl-4 leading-none flex items-center gap-2">
-              <span className="w-2 h-2 bg-[#FF3B30] rounded-full animate-pulse shadow-[0_0_8px_#FF3B30]"></span>
-              {onlineCount} ONLINE
-            </div>
-          </div>
-          <div className="text-right hidden xl:block">
-            <div className="text-[10px] text-[#f5f5f5] uppercase tracking-widest leading-none mb-1 font-black opacity-30">Status</div>
-            <div className="text-xs text-green-500 font-mono font-black border-l-2 border-green-500 pl-4 leading-none text-shadow-sm">CONNECTED</div>
-          </div>
+          
+          
           {user ? (
             <div className="flex justify-center items-center gap-2 sm:gap-3">
                <Link to="/rewards" className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-yellow-500/40 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 text-yellow-400 text-[10px] sm:text-xs font-black font-mono shadow-[0_0_15px_rgba(250,204,21,0.15)] hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all cursor-pointer group">
@@ -223,10 +214,10 @@ export default function Navbar() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={openLogin}
-              className="h-10 md:h-12 px-4 md:px-6 border border-white/10 rounded-lg group overflow-hidden bg-white/5 cursor-pointer flex items-center gap-2 md:gap-3 transition-colors hover:bg-white hover:text-black hover:border-white"
+              className="h-10 md:h-12 px-4 md:px-6 border border-white/10 rounded-lg group overflow-hidden bg-white/5 cursor-pointer flex items-center gap-2 md:gap-3 transition-colors hover:bg-white hover:text-black hover:border-white shrink-0"
             >
               <User size={16} className="text-[#f5f5f5] group-hover:text-black transition-colors" />
-              <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-black hidden sm:block">SIGN_IN WITH GOOGLE</span>
+              <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-black hidden sm:block">SIGN IN</span>
               <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-black sm:hidden">SIGN IN</span>
             </motion.button>
           )}
@@ -245,6 +236,7 @@ export default function Navbar() {
             { label: 'TRAVEL', icon: <Plane size={18} />, onClick: () => navigate('/travel') },
             { label: 'CLUB', icon: <Trophy size={18} />, onClick: () => navigate('/rewards') },
             { label: 'PREM', icon: <Diamond size={18} />, onClick: () => navigate('/premium') },
+            { label: 'USER', icon: <User size={18} />, onClick: () => user ? setShowAvatarModal(true) : openLogin() },
           ]}
           panelHeight={55}
           baseItemSize={typeof window !== 'undefined' && window.innerWidth < 400 ? 34 : 40}
