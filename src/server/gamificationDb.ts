@@ -522,7 +522,7 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
     now.setDate(now.getDate() + 3); // 3 days trial
     profile.premiumExpiry = now.toISOString();
     saveDatabase();
-    console.log(`Granted 3-day premium trial to ${email}`);
+    console.log("Granted 3-day premium trial to [REDACTED]");
   }
 
   return profile;
@@ -554,6 +554,10 @@ export function awardCoins(userId: string, amount: number, reason: string): { co
 
 // Transfer Coins
 export function transferCoins(fromUserId: string, toUserId: string, amount: number): { success: boolean; message: string } {
+  if (fromUserId === toUserId) {
+    return { success: false, message: "Self-transfers are not allowed" };
+  }
+
   const fromProfile = dbData.profiles[fromUserId];
   const toProfile = dbData.profiles[toUserId];
 
@@ -864,7 +868,7 @@ export function getLeaderboard(metric: "coins" | "referrals" | "searches" | "sav
     return {
       userId: p.userId,
       name: p.name,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.email}`,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${p.userId}`,
       coins: p.coins,
       referralsCount: refsCount,
       searchesCount: p.searchesCount,
@@ -1175,7 +1179,7 @@ export function getDefaultAffiliateSettings(): AffiliateSettings {
 export function getDefaultTelegramConfig(): TelegramConfig {
   return {
     channelUsername: process.env.TELEGRAM_CHANNEL_USERNAME || "@buywiseofficial",
-    botToken: process.env.TELEGRAM_BOT_TOKEN || "8654463361:AAG1zaFwPSn6EgRupkTAMROdQcnzg3CCMU8b",
+    botToken: process.env.TELEGRAM_BOT_TOKEN || "",
     enabled: true
   };
 }
@@ -1382,3 +1386,42 @@ export function completeMission(userId: string, missionId: string): { success: b
     coinsAwarded: reward
   };
 }
+
+// ---------------------- ACCOUNT DELETION ----------------------
+
+export function deleteUserProfile(userId: string): { success: boolean; message: string } {
+  if (!dbData.profiles[userId]) {
+    return { success: false, message: "Profile not found" };
+  }
+
+  // Remove profile
+  delete dbData.profiles[userId];
+
+  // Filter transactions
+  if (dbData.transactions) {
+    dbData.transactions = dbData.transactions.filter(t => t.userId !== userId);
+  }
+
+  // Filter referrals
+  if (dbData.referrals) {
+    dbData.referrals = dbData.referrals.filter(r => r.referrerId !== userId && r.referredId !== userId);
+  }
+
+  // Filter scans
+  if (dbData.scans) {
+    dbData.scans = dbData.scans.filter(s => s.userId !== userId);
+  }
+
+  // Filter reviews
+  if (dbData.reviews) {
+    dbData.reviews = dbData.reviews.filter(r => r.userId !== userId);
+  }
+
+  saveDatabase();
+
+  return {
+    success: true,
+    message: "User gamification profile and all associated data deleted successfully."
+  };
+}
+

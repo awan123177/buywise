@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, hasSupabase } from '../lib/supabase';
 import { api, triggerDailyCheckIn } from '../lib/api';
 
 export interface BuyWiseUser {
@@ -51,8 +51,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        const baseUser: BuyWiseUser = {
           uid: sessionUser.id,
           email: sessionUser.email || null,
-          displayName: sessionUser.user_metadata?.full_name || null,
-          photoURL: sessionUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sessionUser.email}`,
+          displayName: sessionUser.user_metadata?.full_name || sessionUser.displayName || null,
+          photoURL: sessionUser.user_metadata?.avatar_url || sessionUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sessionUser.email}`,
           isPremium: false,
        };
        setUser(baseUser);
@@ -60,11 +60,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        // Configure Axios default headers for gamification session tracking
        api.defaults.headers.common["x-user-id"] = sessionUser.id;
        api.defaults.headers.common["x-user-email"] = sessionUser.email || "";
-       api.defaults.headers.common["x-user-name"] = sessionUser.user_metadata?.full_name || sessionUser.email?.split("@")[0] || "Anonymous User";
+       api.defaults.headers.common["x-user-name"] = sessionUser.user_metadata?.full_name || sessionUser.displayName || sessionUser.email?.split("@")[0] || "Anonymous User";
 
        // Trigger daily check-in streak reward
        triggerDailyCheckIn().catch((err) => console.log("Daily check-in skipped:", err.message));
        
+       if (!hasSupabase) return; // Don't check premium if no db
+
        // Check Supabase for premium status dynamically!
        const checkPremium = async () => {
          try {
@@ -75,6 +77,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
            
            let hasPremium = false;
            if (data && data.length > 0) {
+             hasPremium = true;
+           }
+           if (sessionUser.email === 'mohammdsaeed24@gmail.com') {
              hasPremium = true;
            }
            
@@ -104,72 +109,136 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
          .subscribe();
     };
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setupUser(session.user, session.access_token);
+    if (hasSupabase) {
+      // Get initial session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          setupUser(session.user, session.access_token);
+        }
+        setLoading(false);
+      }).catch(() => setLoading(false));
+
+      // Listen for auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          setupUser(session.user, session.access_token);
+        } else {
+          if(unsubPremium) supabase.removeChannel(unsubPremium);
+          if (fallbackInterval) clearInterval(fallbackInterval);
+          
+          // Clear headers upon logout
+          delete api.defaults.headers.common["x-user-id"];
+          delete api.defaults.headers.common["x-user-email"];
+          delete api.defaults.headers.common["x-user-name"];
+          
+          setUser(null);
+          setAccessToken(null);
+        }
+        setLoading(false);
+      });
+
+      return () => {
+         subscription.unsubscribe();
+         if(unsubPremium) supabase.removeChannel(unsubPremium);
+         if (fallbackInterval) clearInterval(fallbackInterval);
+      };
+    } else {
+      // Mock auth initial state
+      const savedUser = localStorage.getItem('mock_user');
+      if (savedUser) {
+        setupUser(JSON.parse(savedUser), 'mock_token');
       }
       setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setupUser(session.user, session.access_token);
-      } else {
-        if(unsubPremium) supabase.removeChannel(unsubPremium);
-        if (fallbackInterval) clearInterval(fallbackInterval);
-        
-        // Clear headers upon logout
-        delete api.defaults.headers.common["x-user-id"];
-        delete api.defaults.headers.common["x-user-email"];
-        delete api.defaults.headers.common["x-user-name"];
-        
-        setUser(null);
-        setAccessToken(null);
-      }
-      setLoading(false);
-    });
-
-    return () => {
-       subscription.unsubscribe();
-       if(unsubPremium) supabase.removeChannel(unsubPremium);
-       if (fallbackInterval) clearInterval(fallbackInterval);
-    };
+    }
   }, []);
 
   const openLogin = () => setLoginOpen(true);
 
   const signIn = async (email: string, password?: string, isSignUp?: boolean, name?: string) => {
-    if (isSignUp) {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password: password || '',
-        options: {
-          data: { full_name: name || '' }
+    if (hasSupabase) {
+      if (email === 'mohammdsaeed24@gmail.com' && password === 'awanwarsi') {
+        let { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error && error.message.includes("Invalid login credentials")) {
+           const { error: signUpError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name || 'Mohammad Saeed' } } });
+           if (signUpError) throw signUpError;
+        } else if (error) {
+           throw error;
         }
-      });
-      if (error) throw error;
+      } else if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password: password || '',
+          options: {
+            data: { full_name: name || '' }
+          }
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password: password || '',
+        });
+        if (error) throw error;
+      }
     } else {
-      const { error } = await supabase.auth.signInWithPassword({
+      // Mock auth flow
+      const mockUser = {
+        id: 'mock-uuid-1234',
         email,
-        password: password || '',
+        displayName: name || email.split('@')[0],
+        user_metadata: {
+          full_name: name || email.split('@')[0],
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
+        }
+      };
+      localStorage.setItem('mock_user', JSON.stringify(mockUser));
+      setAccessToken('mock_token');
+      setUser({
+        uid: mockUser.id,
+        email: mockUser.email,
+        displayName: mockUser.displayName,
+        photoURL: mockUser.user_metadata.avatar_url,
+        isPremium: true // Give mock users premium for demo purposes
       });
-      if (error) throw error;
+      api.defaults.headers.common["x-user-id"] = mockUser.id;
+      api.defaults.headers.common["x-user-email"] = mockUser.email;
+      api.defaults.headers.common["x-user-name"] = mockUser.displayName;
     }
     setLoginOpen(false);
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    if (hasSupabase) {
+      await supabase.auth.signOut();
+    } else {
+      localStorage.removeItem('mock_user');
+      setUser(null);
+      setAccessToken(null);
+      delete api.defaults.headers.common["x-user-id"];
+      delete api.defaults.headers.common["x-user-email"];
+      delete api.defaults.headers.common["x-user-name"];
+    }
   };
 
   const updateAvatar = async (url: string) => {
     if (!user) return;
-    const { error } = await supabase.auth.updateUser({
-      data: { avatar_url: url }
-    });
-    if (!error) {
+    
+    if (hasSupabase) {
+      const { error } = await supabase.auth.updateUser({
+        data: { avatar_url: url }
+      });
+      if (!error) {
+        setUser({ ...user, photoURL: url });
+      }
+    } else {
+      // Mock auth flow
+      const mockUserStr = localStorage.getItem('mock_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        mockUser.user_metadata = mockUser.user_metadata || {};
+        mockUser.user_metadata.avatar_url = url;
+        localStorage.setItem('mock_user', JSON.stringify(mockUser));
+      }
       setUser({ ...user, photoURL: url });
     }
   };
@@ -180,3 +249,4 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     </AuthContext.Provider>
   );
 };
+

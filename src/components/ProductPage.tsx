@@ -31,6 +31,79 @@ export default function ProductPage() {
   const { formatPrice } = useCurrency();
   const [activeTab, setActiveTab] = useState<'gallery'>('gallery');
   const [activeImage, setActiveImage] = useState(0);
+  const [priceRange, setPriceRange] = useState<'7d' | '30d' | '90d' | '180d' | '1y'>('180d');
+
+  const historyData = {
+    '7d': {
+      data: [
+        { name: 'Day 1', price: 86500 },
+        { name: 'Day 2', price: 86300 },
+        { name: 'Day 3', price: 86000 },
+        { name: 'Day 4', price: 85500 },
+        { name: 'Day 5', price: 85200 },
+        { name: 'Day 6', price: 85100 },
+        { name: 'Day 7', price: 85000 },
+      ],
+      highest: 86500,
+      lowest: 85000,
+      average: 85800,
+      bestTimeToBuy: 'BUY NOW - Lowest price of the week',
+      prediction: 'Price is stable for the next 48 hours. Buy now to secure early delivery.'
+    },
+    '30d': {
+      data: [
+        { name: 'Week 1', price: 89000 },
+        { name: 'Week 2', price: 87500 },
+        { name: 'Week 3', price: 86200 },
+        { name: 'Week 4', price: 85000 },
+      ],
+      highest: 89000,
+      lowest: 85000,
+      average: 86900,
+      bestTimeToBuy: 'BUY NOW - Solid 4.5% drop from Week 1',
+      prediction: 'Our models predict a stable floor for 3 days. Excellent time to buy before stock clears.'
+    },
+    '90d': {
+      data: [
+        { name: 'Month 1', price: 92000 },
+        { name: 'Month 2', price: 88500 },
+        { name: 'Month 3', price: 85000 },
+      ],
+      highest: 92000,
+      lowest: 85000,
+      average: 88500,
+      bestTimeToBuy: 'BUY NOW - 7.6% savings over 90 days',
+      prediction: 'Price has bottomed out. Expect a slight rebound of 1-2% next week as stocks replenish.'
+    },
+    '180d': {
+      data: [
+        { name: 'Jan', price: 99990 },
+        { name: 'Feb', price: 95000 },
+        { name: 'Mar', price: 98000 },
+        { name: 'Apr', price: 92000 },
+        { name: 'May', price: 89000 },
+        { name: 'Jun', price: 85000 },
+      ],
+      highest: 99990,
+      lowest: 85000,
+      average: 93165,
+      bestTimeToBuy: 'WAIT 7 DAYS - Fest Sale expected soon',
+      prediction: 'Festive season discount upcoming! Our models suggest a 3-5% discount with credit card tie-ups.'
+    },
+    '1y': {
+      data: [
+        { name: 'Q1', price: 115000 },
+        { name: 'Q2', price: 105000 },
+        { name: 'Q3', price: 95000 },
+        { name: 'Q4', price: 85000 },
+      ],
+      highest: 115000,
+      lowest: 85000,
+      average: 100000,
+      bestTimeToBuy: 'BUY NOW - All-time lowest pricing',
+      prediction: 'Year-end liquidation is active. Next generation release is 4 months away, buy now for max value.'
+    }
+  };
   
   const product = {
     id: id || 'iphone-15-pro',
@@ -352,19 +425,64 @@ export default function ProductPage() {
           </div>
 
           {/* Price History Chart */}
-          <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6">
-            <h3 className="text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2">
-              <LineChartIcon size={16} className="text-[#FF3B30]" /> Price History (6 Months)
-            </h3>
+          <div className="bg-white/[0.02] border border-white/5 rounded-3xl p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
+                  <LineChartIcon size={16} className="text-[#FF3B30]" /> Price History Index
+                </h3>
+                <p className="text-[10px] text-white/40 uppercase tracking-wider font-bold mt-1">PROGRAMMATIC VALUE AGGREGATION</p>
+              </div>
+
+              {/* Time Range Selectors */}
+              <div className="flex bg-white/5 p-1 rounded-lg border border-white/5 self-start">
+                {(['7d', '30d', '90d', '180d', '1y'] as const).map((range) => (
+                  <button
+                    key={range}
+                    onClick={() => setPriceRange(range)}
+                    className={`px-3 py-1 text-[10px] font-black uppercase tracking-widest rounded transition-all ${
+                      priceRange === range
+                        ? 'bg-[#FF3B30] text-white shadow-lg'
+                        : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    {range.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Price Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-white/[0.01] border border-white/5 rounded-2xl">
+              <div>
+                <div className="text-[9px] text-white/40 font-black uppercase tracking-widest">HIGHEST PRICE</div>
+                <div className="text-sm font-black text-white font-mono mt-0.5">{formatPrice(historyData[priceRange].highest)}</div>
+              </div>
+              <div>
+                <div className="text-[9px] text-white/40 font-black uppercase tracking-widest text-emerald-400">LOWEST PRICE</div>
+                <div className="text-sm font-black text-emerald-400 font-mono mt-0.5">{formatPrice(historyData[priceRange].lowest)}</div>
+              </div>
+              <div>
+                <div className="text-[9px] text-white/40 font-black uppercase tracking-widest">AVERAGE PRICE</div>
+                <div className="text-sm font-black text-white/80 font-mono mt-0.5">{formatPrice(historyData[priceRange].average)}</div>
+              </div>
+              <div>
+                <div className="text-[9px] text-white/40 font-black uppercase tracking-widest text-[#FFD700]">RECOMMENDATION</div>
+                <div className="text-xs font-black text-[#FFD700] uppercase mt-0.5 tracking-wider truncate">{historyData[priceRange].bestTimeToBuy}</div>
+              </div>
+            </div>
+
+            {/* Line Chart */}
             <div className="h-48 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={mockPriceHistory}>
+                <LineChart data={historyData[priceRange].data}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={10} tickLine={false} axisLine={false} />
-                  <YAxis stroke="rgba(255,255,255,0.2)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val/1000}k`} />
+                  <XAxis dataKey="name" stroke="rgba(255,255,255,0.2)" fontSize={9} tickLine={false} axisLine={false} />
+                  <YAxis stroke="rgba(255,255,255,0.2)" fontSize={9} tickLine={false} axisLine={false} tickFormatter={(val) => `₹${val/1000}k`} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: '#111111', border: '1px solid rgba(255,59,48,0.2)', borderRadius: '8px' }}
+                    contentStyle={{ backgroundColor: '#111111', border: '1px solid rgba(255,59,48,0.2)', borderRadius: '12px' }}
                     itemStyle={{ color: '#FF3B30', fontWeight: 'bold' }}
+                    labelStyle={{ color: '#ffffff', fontWeight: 'bold', fontSize: '10px' }}
                     formatter={(value: number) => [formatPrice(value), 'Price']}
                   />
                   <Line type="monotone" dataKey="price" stroke="#FF3B30" strokeWidth={3} dot={{ fill: '#111111', stroke: '#FF3B30', strokeWidth: 2, r: 4 }} activeDot={{ r: 6 }} />
@@ -372,13 +490,13 @@ export default function ProductPage() {
               </ResponsiveContainer>
             </div>
             
-            {/* Price Prediction */}
-            <div className="mt-4 p-4 bg-[#FFD700]/5 border border-[#FFD700]/20 rounded-xl flex items-start gap-3">
-              <Activity size={18} className="text-[#FFD700] shrink-0 mt-0.5" />
+            {/* Price Prediction Indicator */}
+            <div className="p-4 bg-red-600/5 border border-red-600/10 rounded-xl flex items-start gap-3">
+              <Activity size={18} className="text-[#FF3B30] shrink-0 mt-0.5" />
               <div>
-                <div className="text-xs font-black text-[#FFD700] uppercase tracking-widest">Price Prediction</div>
-                <div className="text-[10px] text-white/60 mt-1 leading-relaxed">
-                  Our AI models predict the price will drop by 2-3% in the next 15 days due to an upcoming festive sale. Wait for the upcoming sale.
+                <div className="text-xs font-black text-[#FF3B30] uppercase tracking-widest">BuyWise AI Prediction Strategy</div>
+                <div className="text-[10px] text-white/60 mt-1 leading-relaxed font-medium">
+                  {historyData[priceRange].prediction}
                 </div>
               </div>
             </div>

@@ -21,7 +21,16 @@ const pages = [
   '/faq',
   '/disclaimer',
   '/careers',
-  '/press'
+  '/press',
+  '/guides',
+  '/guides/best-phones-under-20000',
+  '/guides/best-laptops-under-50000',
+  '/guides/best-gaming-headphones',
+  '/guides/best-smart-tvs',
+  '/guides/best-washing-machines',
+  '/guides/best-air-conditioners',
+  '/guides/best-refrigerators',
+  '/guides/best-power-banks'
 ];
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

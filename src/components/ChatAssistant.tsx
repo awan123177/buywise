@@ -97,8 +97,8 @@ export default function ChatAssistant({ results }: { results: any[] }) {
     }
   };
 
-  const speakText = (text: string) => {
-    if (isMuted) return;
+  const speakText = (text: string, force = false) => {
+    if (isMuted && !force) return;
     if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
       const cleanText = text.replace(/[#*`_]/g, ''); // strip markdown for speech
@@ -206,7 +206,7 @@ export default function ChatAssistant({ results }: { results: any[] }) {
                   key={i}
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex group ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div className={`max-w-[85%] p-4 text-sm font-medium leading-relaxed rounded-2xl ${
                     msg.role === 'user' 
@@ -218,8 +218,19 @@ export default function ChatAssistant({ results }: { results: any[] }) {
                         <TypingEffect text={msg.text} onComplete={() => handleTypingComplete(i)} />
                       </div>
                     ) : (
-                      <div className="markdown-body prose prose-invert prose-sm max-w-none">
-                        <ReactMarkdown>{msg.text}</ReactMarkdown>
+                      <div className="relative">
+                        <div className="markdown-body prose prose-invert prose-sm max-w-none">
+                          <ReactMarkdown>{msg.text}</ReactMarkdown>
+                        </div>
+                        {msg.role === 'ai' && (
+                          <button 
+                            onClick={() => speakText(msg.text, true)} 
+                            className="absolute -bottom-6 -right-2 p-1.5 bg-[#FF3B30]/20 border border-[#FF3B30]/50 text-[#FF3B30] rounded-full opacity-0 group-hover:opacity-100 hover:scale-110 transition-all hover:bg-[#FF3B30] hover:text-white"
+                            title="Replay Voice"
+                          >
+                            <Volume2 size={12} />
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -235,7 +246,41 @@ export default function ChatAssistant({ results }: { results: any[] }) {
               )}
             </div>
 
-            <div className="p-4 bg-gradient-to-t from-black to-transparent">
+            <div className="p-4 bg-gradient-to-t from-black to-transparent space-y-3">
+              {/* Suggestion Pills */}
+              {user?.isPremium && (
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide no-scrollbar">
+                  {[
+                    "Best phone under ₹20,000",
+                    "Best laptop for coding",
+                    "Best gaming monitor",
+                    "Should I buy now?",
+                    "Best TV",
+                    "Best smartwatch"
+                  ].map((s, idx) => (
+                    <button
+                      key={idx}
+                      onClick={async () => {
+                        if (isProcessing) return;
+                        setMessages(prev => [...prev, { role: 'user', text: s }]);
+                        setIsProcessing(true);
+                        try {
+                          const advice = await getShoppingAdvice(s, results || []);
+                          setMessages(prev => [...prev, { role: 'ai', text: advice, isTyping: true }]);
+                        } catch (error) {
+                          setMessages(prev => [...prev, { role: 'ai', text: "Apologies, the market uplink is momentarily reset.", isTyping: true }]);
+                        } finally {
+                          setIsProcessing(false);
+                        }
+                      }}
+                      className="shrink-0 bg-white/5 hover:bg-[#FF3B30] hover:text-white text-white/70 px-3 py-1.5 rounded-full text-[9px] font-black border border-white/5 transition-all uppercase tracking-widest"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <div className="flex gap-2 relative">
                 {!user?.isPremium && <div className="absolute inset-0 bg-transparent z-10" onClick={() => navigate('/premium')} />}
                 <div className="relative flex-grow">

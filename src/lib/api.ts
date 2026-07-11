@@ -167,6 +167,17 @@ export async function logProfileComplete() {
   }
 }
 
+// 6.5. Delete Account and Gamification Profile
+export async function deleteAccountAndData() {
+  try {
+    const response = await api.post("/gamification/profile/delete");
+    return response.data;
+  } catch (e: any) {
+    console.error("deleteAccountAndData error:", e);
+    throw e;
+  }
+}
+
 // 7. Get Transaction history
 export async function fetchCoinTransactions() {
   try {

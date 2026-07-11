@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
   Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X,
-  Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode, Download
+  Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode, Download,
+  Settings, Upload
 } from 'lucide-react';
-import { fetchAdminStats, runAdminGamificationAction } from '../lib/api';
+import { fetchAdminStats, runAdminGamificationAction, api } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot, updateDoc } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
@@ -51,6 +52,8 @@ export default function AdminPanel() {
   const [mockTelegramText, setMockTelegramText] = useState("");
   const [mockTelegramPhotoUrl, setMockTelegramPhotoUrl] = useState("");
   const [isParsingDeal, setIsParsingDeal] = useState(false);
+  const [founderImage, setFounderImage] = useState<string | null>(null);
+  const [isUploadingFounder, setIsUploadingFounder] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings'>('overview');
 
   const parseNameField = (nameStr: string) => {
@@ -70,15 +73,13 @@ export default function AdminPanel() {
       });
 
       // Load Affiliate Settings
-      fetch("/api/affiliate/settings")
-        .then(res => res.json())
-        .then(data => setAffiliateSettings(data))
+      api.get("/affiliate/settings")
+        .then(res => setAffiliateSettings(res.data))
         .catch(err => console.error("Error loading affiliate settings:", err));
 
       // Load Telegram Config
-      fetch("/api/telegram/config")
-        .then(res => res.json())
-        .then(data => setTelegramConfig(data))
+      api.get("/telegram/config")
+        .then(res => setTelegramConfig(res.data))
         .catch(err => console.error("Error loading telegram config:", err));
 
       const qTrack = query(collection(db, "price_tracking"), orderBy("trackedAt", "desc"), limit(20));
@@ -122,6 +123,10 @@ export default function AdminPanel() {
     e.preventDefault();
     if (email === 'mohammdsaeed24@gmail.com' && (passcode === 'awanwarsi' || passcode === 'awanwarsi1A@')) { 
       setIsAuthorized(true);
+      // Set the authorization and user context headers on the Axios api client
+      api.defaults.headers.common["x-admin-passcode"] = passcode;
+      api.defaults.headers.common["x-user-email"] = email;
+      api.defaults.headers.common["x-user-id"] = "admin-uid-mohammdsaeed24";
     } else {
       alert('INVALID ACCESS CREDENTIALS');
     }
@@ -153,12 +158,8 @@ export default function AdminPanel() {
     e.preventDefault();
     if (!affiliateSettings) return;
     try {
-      const response = await fetch("/api/affiliate/settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stores: affiliateSettings.stores })
-      });
-      const data = await response.json();
+      const response = await api.post("/affiliate/settings", { stores: affiliateSettings.stores });
+      const data = response.data;
       if (data.success) {
         toast.success("Affiliate program tags updated!");
       }
@@ -171,12 +172,8 @@ export default function AdminPanel() {
     e.preventDefault();
     if (!telegramConfig) return;
     try {
-      const response = await fetch("/api/telegram/config", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ config: telegramConfig })
-      });
-      const data = await response.json();
+      const response = await api.post("/telegram/config", { config: telegramConfig });
+      const data = response.data;
       if (data.success) {
         toast.success("Telegram channel integration saved!");
       }
@@ -190,17 +187,13 @@ export default function AdminPanel() {
     if (!mockTelegramText.trim()) return;
     setIsParsingDeal(true);
     try {
-      const response = await fetch("/api/telegram/webhook", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          channel_post: {
-            text: mockTelegramText,
-            photo_url: mockTelegramPhotoUrl
-          }
-        })
+      const response = await api.post("/telegram/webhook", {
+        channel_post: {
+          text: mockTelegramText,
+          photo_url: mockTelegramPhotoUrl
+        }
       });
-      const data = await response.json();
+      const data = response.data;
       if (data.success) {
         toast.success("Parsed deal with Gemini and posted live! 📲");
         setMockTelegramText("");
@@ -301,6 +294,7 @@ export default function AdminPanel() {
     { id: 'telegram', label: 'Telegram Bot', icon: Sparkles, group: 'Communication' },
     { id: 'ai', label: 'AI Control', icon: Activity, group: 'Advanced' },
     { id: 'analytics', label: 'Analytics', icon: Search, group: 'Advanced' },
+    { id: 'settings', label: 'System Settings', icon: Settings, group: 'Advanced' },
   ];
 
   return (
@@ -1889,7 +1883,119 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && (
+      {activeTab === 'settings' && (
+        <div className="space-y-6">
+          <div className="mb-6">
+            <h2 className="text-2xl font-black uppercase tracking-widest text-white flex items-center gap-2">
+              <Settings className="text-[#FF3B30]" /> System Settings & Assets
+            </h2>
+            <p className="text-sm text-white/50">Manage system assets, founder profiles, global images, and branding assets.</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Founder Photo Panel */}
+            <div className="bg-[#111111]/90 border border-white/10 p-6 rounded-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#FF3B30]/5 blur-[40px] rounded-full pointer-events-none" />
+              <h3 className="font-bold text-lg uppercase tracking-widest text-white mb-2 flex items-center gap-2">
+                <Upload size={18} className="text-[#FF3B30]" /> Founder Portrait Upload
+              </h3>
+              <p className="text-xs text-white/40 mb-6">Upload the official photo of the Founder, CEO & Chairman (Awan Warsi) to update all profiles across the applet in real-time.</p>
+
+              <div className="flex flex-col items-center justify-center p-8 border border-dashed border-white/10 rounded-xl bg-black/40 hover:border-[#FF3B30]/30 transition-all">
+                {founderImage ? (
+                  <div className="flex flex-col items-center space-y-4">
+                    <img src={founderImage} alt="Founder Preview" className="w-32 h-32 object-cover object-top rounded-xl border border-white/10 shadow-lg" />
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setFounderImage(null)}
+                        className="px-3 py-1.5 bg-white/10 text-white hover:bg-white/20 transition-all rounded-lg text-xs font-bold uppercase tracking-widest"
+                      >
+                        Remove
+                      </button>
+                      <button 
+                        onClick={async () => {
+                          setIsUploadingFounder(true);
+                          try {
+                            const res = await api.post("/admin/upload-founder", { imageBase64: founderImage }, {
+                              headers: {
+                                "X-Admin-Passcode": passcode,
+                                "X-User-Email": email
+                              }
+                            });
+                            if (res.data && res.data.success) {
+                              toast.success("Founder photo updated successfully across all pages!");
+                            } else {
+                              toast.error(res.data?.error || "Failed to upload.");
+                            }
+                          } catch (err: any) {
+                            toast.error("Upload error: " + (err.response?.data?.error || err.message));
+                          } finally {
+                            setIsUploadingFounder(false);
+                          }
+                        }}
+                        disabled={isUploadingFounder}
+                        className="px-4 py-1.5 bg-[#FF3B30] text-white hover:bg-[#D32F2F] transition-all rounded-lg text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+                      >
+                        {isUploadingFounder ? "Uploading..." : "Save Image"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="cursor-pointer flex flex-col items-center space-y-2 text-center">
+                    <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all text-white/60">
+                      <Upload size={20} />
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-white hover:text-[#FF3B30] transition-colors">Choose an Image</span>
+                      <p className="text-[10px] text-white/30 mt-1">JPEG or PNG, up to 10MB</p>
+                    </div>
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      className="hidden" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setFounderImage(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Actions Panel */}
+            <div className="bg-[#111111]/90 border border-white/10 p-6 rounded-2xl relative overflow-hidden">
+              <h3 className="font-bold text-lg uppercase tracking-widest text-white mb-2 flex items-center gap-2">
+                System Info
+              </h3>
+              <p className="text-xs text-white/40 mb-6">Current administrator clearance and endpoint status details.</p>
+              
+              <div className="space-y-4">
+                <div className="flex justify-between items-center p-3 rounded bg-white/5 border border-white/5">
+                  <span className="text-xs text-white/50 uppercase tracking-widest">Administrator</span>
+                  <span className="text-xs font-mono text-white">mohammdsaeed24@gmail.com</span>
+                </div>
+                <div className="flex justify-between items-center p-3 rounded bg-white/5 border border-white/5">
+                  <span className="text-xs text-white/50 uppercase tracking-widest">Clearance Level</span>
+                  <span className="text-xs font-mono text-green-400">Level 3 (Owner)</span>
+                </div>
+                <div className="flex justify-between items-center p-3 rounded bg-white/5 border border-white/5">
+                  <span className="text-xs text-white/50 uppercase tracking-widest">Platform Server</span>
+                  <span className="text-xs font-mono text-[#FF3B30] uppercase tracking-widest">Active</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && (
         <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-6">
            <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
               <ShieldCheck size={48} className="text-white/20" />

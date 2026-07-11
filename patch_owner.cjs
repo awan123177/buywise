@@ -1,15 +1,18 @@
-import React from 'react';
+const fs = require('fs');
+
+const content = `import React from 'react';
 import { motion } from 'framer-motion';
-import { Github, Instagram, Twitter, ArrowRight, Target, Youtube, Mail, Crown } from 'lucide-react';
+import { BadgeCheck, Github, Instagram, Linkedin, Twitter, ArrowRight, Sparkles, Target, Zap, Shield, Globe, Users, ShoppingBag, Youtube, Mail, Crown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SEO from './SEO';
+import Ferrofluid from './Ferrofluid';
 
 export default function OwnerPage() {
   const navigate = useNavigate();
 
   const fadeIn = {
     hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: "easeOut" as const } }
+    visible: { opacity: 1, y: 0, transition: { duration: 0.8, ease: [0.25, 0.1, 0.25, 1] } }
   };
 
   const staggerContainer = {
@@ -287,3 +290,6 @@ export default function OwnerPage() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/components/OwnerPage.tsx', content);

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift, Sun, Moon } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
-import { fetchGamificationProfile } from '../lib/api';
+import { fetchGamificationProfile, deleteAccountAndData } from '../lib/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import GooeyNav from './GooeyNav';
 import Dock from './Dock';
@@ -21,6 +21,24 @@ export default function Navbar() {
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const savedTheme = localStorage.getItem('theme');
+      return savedTheme ? savedTheme === 'dark' : true;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    if (isDark) {
+      document.documentElement.classList.remove('light-mode');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.add('light-mode');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [isDark]);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (user?.uid) {
@@ -80,12 +98,14 @@ export default function Navbar() {
           </div>
         </Link>
 
-        <div className="hidden lg:flex items-center space-x-0 border-l border-r border-white/5 h-full overflow-visible">
+        <div className="hidden xl:flex items-center space-x-0 border-l border-r border-white/5 h-full overflow-visible">
           <div className="h-full flex items-center">
             <GooeyNav
               items={[
-                { label: 'INDEX', href: '/' },
+                { label: 'HOME', href: '/' },
+                { label: 'COMPARE', href: '/compare' },
                 { label: 'DEALS', href: '/deals' },
+                { label: 'GUIDES', href: '/guides' },
                 { label: 'SCANNER', href: '/scanner' },
                 { label: 'RADAR', href: '/radar' },
                 { label: 'TRAVEL', href: '/travel' },
@@ -99,7 +119,15 @@ export default function Navbar() {
         </div>
 
         <div className="flex items-center gap-4 md:gap-8">
-          <div className="hidden lg:flex flex-col items-end border-r border-white/5 pr-8 relative">
+          <div className="hidden lg:flex items-center gap-4 border-r border-white/5 pr-8 relative">
+            <button 
+              onClick={() => setIsDark(!isDark)}
+              className="text-white/50 hover:text-white transition-colors mr-2"
+              title={isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+            <div className="flex flex-col items-end">
             <div className="text-[9px] text-[#f5f5f5] font-black uppercase tracking-[0.2em] opacity-40 mb-1">CURRENCY</div>
             <button 
               onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
@@ -133,14 +161,15 @@ export default function Navbar() {
               )}
             </AnimatePresence>
           </div>
-          <div className="text-right hidden md:block border-r border-white/5 pr-8">
+          </div>
+          <div className="text-right hidden xl:block border-r border-white/5 pr-8">
             <div className="text-[10px] text-[#f5f5f5] uppercase tracking-widest leading-none mb-1 font-black opacity-30">Live Users</div>
             <div className="text-xs text-[#FF3B30] font-mono font-black border-l-2 border-[#FF3B30] pl-4 leading-none flex items-center gap-2">
               <span className="w-2 h-2 bg-[#FF3B30] rounded-full animate-pulse shadow-[0_0_8px_#FF3B30]"></span>
               {onlineCount} ONLINE
             </div>
           </div>
-          <div className="text-right hidden sm:block">
+          <div className="text-right hidden xl:block">
             <div className="text-[10px] text-[#f5f5f5] uppercase tracking-widest leading-none mb-1 font-black opacity-30">Status</div>
             <div className="text-xs text-green-500 font-mono font-black border-l-2 border-green-500 pl-4 leading-none text-shadow-sm">CONNECTED</div>
           </div>
@@ -205,10 +234,10 @@ export default function Navbar() {
       </nav>
 
       {/* Bottom Mobile Tab Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[100] pb-2 sm:pb-4 flex justify-center">
+      <div className="fixed bottom-0 left-0 right-0 z-[100] pb-2 sm:pb-4 flex justify-center">
         <Dock
           items={[
-            { label: 'INDEX', icon: <LayoutDashboard size={18} />, onClick: () => navigate('/') },
+            { label: 'HOME', icon: <LayoutDashboard size={18} />, onClick: () => navigate('/') },
             { label: 'DEALS', icon: <Flame size={18} />, onClick: () => navigate('/deals') },
             { label: 'SCANNER', icon: <Scan size={18} />, onClick: () => navigate('/scanner') },
             { label: 'RADAR', icon: <Search size={18} />, onClick: () => navigate('/radar') },
@@ -238,8 +267,14 @@ export default function Navbar() {
               className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-md"
             >
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-white font-bold">Choose Your Avatar</h3>
-                <button onClick={() => setShowAvatarModal(false)} className="text-white/50 hover:text-white">
+                <h3 className="text-white font-bold">Profile & Security Settings</h3>
+                <button 
+                  onClick={() => {
+                    setShowAvatarModal(false);
+                    setConfirmDelete(false);
+                  }} 
+                  className="text-white/50 hover:text-white"
+                >
                   <X size={20} />
                 </button>
               </div>
@@ -272,37 +307,104 @@ export default function Navbar() {
                   );
                 })}
               </div>
-              <div className="space-y-2">
-                <label className="text-xs text-white/50 font-bold uppercase tracking-widest">Or enter custom URL</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    id="custom-avatar-url"
-                    placeholder="https://example.com/image.png"
-                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#FF3B30]"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const url = (e.target as HTMLInputElement).value;
-                        if (url) {
-                          updateAvatar(url);
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-xs text-white/50 font-bold uppercase tracking-widest">Upload Custom Photo</label>
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-[#FF3B30] file:text-white hover:file:bg-[#FF3B30]/80 cursor-pointer bg-white/5 rounded-lg border border-white/10 p-2"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          updateAvatar(reader.result as string);
                           setShowAvatarModal(false);
-                        }
+                        };
+                        reader.readAsDataURL(file);
                       }
                     }}
                   />
-                  <button 
-                    onClick={() => {
-                      const el = document.getElementById('custom-avatar-url') as HTMLInputElement;
-                      if (el && el.value) {
-                        updateAvatar(el.value);
-                        setShowAvatarModal(false);
-                      }
-                    }}
-                    className="bg-[#FF3B30] hover:bg-[#FF3B30]/80 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
-                  >
-                    Save
-                  </button>
                 </div>
+                
+                <div className="space-y-2">
+                  <label className="text-xs text-white/50 font-bold uppercase tracking-widest">Or enter custom URL</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      id="custom-avatar-url"
+                      placeholder="https://example.com/image.png"
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#FF3B30]"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const url = (e.target as HTMLInputElement).value;
+                          if (url) {
+                            updateAvatar(url);
+                            setShowAvatarModal(false);
+                          }
+                        }
+                      }}
+                    />
+                    <button 
+                      onClick={() => {
+                        const el = document.getElementById('custom-avatar-url') as HTMLInputElement;
+                        if (el && el.value) {
+                          updateAvatar(el.value);
+                          setShowAvatarModal(false);
+                          setConfirmDelete(false);
+                        }
+                      }}
+                      className="bg-[#FF3B30] hover:bg-[#FF3B30]/80 text-white px-4 py-2 rounded-lg text-sm font-bold transition-colors"
+                    >
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data & Privacy (Right to be Forgotten) */}
+              <div className="mt-8 pt-6 border-t border-white/5">
+                <h4 className="text-xs text-white/50 font-bold uppercase tracking-widest mb-3">Privacy & Security</h4>
+                
+                {!confirmDelete ? (
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-full py-2.5 px-4 bg-white/5 hover:bg-[#FF3B30]/10 border border-white/10 hover:border-[#FF3B30]/30 text-xs text-white/60 hover:text-[#FF3B30] rounded-xl font-bold transition-all uppercase tracking-widest"
+                  >
+                    Delete Account & Data
+                  </button>
+                ) : (
+                  <div className="p-4 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-xl space-y-3">
+                    <p className="text-[11px] text-white/80 leading-relaxed">
+                      <strong>Are you absolutely sure?</strong> This will permanently erase your gamification profile, wishlist, price alerts, and all {coins} BuyWise coins. This action is irreversible.
+                    </p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await deleteAccountAndData();
+                            await logout();
+                            setShowAvatarModal(false);
+                            setConfirmDelete(false);
+                            navigate('/');
+                          } catch (err: any) {
+                            console.error("Deletion failed:", err);
+                          }
+                        }}
+                        className="flex-1 py-2 bg-[#FF3B30] hover:bg-[#FF3B30]/80 text-white text-xs font-bold rounded-lg uppercase tracking-wider transition-colors"
+                      >
+                        Yes, Erase Everything
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(false)}
+                        className="flex-1 py-2 bg-white/5 hover:bg-white/10 text-white text-xs font-bold rounded-lg uppercase tracking-wider border border-white/10 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

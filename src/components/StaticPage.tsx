@@ -25,7 +25,7 @@ const PAGES = {
       <>
         <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
           <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
-             <img src="/founder.png?v=2" alt="Awan Warsi" className="w-full h-full object-cover object-top absolute inset-0" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+             <img src="/founder.png?v=6" alt="Awan Warsi" className="w-full h-full object-cover object-top absolute inset-0" onError={(e) => { e.currentTarget.src = "/founder.svg"; }} />
              <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
           </div>
           <div>
@@ -105,7 +105,7 @@ const PAGES = {
         <div className="bg-white/5 p-8 rounded-xl border border-white/10 text-center">
           <h3 className="text-xl font-bold mb-2">No Open Roles</h3>
           <p className="text-white/50 mb-4">We aren't actively hiring right now, but we're always looking for talented engineers and designers.</p>
-          <a href="mailto:careers@buywiser.store" className="text-[#FF3B30]">careers@buywiser.store</a>
+          <a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30]">mohammdsaeed24@gmail.com</a>
         </div>
       </>
     )
@@ -115,7 +115,7 @@ const PAGES = {
     content: (
       <>
         <p className="text-white/70 mb-6">For press inquiries, interviews, or media kits, please contact our PR team.</p>
-        <a href="mailto:press@buywiser.store" className="text-[#FF3B30] mb-8 block">press@buywiser.store</a>
+        <a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30] mb-8 block">mohammdsaeed24@gmail.com</a>
       </>
     )
   },
@@ -152,7 +152,7 @@ export default function StaticPage() {
     window.scrollTo(0, 0);
   }, [pageId]);
 
-  if (pageId === 'founder' || pageId === 'owner') {
+  if (pageId === 'founder' || pageId === 'owner' || pageId === 'chairman') {
     return <OwnerPage />;
   }
 
@@ -168,7 +168,7 @@ export default function StaticPage() {
   // Generate structured data for this page
   const jsonLd = {
     "@context": "https://schema.org",
-    "@type": pageId === 'faq' ? 'FAQPage' : (pageId === 'founder' || pageId === 'owner') ? 'ProfilePage' : 'WebPage',
+    "@type": pageId === 'faq' ? 'FAQPage' : (pageId === 'founder' || pageId === 'owner' || pageId === 'chairman') ? 'ProfilePage' : 'WebPage',
     "name": pageData.title,
     "url": `https://buywiser.store/${pageId}`,
     "publisher": {

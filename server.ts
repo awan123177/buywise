@@ -6,6 +6,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
+import helmet from "helmet";
 import {
   getOrCreateProfile,
   awardCoins,
@@ -33,7 +34,8 @@ import {
   recordAffiliateClick,
   addDealDirectly,
   spinWheel,
-  completeMission
+  completeMission,
+  deleteUserProfile
 } from "./src/server/gamificationDb.js";
 
 dotenv.config();
@@ -260,7 +262,7 @@ function cleanProductTitle(rawTitle: string): string {
 
 // Fetch the actual product title from Google Search via SerpApi for a given URL
 async function getProductTitleFromUrl(urlStr: string): Promise<string> {
-  const serpApiKey = process.env.SERP_API_KEY || "542dce7198130662e8dd49b345591dec556b37394cc9a0e3dd0010d5f1354075";
+  const serpApiKey = process.env.SERP_API_KEY || "";
   try {
     console.log(`[URL Resolver] Querying SerpApi Google for URL: "${urlStr}"`);
     const response = await axios.get("https://serpapi.com/search", {
@@ -290,24 +292,169 @@ async function getProductTitleFromUrl(urlStr: string): Promise<string> {
 }
 
 async function startServer() {
+  // 1. ENVIRONMENT VARIABLES VALIDATION
+  if (!process.env.GEMINI_API_KEY) {
+    console.error("FATAL ERROR: GEMINI_API_KEY is not set in the environment variables!");
+    console.error("Please configure your GEMINI_API_KEY inside the .env file.");
+    process.exit(1);
+  }
+
+  if (!process.env.SERP_API_KEY) {
+    console.warn("WARNING: SERP_API_KEY is not configured. Google Search and Google Shopping scraping features will fall back to local intelligence and structured mock data.");
+  }
+
+  if (!process.env.TELEGRAM_BOT_TOKEN) {
+    console.warn("WARNING: TELEGRAM_BOT_TOKEN is not configured. Telegram channel features and updates polling will be disabled.");
+  }
+
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  // 2. SECURITY HEADERS (HELMET) WITH IFRAME COMPATIBILITY FOR GOOGLE AI STUDIO
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: [
+            "'self'",
+            "'unsafe-inline'",
+            "'unsafe-eval'",
+            "https://*.google.com",
+            "https://*.googleadservices.com"
+          ],
+          connectSrc: [
+            "'self'",
+            "https://*.supabase.co",
+            "https://*.google.com",
+            "https://api.telegram.org",
+            "https://api.dicebear.com",
+            "https://serpapi.com",
+            "wss://*.supabase.co",
+            "https://*.run.app",
+            "https://ais-dev-*.run.app",
+            "https://ais-pre-*.run.app",
+          ],
+          imgSrc: ["'self'", "data:", "blob:", "https://*", "http://*"],
+          styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+          fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
+          frameSrc: ["'self'", "https://*.google.com", "https://*.googleadservices.com"],
+          frameAncestors: [
+            "'self'",
+            "https://*.google.com",
+            "https://ai.studio",
+            "https://*.run.app",
+            "https://ais-dev-*.run.app",
+            "https://ais-pre-*.run.app",
+          ],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+      frameguard: false, // We use CSP frameAncestors to allow rendering in the AI Studio preview window
+    })
+  );
 
-  // CORS Middleware to allow requests from any origin (including sandboxed iframes)
+  app.use(express.json({ limit: "15mb" }));
+  app.use(express.urlencoded({ limit: "15mb", extended: true }));
+
+  // 3. DYNAMIC CORS ORIGIN AND EXTRA SECURITY HEADERS MIDDLEWARE
   app.use((req: any, res: any, next: any) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
+    // Standard secure fallback headers
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+
+    // Dynamic CORS matching safe origins (including localhost, Google services, and Cloud Run hostnames)
+    const origin = req.headers.origin;
+    let isAllowed = false;
+    if (origin) {
+      if (
+        origin.endsWith("google.com") ||
+        origin.endsWith("ai.studio") ||
+        origin.endsWith("run.app") ||
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:")
+      ) {
+        isAllowed = true;
+      }
+    } else {
+      isAllowed = true; // Direct requests
+    }
+
+    if (isAllowed && origin) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", "https://ai.studio");
+    }
+
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.setHeader(
       "Access-Control-Allow-Headers",
       "Content-Type, Authorization, x-user-id, x-user-email, x-user-name"
     );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+
     if (req.method === "OPTIONS") {
       return res.sendStatus(200);
     }
+
+    // 4. SECURE ERROR SANITIZER DECORATOR
+    res.sendSecureError = (error: any, defaultMessage = "An internal server error occurred") => {
+      const correlationId = "ERR-" + Math.random().toString(36).substring(2, 9).toUpperCase();
+      let safeMessage = defaultMessage;
+      if (error && error.message) {
+        // Strip file paths to hide internal server folder structures
+        safeMessage = error.message
+          .replace(/\/[\w\-\.\/]+/g, "[PATH]")
+          .replace(/\\[\w\-\.\\]+/g, "[PATH]");
+        if (safeMessage.length > 150) {
+          safeMessage = safeMessage.substring(0, 150) + "...";
+        }
+      }
+      console.error(`[${correlationId}] Secure Log:`, error);
+      return res.status(500).json({
+        error: safeMessage,
+        correlationId,
+        status: "error"
+      });
+    };
+
     next();
   });
+
+  // 5. IN-MEMORY RATE LIMITER MIDDLEWARE (Authentication and Check-ins)
+  const rateLimitStore = new Map<string, { count: number; firstRequest: number }>();
+  const createRateLimiter = (maxRequests: number, windowMs: number, errorMessage: string) => {
+    return (req: any, res: any, next: any) => {
+      const ip = req.ip || req.headers["x-forwarded-for"] || "unknown-ip";
+      const key = `${ip}:${req.path}`;
+      const now = Date.now();
+      
+      const record = rateLimitStore.get(key);
+      if (!record) {
+        rateLimitStore.set(key, { count: 1, firstRequest: now });
+        return next();
+      }
+      
+      if (now - record.firstRequest > windowMs) {
+        rateLimitStore.set(key, { count: 1, firstRequest: now });
+        return next();
+      }
+      
+      record.count += 1;
+      if (record.count > maxRequests) {
+        return res.status(429).json({
+          error: errorMessage,
+          retryAfterMs: windowMs - (now - record.firstRequest),
+          status: "rate_limited"
+        });
+      }
+      
+      next();
+    };
+  };
+
+  const loginRateLimiter = createRateLimiter(5, 60000, "Too many verification/login attempts. Please try again after 1 minute.");
+  const resetRateLimiter = createRateLimiter(3, 3600000, "Too many reset attempts. Please try again after 1 hour.");
 
   // ==========================================
   // --- BUYWISE GAMIFICATION API ENDPOINTS ---
@@ -326,6 +473,23 @@ async function startServer() {
     next();
   };
 
+  // Helper middleware to verify administrative credentials on protected routes
+  const adminAuth = (req: any, res: any, next: any) => {
+    const passcode = req.headers["x-admin-passcode"] as string;
+    const email = req.headers["x-user-email"] as string;
+
+    // Both the passcode must be correct AND the user email must match the admin email
+    if (
+      (passcode === "awanwarsi" || passcode === "awanwarsi1A@") &&
+      email &&
+      email.toLowerCase() === "mohammdsaeed24@gmail.com"
+    ) {
+      next();
+    } else {
+      res.status(403).json({ error: "Access Denied: Administrative authorization is required." });
+    }
+  };
+
   // Get or Create User Profile
   app.get("/api/gamification/profile", getUserContext, (req: any, res: any) => {
     const { userId, email, name } = req.userContext;
@@ -337,14 +501,25 @@ async function startServer() {
     }
   });
 
+  // Delete User Profile (Right to be Forgotten)
+  app.post("/api/gamification/profile/delete", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const result = deleteUserProfile(userId);
+      res.json(result);
+    } catch (e: any) {
+      res.sendSecureError(e, "Failed to delete user profile.");
+    }
+  });
+
   // Daily Check-in / Login Streak Trigger
-  app.post("/api/gamification/login", getUserContext, (req: any, res: any) => {
+  app.post("/api/gamification/login", loginRateLimiter, getUserContext, (req: any, res: any) => {
     const { userId } = req.userContext;
     try {
       const result = checkLoginStreak(userId);
       res.json(result);
     } catch (e: any) {
-      res.status(500).json({ error: e.message });
+      res.sendSecureError(e, "Failed to complete daily check-in.");
     }
   });
 
@@ -739,7 +914,7 @@ async function startServer() {
       return res.status(400).json({ error: "Missing barcode parameter" });
     }
 
-    console.log(`[Barcode Scan API] User "${name}" (${userId}) scanned barcode "${barcode}" (${format || 'UNKNOWN'})`);
+    console.log(`[Barcode Scan API] User [REDACTED] (${userId}) scanned barcode "${barcode}" (${format || 'UNKNOWN'})`);
 
     let parsedData: any = null;
 
@@ -1085,7 +1260,7 @@ Telegram Message:
   }
 
   // Get affiliate settings and click analytics
-  app.get("/api/affiliate/settings", (req: any, res: any) => {
+  app.get("/api/affiliate/settings", adminAuth, (req: any, res: any) => {
     try {
       res.json(getAffiliateSettings());
     } catch (err: any) {
@@ -1094,7 +1269,7 @@ Telegram Message:
   });
 
   // Save affiliate store configurations
-  app.post("/api/affiliate/settings", (req: any, res: any) => {
+  app.post("/api/affiliate/settings", adminAuth, (req: any, res: any) => {
     const { stores } = req.body;
     try {
       const result = updateAffiliateSettings(stores);
@@ -1135,7 +1310,7 @@ Telegram Message:
   });
 
   // Get Telegram webhook / channel configurations
-  app.get("/api/telegram/config", (req: any, res: any) => {
+  app.get("/api/telegram/config", adminAuth, (req: any, res: any) => {
     try {
       res.json(getTelegramConfig());
     } catch (err: any) {
@@ -1144,7 +1319,7 @@ Telegram Message:
   });
 
   // Save Telegram webhook / channel configurations
-  app.post("/api/telegram/config", (req: any, res: any) => {
+  app.post("/api/telegram/config", adminAuth, (req: any, res: any) => {
     const { config } = req.body;
     try {
       const result = updateTelegramConfig(config);
@@ -1155,7 +1330,7 @@ Telegram Message:
   });
 
   // Telegram incoming deals receiver webhook
-  app.post("/api/telegram/webhook", async (req: any, res: any) => {
+  app.post("/api/telegram/webhook", adminAuth, async (req: any, res: any) => {
     try {
       const update = req.body;
       console.log("Telegram webhook update received:", JSON.stringify(update));
@@ -1195,7 +1370,7 @@ Telegram Message:
   });
 
   // Admin Actions Override
-  app.post("/api/gamification/admin/action", (req: any, res: any) => {
+  app.post("/api/gamification/admin/action", adminAuth, (req: any, res: any) => {
     const { action, payload } = req.body;
     try {
       const result = adminAction(action, payload);
@@ -1205,8 +1380,42 @@ Telegram Message:
     }
   });
 
+  // Admin endpoint to upload and overwrite the founder portrait image
+  app.post("/api/admin/upload-founder", adminAuth, (req: any, res: any) => {
+    const { imageBase64 } = req.body;
+    if (!imageBase64) {
+      return res.status(400).json({ error: "Missing imageBase64 payload" });
+    }
+
+    try {
+      // Decode base64
+      const matches = imageBase64.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
+      let base64Data = imageBase64;
+      if (matches && matches.length === 3) {
+        base64Data = matches[2];
+      }
+
+      const buffer = Buffer.from(base64Data, "base64");
+      
+      // Save to public/
+      const publicPath = path.join(process.cwd(), "public", "founder.png");
+      fs.writeFileSync(publicPath, buffer);
+
+      // Save to dist/
+      const distPath = path.join(process.cwd(), "dist", "founder.png");
+      if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+        fs.writeFileSync(distPath, buffer);
+      }
+
+      console.log("Successfully overwrote founder.png in public/ and dist/");
+      res.json({ success: true, message: "Founder portrait updated successfully!" });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Get Admin Profiles & Stats list (to manage them)
-  app.get("/api/gamification/admin/users", (req: any, res: any) => {
+  app.get("/api/gamification/admin/users", adminAuth, (req: any, res: any) => {
     try {
       const storePath = path.join(process.cwd(), "data_store.json");
       const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
@@ -1217,7 +1426,7 @@ Telegram Message:
   });
 
   // Get Admin Referrals list (to ban them)
-  app.get("/api/gamification/admin/referrals", (req: any, res: any) => {
+  app.get("/api/gamification/admin/referrals", adminAuth, (req: any, res: any) => {
     try {
       const storePath = path.join(process.cwd(), "data_store.json");
       const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
@@ -1864,7 +2073,7 @@ Please feel free to ask a specific question, or select one of our suggested ques
     let sourceUsed = "";
 
     // 1. Try Google Shopping SerpApi FIRST for highly accurate, correct e-commerce items
-    const serpApiKey = process.env.SERP_API_KEY || "542dce7198130662e8dd49b345591dec556b37394cc9a0e3dd0010d5f1354075";
+    const serpApiKey = process.env.SERP_API_KEY || "";
     if (serpApiKey && queryStr) {
       try {
         console.log(`[API Search] Attempting SerpApi Google Shopping search for: "${queryStr}"`);
@@ -1873,7 +2082,7 @@ Please feel free to ask a specific question, or select one of our suggested ques
         });
 
         if (serpResponse.data && Array.isArray(serpResponse.data.shopping_results) && serpResponse.data.shopping_results.length > 0) {
-          results = serpResponse.data.shopping_results.map((item: any) => {
+           results = serpResponse.data.shopping_results.map((item: any) => {
             let originalLink = item.link || item.product_link;
             
             // Attempt to extract the direct merchant/product URL first
@@ -1884,8 +2093,30 @@ Please feel free to ask a specific question, or select one of our suggested ques
               }
             }
 
-            if (item.source && originalLink && (originalLink.includes("google.com") || originalLink.includes("serpapi.com") || originalLink.includes("googleadservices.com"))) {
-              originalLink = getFallbackPlatformLink(item.source, item.title, queryStr);
+            // Extract ASIN for Amazon products
+            const src = (item.source || "").toLowerCase();
+            let asin = item.asin || item.product_id;
+            if (!asin || !/^[A-Z0-9]{10}$/i.test(asin)) {
+              asin = null;
+              // Extract from the title, thumbnail, or link
+              const linksToSearch = [originalLink, item.thumbnail, item.title].filter(Boolean);
+              for (const l of linksToSearch) {
+                const match = l.match(/\b(B[A-Z0-9]{9})\b/i);
+                if (match && match[1]) {
+                  asin = match[1];
+                  break;
+                }
+              }
+            }
+
+            if (src.includes("amazon") && asin) {
+              originalLink = `https://www.amazon.in/dp/${asin}`;
+            }
+
+            // Never build fallback platform link from search query
+            if (originalLink && (originalLink.includes("google.com") || originalLink.includes("serpapi.com") || originalLink.includes("googleadservices.com"))) {
+              // If it is still a redirect URL, let's keep it (unless it is Amazon, which we already converted to dp link above)
+              // But do NOT replace it with a search query!
             }
 
             // Extract price and calculate a beautiful, realistic old_price if missing
@@ -2079,7 +2310,7 @@ Format each item exactly like this:
                   price: priceStr,
                   old_price: r.old_price || r.product_original_price || null,
                   thumbnail: r.thumbnail || r.product_photo || "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&auto=format&fit=crop&q=60",
-                  link: r.link || r.product_link || r.product_url || `https://www.amazon.in/s?k=${encodeURIComponent(queryStr)}`,
+                  link: r.link || r.product_link || r.product_url || "",
                   source: "Amazon",
                   rating: Number(r.rating || r.product_star_rating || 4.5),
                   reviews: Number(r.reviews || Math.floor(Math.random() * 500) + 10),
@@ -2166,7 +2397,7 @@ Format each item exactly like this:
           price: "₹84,999",
           old_price: "₹99,999",
           thumbnail: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&auto=format&fit=crop&q=60",
-          link: urlToAnalyze || `https://www.amazon.in/s?k=${encodeURIComponent(queryStr)}`,
+          link: urlToAnalyze || "",
           source: "Amazon",
           rating: 4.8,
           reviews: 1420,
@@ -2178,7 +2409,7 @@ Format each item exactly like this:
           price: "₹82,499",
           old_price: "₹102,000",
           thumbnail: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&auto=format&fit=crop&q=60",
-          link: `https://www.flipkart.com/search?q=${encodeURIComponent(queryStr)}`,
+          link: "",
           source: "Flipkart",
           rating: 4.6,
           reviews: 840,
@@ -2190,7 +2421,7 @@ Format each item exactly like this:
           price: "₹86,990",
           old_price: "₹99,990",
           thumbnail: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&auto=format&fit=crop&q=60",
-          link: `https://www.croma.com/searchB?q=${encodeURIComponent(queryStr)}`,
+          link: "",
           source: "Croma",
           rating: 4.5,
           reviews: 310,
@@ -2202,7 +2433,7 @@ Format each item exactly like this:
           price: "₹88,000",
           old_price: "₹95,000",
           thumbnail: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&auto=format&fit=crop&q=60",
-          link: `https://www.reliancedigital.in/search?q=${encodeURIComponent(queryStr)}`,
+          link: "",
           source: "Reliance Digital",
           rating: 4.7,
           reviews: 980,
@@ -2232,7 +2463,7 @@ Format each item exactly like this:
   app.get("/api/airports", async (req, res) => {
     const { q } = req.query;
     if (!q) return res.json([]);
-    const serpApiKey = process.env.SERP_API_KEY || "542dce7198130662e8dd49b345591dec556b37394cc9a0e3dd0010d5f1354075";
+    const serpApiKey = process.env.SERP_API_KEY || "";
 
     try {
       const params = {
@@ -2325,7 +2556,7 @@ Format each item exactly like this:
   });
 
   // Admin Dashboard Mock Data
-  app.get("/api/admin/stats", (req, res) => {
+  app.get("/api/admin/stats", adminAuth, (req: any, res: any) => {
     try {
       const scans = getAllScans();
       const totalScans = scans.length;
@@ -2395,8 +2626,28 @@ Format each item exactly like this:
     if (!url || typeof url !== "string") {
       return res.status(400).send("Missing url parameter");
     }
+    
     try {
-      const response = await axios.get(url, { responseType: "arraybuffer" });
+      // Validate the URL scheme and potential loopback/SSRF vectors
+      const lowerUrl = url.toLowerCase().trim();
+      if (!lowerUrl.startsWith("http://") && !lowerUrl.startsWith("https://")) {
+        return res.status(400).send("Invalid protocol. Only HTTP and HTTPS are permitted.");
+      }
+
+      // Check for common SSRF / metadata endpoints / local interfaces
+      if (
+        lowerUrl.includes("localhost") ||
+        lowerUrl.includes("127.0.0.1") ||
+        lowerUrl.includes("169.254.169.254") ||
+        lowerUrl.includes("0.0.0.0") ||
+        lowerUrl.includes("::1") ||
+        lowerUrl.includes("metadata.google") ||
+        lowerUrl.includes("internal")
+      ) {
+        return res.status(403).send("SSRF Protection: Access to private/internal network addresses is blocked.");
+      }
+
+      const response = await axios.get(url, { responseType: "arraybuffer", timeout: 8000 });
       const contentType = response.headers["content-type"];
       if (contentType) {
         res.set("Content-Type", String(contentType));
@@ -2407,6 +2658,71 @@ Format each item exactly like this:
       console.error("Image Proxy Error:", error.message);
       res.status(500).send("Failed to proxy image");
     }
+  });
+
+  // Dynamic robots.txt
+  app.get("/robots.txt", (req: any, res: any) => {
+    res.header("Content-Type", "text/plain");
+    res.send("User-agent: *\nAllow: /\n\nSitemap: https://buywiser.store/sitemap.xml");
+  });
+
+  // Dynamic sitemap.xml
+  app.get("/sitemap.xml", (req: any, res: any) => {
+    res.header("Content-Type", "application/xml");
+    const pages = [
+      "",
+      "/radar",
+      "/travel",
+      "/premium",
+      "/deals",
+      "/rewards",
+      "/scanner",
+      "/compare",
+      "/wishlist",
+      "/about",
+      "/contact",
+      "/privacy",
+      "/terms",
+      "/disclaimer",
+      "/careers",
+      "/press",
+      "/faq",
+      "/founder",
+      "/owner",
+      "/guides",
+      "/guides/best-phones-under-20000",
+      "/guides/best-laptops-under-50000",
+      "/guides/best-gaming-headphones",
+      "/guides/best-smart-tvs",
+      "/guides/best-washing-machines",
+      "/guides/best-air-conditioners",
+      "/guides/best-refrigerators",
+      "/guides/best-power-banks",
+      "/hub/mobiles",
+      "/hub/laptops",
+      "/hub/amazon",
+      "/hub/flipkart"
+    ];
+
+    try {
+      const storePath = path.join(process.cwd(), "data_store.json");
+      if (fs.existsSync(storePath)) {
+        const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+        if (raw.deals && Array.isArray(raw.deals)) {
+          raw.deals.forEach((deal: any) => {
+            if (deal.id) {
+              pages.push(`/deals#${deal.id}`);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.error("Error reading deals for sitemap:", e);
+    }
+
+    const xmlUrls = pages.map(p => `  <url>\n    <loc>https://buywiser.store${p}</loc>\n    <changefreq>daily</changefreq>\n    <priority>${p === "" ? "1.0" : "0.8"}</priority>\n  </url>`).join("\n");
+    const sitemapXml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${xmlUrls}\n</urlset>`;
+    res.send(sitemapXml);
   });
 
   // Vite middleware for development

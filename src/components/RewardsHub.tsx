@@ -39,6 +39,77 @@ export default function RewardsHub() {
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
   const [spinResult, setSpinResult] = useState<{ reward: string, coinsAwarded: number, message: string } | null>(null);
 
+  // Advanced Canvas Spin Wheel States & Refs
+  const [wheelAngle, setWheelAngle] = useState<number>(0);
+  const [showWinCelebration, setShowWinCelebration] = useState<boolean>(false);
+  const [countdown, setCountdown] = useState<string>('');
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const angleRef = React.useRef<number>(0);
+  const lastTickPegRef = React.useRef<number>(-1);
+
+  // Sound Synthesizers (Web Audio API)
+  const playTickSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.05);
+      gain.gain.setValueAtTime(0.04, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.05);
+    } catch (e) {}
+  };
+
+  const playWinSound = () => {
+    try {
+      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const now = ctx.currentTime;
+      const playTone = (freq: number, start: number, duration: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(freq, start);
+        gain.gain.setValueAtTime(0.08, start);
+        gain.gain.exponentialRampToValueAtTime(0.001, start + duration);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(start);
+        osc.stop(start + duration);
+      };
+      playTone(523.25, now, 0.15); // C5
+      playTone(659.25, now + 0.15, 0.15); // E5
+      playTone(783.99, now + 0.3, 0.15); // G5
+      playTone(1046.50, now + 0.45, 0.4); // C6
+    } catch (e) {}
+  };
+
+  const getCountdownTime = () => {
+    const now = new Date();
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+    const diff = midnight.getTime() - now.getTime();
+    if (diff <= 0) return "00:00:00";
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  const WHEEL_SEGMENTS = [
+    { label: "10 Coins", rarity: "Common", color: "#1C1917", text: "#A8A29E", stroke: "#44403C" },
+    { label: "50 Coins", rarity: "Uncommon", color: "#064E3B", text: "#34D399", stroke: "#047857" },
+    { label: "100 Coins", rarity: "Rare", color: "#1E3A8A", text: "#60A5FA", stroke: "#1D4ED8" },
+    { label: "500 Coins", rarity: "Mythic", color: "#7F1D1D", text: "#FCA5A5", stroke: "#B91C1C" },
+    { label: "Premium Trial", rarity: "Legendary", color: "#78350F", text: "#FBBF24", stroke: "#D97706" },
+    { label: "Lucky Badge", rarity: "Epic", color: "#581C87", text: "#C084FC", stroke: "#7E22CE" },
+    { label: "Try Again", rarity: "Common", color: "#111111", text: "#4B5563", stroke: "#1F2937" }
+  ];
+
   // Coins animation trigger
   const [particles, setParticles] = useState<any[]>([]);
 
@@ -47,6 +118,158 @@ export default function RewardsHub() {
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>('');
   const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+
+  // Update Countdown and Redraw Canvas on wheelAngle changes
+  useEffect(() => {
+    setCountdown(getCountdownTime());
+    const clockInterval = setInterval(() => {
+      setCountdown(getCountdownTime());
+    }, 1000);
+    return () => clearInterval(clockInterval);
+  }, []);
+
+  const drawWheel = (ctx: CanvasRenderingContext2D, width: number, height: number, angle: number) => {
+    const centerX = width / 2;
+    const centerY = height / 2;
+    const radius = Math.min(width, height) / 2 - 12;
+
+    // Clear
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Draw outermost golden circular rim with a dark bevel
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius + 8, 0, 2 * Math.PI);
+    const rimGrad = ctx.createRadialGradient(centerX, centerY, radius, centerX, centerY, radius + 8);
+    rimGrad.addColorStop(0, "#78350F"); // brown-900
+    rimGrad.addColorStop(0.3, "#FBBF24"); // gold
+    rimGrad.addColorStop(0.7, "#D97706"); // yellow-600
+    rimGrad.addColorStop(1, "#1E1B4B"); // indigo-950 deep core
+    ctx.fillStyle = rimGrad;
+    ctx.shadowColor = "rgba(239, 68, 68, 0.4)"; // red neon glow
+    ctx.shadowBlur = 18;
+    ctx.fill();
+    ctx.restore();
+
+    // 2. Draw segment slices
+    const segments = WHEEL_SEGMENTS;
+    const sliceAngle = (2 * Math.PI) / 7;
+
+    for (let i = 0; i < 7; i++) {
+      const seg = segments[i];
+      const startAngle = angle + i * sliceAngle;
+      const endAngle = startAngle + sliceAngle;
+
+      ctx.save();
+      // Draw slice filled background
+      ctx.fillStyle = seg.color;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw slice inner golden boundaries
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.25)";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Add segment glossy gradient (gives it that polished 3D gaming wheel look)
+      const sliceGloss = ctx.createRadialGradient(centerX, centerY, 5, centerX, centerY, radius);
+      sliceGloss.addColorStop(0, "rgba(255, 255, 255, 0.15)");
+      sliceGloss.addColorStop(0.7, "rgba(0, 0, 0, 0.05)");
+      sliceGloss.addColorStop(1, "rgba(0, 0, 0, 0.65)");
+      ctx.fillStyle = sliceGloss;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fill();
+
+      // Rotate to segment center to write texts
+      ctx.restore();
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.rotate(startAngle + sliceAngle / 2);
+
+      // Draw Label
+      ctx.textAlign = "right";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = seg.text;
+      ctx.font = "black 10px Inter, system-ui, sans-serif";
+
+      // Text drop shadow
+      ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 1.5;
+      ctx.shadowOffsetY = 1.5;
+      ctx.fillText(seg.label, radius - 25, -2);
+
+      // Draw Rarity Category Label
+      ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+      ctx.font = "bold 7px JetBrains Mono, monospace";
+      ctx.fillText(seg.rarity, radius - 25, 8);
+
+      ctx.restore();
+    }
+
+    // 3. Draw metallic pegs at segment boundaries
+    for (let i = 0; i < 7; i++) {
+      const pegAngle = angle + i * sliceAngle;
+      const pegX = centerX + radius * Math.cos(pegAngle);
+      const pegY = centerY + radius * Math.sin(pegAngle);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(pegX, pegY, 3.5, 0, 2 * Math.PI);
+      const pegGrad = ctx.createRadialGradient(pegX, pegY, 0, pegX, pegY, 3.5);
+      pegGrad.addColorStop(0, "#FFFFFF");
+      pegGrad.addColorStop(0.5, "#FBBF24"); // gold peg
+      pegGrad.addColorStop(1, "#78350F");
+      ctx.fillStyle = pegGrad;
+      ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+      ctx.shadowBlur = 3;
+      ctx.shadowOffsetY = 1;
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 4. Draw center dynamic metallic core shield (jackpot logo)
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 22, 0, 2 * Math.PI);
+    const coreGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 22);
+    coreGrad.addColorStop(0, "#FEF08A"); // gold yellow-200
+    coreGrad.addColorStop(0.4, "#FBBF24"); // gold yellow-400
+    coreGrad.addColorStop(0.8, "#B45309"); // gold yellow-700
+    coreGrad.addColorStop(1, "#451A03"); // amber-950
+    ctx.fillStyle = coreGrad;
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+    ctx.fill();
+
+    // Core stroke outline
+    ctx.strokeStyle = "#FFFFFF";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Center icon
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 13px Inter, sans-serif";
+    ctx.fillText("★", centerX, centerY);
+    ctx.restore();
+  };
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    drawWheel(ctx, canvas.width, canvas.height, wheelAngle);
+  }, [wheelAngle, loading, activeTab]);
 
   // Load All Profile & Gamification Data
   const loadData = async () => {
@@ -94,25 +317,106 @@ export default function RewardsHub() {
     
     setIsSpinning(true);
     setSpinResult(null);
+    setShowWinCelebration(false);
+    
     try {
       const result = await spinWheelDaily();
-      
-      // Simulate spinning delay
-      setTimeout(() => {
+      if (!result.success) {
         setIsSpinning(false);
-        if (result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      // Map the backend outcome string to our client-side segment index
+      let targetIndex = 6; // default: Try Again / Better Luck Tomorrow
+      const label = result.reward || "";
+      if (label.includes("100 Coins")) targetIndex = 2;
+      else if (label.includes("500 Coins")) targetIndex = 3;
+      else if (label.includes("10 Coins")) targetIndex = 0;
+      else if (label.includes("50 Coins")) targetIndex = 1;
+      else if (label.includes("Premium")) targetIndex = 4;
+      else if (label.includes("Badge") || label.includes("Lucky")) targetIndex = 5;
+
+      const sliceAngle = (2 * Math.PI) / 7;
+      // segmentCenterAngle on the standard wheel
+      const segmentCenterAngle = (targetIndex + 0.5) * sliceAngle;
+
+      // Start position normalized
+      const startRotation = angleRef.current % (2 * Math.PI);
+      
+      // We want to rotate at least 6 full cycles and land exactly so the center of targetIndex is at 12 o'clock (-Math.PI/2)
+      // Top pointer is at -Math.PI / 2.
+      // angleOnScreen = segmentCenterAngle + totalRotationNeeded. We want angleOnScreen = 1.5 * Math.PI (which is top)
+      // So totalRotationNeeded = (1.5 * Math.PI - segmentCenterAngle) + 2 * Math.PI * numRotations - startRotation
+      const numRotations = 6;
+      let targetRot = (1.5 * Math.PI - segmentCenterAngle) - startRotation;
+      while (targetRot < 0) {
+        targetRot += 2 * Math.PI;
+      }
+      const totalRotationNeeded = targetRot + (2 * Math.PI * numRotations);
+
+      const startTime = performance.now();
+      const duration = 5000; // 5 seconds of cinematic spinning
+      lastTickPegRef.current = -1;
+
+      const animateWheel = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Cinematic Quartic Ease Out
+        const ease = 1 - Math.pow(1 - progress, 4);
+        const currentAngle = startRotation + totalRotationNeeded * ease;
+        
+        angleRef.current = currentAngle;
+
+        // Draw directly to canvas for ultra smooth 60fps cinematic spinning (bypasses full component React re-renders)
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            drawWheel(ctx, canvas.width, canvas.height, currentAngle);
+          }
+        }
+
+        // Tick sounds when passing slice pegs
+        const currentPeg = Math.floor((currentAngle - Math.PI / 2) / sliceAngle);
+        if (currentPeg !== lastTickPegRef.current) {
+          playTickSound();
+          lastTickPegRef.current = currentPeg;
+          if (navigator.vibrate) {
+            navigator.vibrate(10); // subtle haptic feedback for each peg!
+          }
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animateWheel);
+        } else {
+          setWheelAngle(currentAngle);
+          setIsSpinning(false);
           setSpinResult(result);
+          playWinSound();
+          setShowWinCelebration(true);
+          
+          // Award Coins and Trigger Coin Rain
           if (result.coinsAwarded > 0) {
             triggerCoinAnimation();
-            setProfile((prev: any) => ({ ...prev, coins: prev.coins + result.coinsAwarded, lastSpinDate: new Date().toISOString().split('T')[0] }));
+            setProfile((prev: any) => ({
+              ...prev,
+              coins: prev.coins + result.coinsAwarded,
+              lastSpinDate: new Date().toISOString().split('T')[0]
+            }));
             toast.success(`You won ${result.coinsAwarded} Coins!`);
           } else {
-             toast.success(result.message);
+            setProfile((prev: any) => ({
+              ...prev,
+              lastSpinDate: new Date().toISOString().split('T')[0]
+            }));
+            toast.success(result.message);
           }
-        } else {
-          toast.error(result.message);
         }
-      }, 3000); // 3 seconds spin animation
+      };
+
+      requestAnimationFrame(animateWheel);
       
     } catch (error) {
       setIsSpinning(false);
@@ -520,47 +824,177 @@ export default function RewardsHub() {
             {activeTab === 'wallet' && (
               <div className="space-y-6">
                 
-                {/* Spin to Win Section */}
-                <div className="bg-gradient-to-br from-[#FF3B30]/10 to-transparent p-6 rounded-2xl border border-[#FF3B30]/20 space-y-6 text-center relative overflow-hidden">
-                  <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                    <Gift size={120} />
+                {/* Spin to Win Section (AAA-Quality Gamified Upgrade) */}
+                <div className="bg-[#1C1917]/85 backdrop-blur-xl p-8 rounded-3xl border border-[#EF4444]/25 space-y-6 text-center relative overflow-hidden shadow-[0_0_40px_rgba(239,68,68,0.15)] group">
+                  {/* Glowing background light rings */}
+                  <div className="absolute -top-24 -left-24 w-48 h-48 bg-red-600/10 rounded-full blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-yellow-600/10 rounded-full blur-3xl pointer-events-none" />
+                  
+                  {/* Subtle floating firefly sparks */}
+                  <div className="absolute inset-0 opacity-20 pointer-events-none overflow-hidden">
+                    {[...Array(6)].map((_, i) => (
+                      <motion.div
+                        key={i}
+                        animate={{
+                          y: [-10, -150],
+                          x: [Math.random() * 300, Math.random() * 300],
+                          opacity: [0, 1, 0]
+                        }}
+                        transition={{
+                          duration: 4 + Math.random() * 3,
+                          repeat: Infinity,
+                          delay: Math.random() * 2
+                        }}
+                        className="absolute w-1 h-1 bg-yellow-400 rounded-full blur-[0.5px]"
+                        style={{ bottom: "10px", left: `${i * 15}%` }}
+                      />
+                    ))}
                   </div>
-                  <div>
-                    <h3 className="text-2xl font-black text-white uppercase tracking-tight flex items-center justify-center gap-2">
-                      <Sparkles size={24} className="text-yellow-500" /> DAILY SPIN TO WIN
+
+                  <div className="relative z-10">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#FF3B30] bg-[#FF3B30]/10 px-3 py-1 rounded-full border border-[#FF3B30]/20">
+                      OFFICIAL DAILY JACKPOT
+                    </span>
+                    <h3 className="text-2xl sm:text-3xl font-black text-white uppercase tracking-tight flex items-center justify-center gap-2 mt-3 font-display">
+                      <Sparkles size={26} className="text-yellow-400 animate-pulse" /> SPIN & WIN
                     </h3>
-                    <p className="text-sm text-white/60 mt-1">Spin the wheel every day for a chance to win up to 500 Coins or Premium!</p>
+                    <p className="text-xs text-white/50 mt-1 max-w-sm mx-auto leading-relaxed">
+                      Compete for Rare, Epic, and Mythic loot rewards. Spin once every 24 hours to claim your daily bonus.
+                    </p>
                   </div>
                   
-                  <div className="flex justify-center items-center py-4">
-                    <motion.div
-                      animate={{ rotate: isSpinning ? 3600 : 0 }}
-                      transition={{ duration: 3, ease: "circOut" }}
-                      className="w-32 h-32 rounded-full border-4 border-yellow-500 flex items-center justify-center bg-black/50 shadow-[0_0_30px_rgba(250,204,21,0.3)] relative"
+                  {/* Physical Wheel Container */}
+                  <div className="relative flex justify-center items-center py-6">
+                    {/* Golden Indicator Needle/Pointer */}
+                    <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 z-30 drop-shadow-[0_4px_12px_rgba(239,68,68,0.7)] flex flex-col items-center">
+                      <div className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[22px] border-t-yellow-400" />
+                      <div className="w-2 h-2 bg-[#FF3B30] rounded-full -mt-2 border border-white" />
+                    </div>
+
+                    {/* Wheel Inner Glow */}
+                    <div className="absolute w-[290px] h-[290px] rounded-full border border-yellow-500/10 bg-gradient-to-b from-transparent to-red-950/10 pointer-events-none z-10" />
+
+                    {/* HTML5 Canvas Component */}
+                    <div className="relative bg-[#0C0A09] p-3.5 rounded-full border-4 border-double border-yellow-500/40 shadow-[0_0_50px_rgba(0,0,0,0.8)]">
+                      <canvas 
+                        ref={canvasRef} 
+                        width={280} 
+                        height={280} 
+                        className="rounded-full relative z-20 cursor-pointer block"
+                        onClick={handleSpin}
+                      />
+
+                      {/* Lock Overlay for Completed Spins */}
+                      {profile?.lastSpinDate === new Date().toISOString().split('T')[0] && !isSpinning && (
+                        <div className="absolute inset-0 bg-[#0c0a09]/85 rounded-full z-25 flex flex-col justify-center items-center p-6 backdrop-blur-sm">
+                          <div className="w-12 h-12 rounded-full bg-stone-900 border border-stone-800 flex items-center justify-center text-red-500 shadow-inner mb-3">
+                            <span className="text-xl">🔒</span>
+                          </div>
+                          <span className="text-[9px] font-black uppercase tracking-[0.25em] text-white/40">NEXT SPIN IN</span>
+                          <span className="text-xl font-mono font-bold text-yellow-500 mt-1 uppercase tracking-widest">{countdown || "00:00:00"}</span>
+                          <span className="text-[8px] text-white/30 mt-2 max-w-[140px] leading-relaxed">System lock is active until daily midnight.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Launch Controls */}
+                  <div className="space-y-3 relative z-10">
+                    <button 
+                      onClick={handleSpin}
+                      disabled={isSpinning || profile?.lastSpinDate === new Date().toISOString().split('T')[0]}
+                      className="w-full max-w-xs mx-auto py-3.5 bg-gradient-to-r from-[#FF3B30] via-red-600 to-[#FF3B30] hover:from-red-600 hover:to-red-500 text-white font-black uppercase tracking-[0.15em] text-xs rounded-xl disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 shadow-[0_4px_25px_rgba(239,68,68,0.35)] hover:shadow-[0_4px_30px_rgba(239,68,68,0.5)] active:scale-95 flex items-center justify-center gap-2"
                     >
-                      <div className="absolute inset-0 rounded-full bg-[conic-gradient(from_0deg,transparent_0deg,transparent_120deg,rgba(250,204,21,0.2)_120deg,rgba(250,204,21,0.2)_240deg,transparent_240deg)]" />
-                      <Coins size={48} className="text-yellow-500" />
-                    </motion.div>
+                      {isSpinning ? (
+                        <>
+                          <RefreshCw className="animate-spin" size={14} /> CINEMATIC SPINNING...
+                        </>
+                      ) : profile?.lastSpinDate === new Date().toISOString().split('T')[0] ? (
+                        'NEXT DAILY SPIN LOCKED'
+                      ) : (
+                        <>
+                          <Sparkles size={14} className="text-yellow-300 animate-bounce" /> ENGAGE DAILY SPIN
+                        </>
+                      )}
+                    </button>
                   </div>
-                  
-                  {spinResult && (
+                </div>
+
+                {/* Immense AAA Victory Celebration Overlay Modal */}
+                <AnimatePresence>
+                  {showWinCelebration && spinResult && (
                     <motion.div 
-                      initial={{ opacity: 0, scale: 0.8 }} 
-                      animate={{ opacity: 1, scale: 1 }} 
-                      className="text-lg font-bold text-yellow-400"
+                      initial={{ opacity: 0 }} 
+                      animate={{ opacity: 1 }} 
+                      exit={{ opacity: 0 }}
+                      className="fixed inset-0 bg-black/95 z-[9999] flex flex-col justify-center items-center p-6 backdrop-blur-md"
                     >
-                      {spinResult.message}
+                      {/* Interactive celebration particles background */}
+                      <div className="absolute inset-0 pointer-events-none select-none opacity-40 overflow-hidden">
+                        {[...Array(20)].map((_, i) => (
+                          <motion.div
+                            key={i}
+                            initial={{ y: -50, x: Math.random() * window.innerWidth, rotate: 0 }}
+                            animate={{ y: window.innerHeight + 100, x: Math.random() * window.innerWidth, rotate: 360 }}
+                            transition={{ duration: 3 + Math.random() * 4, repeat: Infinity, ease: "linear" }}
+                            className="absolute text-xl"
+                          >
+                            {["🪙", "✨", "🎉", "🔥"][Math.floor(Math.random() * 4)]}
+                          </motion.div>
+                        ))}
+                      </div>
+
+                      <motion.div
+                        initial={{ scale: 0.85, y: 50, opacity: 0 }}
+                        animate={{ scale: 1, y: 0, opacity: 1 }}
+                        exit={{ scale: 0.85, y: 50, opacity: 0 }}
+                        transition={{ type: "spring", damping: 15 }}
+                        className="bg-stone-900 border-2 border-yellow-500/40 p-8 rounded-3xl max-w-md w-full text-center relative overflow-hidden shadow-[0_0_80px_rgba(251,191,36,0.3)]"
+                      >
+                        {/* Golden Bevel Frame overlay */}
+                        <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600" />
+                        
+                        <div className="absolute top-4 right-4 text-xs font-black tracking-widest text-white/20 select-none font-mono">
+                          SECURE REWARD
+                        </div>
+
+                        {/* Rarity Ring Header */}
+                        <div className="flex justify-center mb-6">
+                          <div className="w-20 h-20 rounded-full bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center animate-bounce shadow-[0_0_30px_rgba(251,191,36,0.2)]">
+                            <Trophy size={38} className="text-yellow-400" />
+                          </div>
+                        </div>
+
+                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-500 bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20">
+                          JACKPOT WINNER!
+                        </span>
+
+                        <h2 className="text-3xl font-black text-white mt-4 uppercase tracking-tight font-display leading-none">
+                          CONGRATULATIONS
+                        </h2>
+                        
+                        <div className="my-6 p-5 bg-black/60 rounded-2xl border border-white/5 shadow-inner">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">ITEM RETRIEVED</span>
+                          <div className="text-2xl font-black text-yellow-400 mt-1 uppercase tracking-wide">
+                            {spinResult.reward}
+                          </div>
+                          <p className="text-xs text-white/60 mt-2 max-w-xs mx-auto leading-relaxed font-medium">
+                            {spinResult.message}
+                          </p>
+                        </div>
+
+                        <div className="space-y-3">
+                          <button
+                            onClick={() => setShowWinCelebration(false)}
+                            className="w-full py-3 bg-gradient-to-r from-yellow-500 to-yellow-400 text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-lg shadow-yellow-500/20 hover:shadow-yellow-500/40 active:scale-95 transition-all duration-200"
+                          >
+                            CLAIM & DISMISS
+                          </button>
+                        </div>
+                      </motion.div>
                     </motion.div>
                   )}
-                  
-                  <button 
-                    onClick={handleSpin}
-                    disabled={isSpinning || profile?.lastSpinDate === new Date().toISOString().split('T')[0]}
-                    className="px-8 py-3 bg-gradient-to-r from-yellow-600 to-yellow-500 hover:from-yellow-500 hover:to-yellow-400 text-black font-black uppercase tracking-widest text-sm rounded disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_15px_rgba(250,204,21,0.4)]"
-                  >
-                    {isSpinning ? 'SPINNING...' : profile?.lastSpinDate === new Date().toISOString().split('T')[0] ? 'COME BACK TOMORROW' : 'SPIN NOW'}
-                  </button>
-                </div>
+                </AnimatePresence>
 
                 <div className="bg-white/[0.01] p-6 rounded-2xl border border-white/5 space-y-6">
                   <div>

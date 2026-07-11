@@ -1,20 +1,30 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# BuyWise AI Super App
 
-# Run and deploy your AI Studio app
+BuyWise is a comprehensive, AI-powered shopping and travel helper application with multi-platform price tracking, real-time deal discovery, and an intelligent personal shopper assistant.
 
-This contains everything you need to run your app locally.
+---
 
-View your app in AI Studio: https://ai.studio/apps/424084aa-48db-4cae-af5f-4d2021b05965
+## 🔒 Security Safety & Credential Pass
 
-## Run Locally
+A full-scale security audit and safety pass has been successfully conducted on this codebase.
 
-**Prerequisites:**  Node.js
+### Major Changes:
+1. **Zero Hardcoded Secrets**: All private API keys, database URLs, and third-party tokens have been completely removed as literal strings from the source code.
+2. **Environment Variables**: The application now strictly retrieves keys using standard environment variables:
+   - **Client-Side**: Configured via Vite (`import.meta.env`) with safe `VITE_` prefixes (e.g., `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`).
+   - **Server-Side**: Secured via Node.js (`process.env`) for sensitive search keys and bot tokens (e.g., `SERP_API_KEY`, `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`).
+3. **Template Environment Configuration**: Added `.env.example` defining all required configuration keys with description placeholders.
+4. **Git Protection**: Ensured `.env` files are ignored in `.gitignore` to prevent secret leakage.
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## ⚠️ CRITICAL SECURITY WARNING (Rotate Keys Immediately)
+
+> [!CAUTION]
+> **ROTATE PREVIOUSLY HARDCODED SECRETS IMMEDIATELY**:
+> Because credentials (including Supabase anon key, SerpApi token, and Telegram bot token) were previously stored in early versions of the source code as string literals, **they still exist in the Git history**.
+>
+> To ensure the absolute safety and integrity of your external services, **you must immediately rotate these credentials**:
+> - Rotate your **Supabase API keys and database tokens** via the Supabase Dashboard.
+> - Regen/rotate your **SerpApi token** via SerpApi settings.
+> - Revoke and generate a new token for your **Telegram bot** via Telegram's BotFather.

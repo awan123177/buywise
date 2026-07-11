@@ -17,6 +17,9 @@ import ProductPage from './components/ProductPage';
 import PersonalShopper from './components/PersonalShopper';
 import SmartNotifications from './components/SmartNotifications';
 import StaticPage from './components/StaticPage';
+import ShoppingGuides from './components/ShoppingGuides';
+import CompareProducts from './components/CompareProducts';
+import HubPage from './components/HubPage';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { AffiliateProvider } from './contexts/AffiliateContext';
@@ -52,7 +55,7 @@ export default function App() {
               },
             }}
           />
-          <main className="relative z-10 pb-20 lg:pb-0">
+          <main className="relative z-10 pb-32">
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/admin" element={<AdminPanel />} />
@@ -65,7 +68,11 @@ export default function App() {
               <Route path="/scanner" element={<ScannerPage />} />
               <Route path="/product/:id" element={<ProductPage />} />
               <Route path="/ref/:code" element={<Home />} />
+              <Route path="/compare" element={<CompareProducts />} />
               <Route path="/wishlist" element={<Radar />} />
+              <Route path="/guides" element={<ShoppingGuides />} />
+              <Route path="/guides/:slug" element={<ShoppingGuides />} />
+              <Route path="/hub/:slug" element={<HubPage />} />
               <Route path="/:pageId" element={<StaticPage />} />
             </Routes>
           </main>

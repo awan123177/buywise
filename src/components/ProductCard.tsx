@@ -113,8 +113,10 @@ export default function ProductCard({
   };
 
   const getOrderLink = () => {
-    if (!product) return "#";
-    let orderLink = product.link || (product as any).product_link;
+    if (!product) return "";
+    
+    // 1. Prioritize direct product URL properties
+    let orderLink = product.link || (product as any).product_link || (product as any).url || (product as any).productUrl || (product as any).detailPageURL || (product as any).affiliateLink || "";
     
     // Helper to extract nested redirect URLs
     const extractUrl = (str: string): string | null => {
@@ -151,22 +153,96 @@ export default function ProductCard({
       }
     }
 
-    // Force direct links based on source if link is missing or still a tracking domain
-    if (!orderLink || orderLink.includes("serpapi.com") || orderLink.includes("google.com") || orderLink.includes("googleadservices.com")) {
-      const encodeQ = encodeURIComponent(product.title);
-      const src = product.source.toLowerCase();
-      if (src.includes("amazon")) return `https://www.amazon.in/s?k=${encodeQ}`;
-      if (src.includes("flipkart")) return `https://www.flipkart.com/search?q=${encodeQ}`;
-      if (src.includes("croma")) return `https://www.croma.com/searchB?q=${encodeQ}`;
-      if (src.includes("reliance")) return `https://www.reliancedigital.in/search?q=${encodeQ}`;
-      if (src.includes("ikea")) return `https://www.ikea.com/in/en/search/?q=${encodeQ}`;
-      if (src.includes("urban ladder") || src.includes("urbanladder")) return `https://www.urbanladder.com/products/search?q=${encodeQ}`;
-      if (src.includes("wakefit")) return `https://www.wakefit.co/search?q=${encodeQ}`;
-      if (src.includes("myntra")) return `https://www.myntra.com/search?q=${encodeQ}`;
-      if (src.includes("ajio")) return `https://www.ajio.com/search/?text=${encodeQ}`;
-      // Fallback
-      return `https://www.google.com/search?q=${encodeQ}`;
+    // 2. Extract ASIN for Amazon products and generate direct URL if applicable
+    const src = (product.source || "").toLowerCase();
+    
+    // Check if ASIN exists directly
+    let asin = (product as any).asin || (product as any).product_id;
+    if (!asin || !/^[A-Z0-9]{10}$/i.test(asin)) {
+      asin = null;
+      // Extract from the title, thumbnail, or link
+      const linksToSearch = [orderLink, product.thumbnail, product.title].filter(Boolean);
+      for (const item of linksToSearch) {
+        const match = item.match(/\b(B[A-Z0-9]{9})\b/i);
+        if (match && match[1]) {
+          asin = match[1];
+          break;
+        }
+      }
     }
+
+    if (src.includes("amazon") && asin) {
+      orderLink = `https://www.amazon.in/dp/${asin}`;
+    }
+
+    // 3. Validation: Make sure it's a valid direct product link and belongs to the correct marketplace
+    if (!orderLink) {
+      console.error(`[BuyNow Debug] Product link is missing for: "${product.title}"`);
+      return "";
+    }
+
+    try {
+      const u = new URL(orderLink);
+      const host = u.hostname.toLowerCase();
+      const path = u.pathname;
+
+      // Ensure it is not a homepage, search page, or category page
+      const isSearchPage = 
+        path === "/" || 
+        path === "" || 
+        path.includes("/search") || 
+        path.includes("/s") || 
+        path.includes("/search/") ||
+        u.searchParams.has("k") || 
+        u.searchParams.has("q") ||
+        u.searchParams.has("query") ||
+        host.includes("google.com") || 
+        host.includes("serpapi.com") || 
+        host.includes("googleadservices.com");
+
+      if (isSearchPage) {
+        // Double check if it's an amazon DP page despite having some params
+        const isAmazonDp = host.includes("amazon") && (path.includes("/dp/") || path.includes("/gp/"));
+        if (!isAmazonDp) {
+          console.error(`[BuyNow Debug] Rejected search/homepage/redirect URL for "${product.title}":`, orderLink);
+          return "";
+        }
+      }
+
+      // Check correct marketplace domain association
+      if (src.includes("amazon") && !host.includes("amazon")) {
+        console.error(`[BuyNow Debug] Domain mismatch: expected Amazon, got "${host}" for product: "${product.title}"`);
+        return "";
+      }
+      if (src.includes("flipkart") && !host.includes("flipkart")) {
+        console.error(`[BuyNow Debug] Domain mismatch: expected Flipkart, got "${host}" for product: "${product.title}"`);
+        return "";
+      }
+      if (src.includes("meesho") && !host.includes("meesho")) {
+        console.error(`[BuyNow Debug] Domain mismatch: expected Meesho, got "${host}" for product: "${product.title}"`);
+        return "";
+      }
+      if (src.includes("myntra") && !host.includes("myntra")) {
+        console.error(`[BuyNow Debug] Domain mismatch: expected Myntra, got "${host}" for product: "${product.title}"`);
+        return "";
+      }
+      if (src.includes("ajio") && !host.includes("ajio")) {
+        console.error(`[BuyNow Debug] Domain mismatch: expected Ajio, got "${host}" for product: "${product.title}"`);
+        return "";
+      }
+      if (src.includes("croma") && !host.includes("croma")) {
+        console.error(`[BuyNow Debug] Domain mismatch: expected Croma, got "${host}" for product: "${product.title}"`);
+        return "";
+      }
+      if (src.includes("reliance") && !host.includes("reliance")) {
+        console.error(`[BuyNow Debug] Domain mismatch: expected Reliance, got "${host}" for product: "${product.title}"`);
+        return "";
+      }
+    } catch (e) {
+      console.error(`[BuyNow Debug] Invalid URL syntax "${orderLink}" for product: "${product.title}"`);
+      return "";
+    }
+
     return orderLink;
   };
 
@@ -344,22 +420,39 @@ export default function ProductCard({
 
           <div className="flex gap-2">
             <motion.button
-              onClick={() => triggerRedirect({
-                url: getOrderLink(),
-                store: product.source || "amazon",
-                productId: product.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50),
-                productTitle: product.title,
-                category: "electronics"
-              })}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={`w-full py-4 text-[11px] font-black tracking-[0.2em] uppercase transition-all text-center flex items-center justify-center gap-2 rounded-xl cursor-pointer shadow-[0_0_15px_rgba(255,59,48,0.2)] hover:shadow-[0_0_25px_rgba(255,59,48,0.5)] ${
-                isBest
-                  ? "bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white"
-                  : "bg-white text-black hover:bg-[#FF3B30] hover:text-white"
+              disabled={!getOrderLink()}
+              onClick={() => {
+                const urlOpened = getOrderLink();
+                console.log("=== Buy Now Click Details ===");
+                console.log("Product Title:", product.title);
+                console.log("Marketplace:", product.source || "Unknown");
+                console.log("Product URL received from SerpAPI:", product.link || (product as any).product_link);
+                console.log("URL opened when Buy Now is clicked:", urlOpened);
+                console.log("=============================");
+                
+                triggerRedirect({
+                  url: urlOpened,
+                  store: product.source || "amazon",
+                  productId: product.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50),
+                  productTitle: product.title,
+                  category: "electronics"
+                });
+              }}
+              whileHover={getOrderLink() ? { scale: 1.05 } : {}}
+              whileTap={getOrderLink() ? { scale: 0.95 } : {}}
+              className={`w-full py-4 text-[11px] font-black tracking-[0.2em] uppercase transition-all text-center flex items-center justify-center gap-2 rounded-xl shadow-[0_0_15px_rgba(255,59,48,0.2)] hover:shadow-[0_0_25px_rgba(255,59,48,0.5)] ${
+                !getOrderLink()
+                  ? "bg-white/5 text-white/20 cursor-not-allowed shadow-none hover:shadow-none"
+                  : isBest
+                    ? "bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white cursor-pointer"
+                    : "bg-white text-black hover:bg-[#FF3B30] hover:text-white cursor-pointer"
               }`}
             >
-              Buy Now <ExternalLink size={14} />
+              {getOrderLink() ? (
+                <>Buy Now <ExternalLink size={14} /></>
+              ) : (
+                "Product link unavailable"
+              )}
             </motion.button>
             <motion.button
               onClick={handleWishlist}

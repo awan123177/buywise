@@ -158,18 +158,19 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 44,
+      "coins": 111,
       "referralCode": "TEST256",
       "referredBy": null,
-      "searchesCount": 4,
-      "totalSaved": 746,
-      "lastSearchDate": "2026-07-10",
-      "lastLoginDate": "2026-07-10",
-      "streakCount": 1,
-      "lastStreakCheckDate": "2026-07-10",
+      "searchesCount": 6,
+      "totalSaved": 1053,
+      "lastSearchDate": "2026-07-11",
+      "lastLoginDate": "2026-07-11",
+      "streakCount": 2,
+      "lastStreakCheckDate": "2026-07-11",
       "achievements": [
         "streak_3",
-        "first_search"
+        "first_search",
+        "saved_1000"
       ],
       "notificationsEnabled": true,
       "notificationPreferences": {
@@ -181,10 +182,81 @@
       "createdAt": "2026-06-26T06:59:49.010Z",
       "activeBadge": "💎 COINS LEGEND",
       "isPremium": true,
-      "premiumExpiry": "2026-06-30T16:58:34.001Z"
+      "premiumExpiry": "2026-06-30T16:58:34.001Z",
+      "lastSpinDate": "2026-07-11"
+    },
+    "6022454b-b82f-4478-927c-310f7964f4c1": {
+      "userId": "6022454b-b82f-4478-927c-310f7964f4c1",
+      "email": "awanwarsi790@gmail.com",
+      "name": "Awan warsi",
+      "coins": 55,
+      "referralCode": "AWAN386",
+      "referredBy": null,
+      "searchesCount": 0,
+      "totalSaved": 0,
+      "lastSearchDate": null,
+      "lastLoginDate": "2026-07-11",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-07-11",
+      "achievements": [],
+      "notificationsEnabled": true,
+      "notificationPreferences": {
+        "morning": true,
+        "afternoon": true,
+        "evening": true
+      },
+      "bannedReferrals": false,
+      "createdAt": "2026-07-11T04:59:01.598Z",
+      "activeBadge": null,
+      "lastSpinDate": "2026-07-11",
+      "completedMissions": [],
+      "isPremium": true,
+      "premiumExpiry": "2026-07-14T04:59:01.599Z"
     }
   },
   "transactions": [
+    {
+      "id": "txn_1783747269809_543",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 50,
+      "reason": "Unlocked achievement: Thrifty Saver",
+      "timestamp": "2026-07-11T05:21:09.809Z"
+    },
+    {
+      "id": "txn_1783747263214_953",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 2,
+      "reason": "First search of the day bonus",
+      "timestamp": "2026-07-11T05:21:03.214Z"
+    },
+    {
+      "id": "txn_1783745968764_339",
+      "userId": "6022454b-b82f-4478-927c-310f7964f4c1",
+      "amount": 5,
+      "reason": "Daily login reward",
+      "timestamp": "2026-07-11T04:59:28.764Z"
+    },
+    {
+      "id": "txn_1783745955227_823",
+      "userId": "6022454b-b82f-4478-927c-310f7964f4c1",
+      "amount": 50,
+      "reason": "Spin to Win daily reward",
+      "timestamp": "2026-07-11T04:59:15.227Z"
+    },
+    {
+      "id": "txn_1783745241018_941",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 10,
+      "reason": "Spin to Win daily reward",
+      "timestamp": "2026-07-11T04:47:21.018Z"
+    },
+    {
+      "id": "txn_1783744528458_168",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 5,
+      "reason": "Daily login (Streak: 2 days)",
+      "timestamp": "2026-07-11T04:35:28.458Z"
+    },
     {
       "id": "txn_1783690073927_973",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -538,13 +610,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 24889,
-    "totalUsers": 1429,
-    "productsCompared": 49789,
-    "priceAlertsTriggered": 1287,
+    "totalSearches": 24965,
+    "totalUsers": 1430,
+    "productsCompared": 50019,
+    "priceAlertsTriggered": 1297,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1848967
+    "totalSavedAmount": 1850591
   },
   "bannedUsers": [],
   "reviews": [
@@ -2686,7 +2758,7 @@
       }
     },
     "clicks": {
-      "total": 354,
+      "total": 356,
       "byStore": {
         "amazon": 154,
         "flipkart": 112,
@@ -2696,7 +2768,7 @@
         "tatacliq": 8,
         "myntra": 5,
         "ajio": 3,
-        "amazon.in": 4
+        "amazon.in": 6
       },
       "byProduct": {
         "deal_iphone_15": {
@@ -2718,10 +2790,18 @@
         "Bharat_Sales_Turbo_Plastic_Arm_Chair": {
           "title": "Bharat Sales Turbo Plastic Arm Chair",
           "clicks": 1
+        },
+        "Oakley_Men_s_FROGSKINS_Sunglasses": {
+          "title": "Oakley Men's FROGSKINS Sunglasses",
+          "clicks": 1
+        },
+        "Oakley_Men_Manorburn_Sunglasses": {
+          "title": "Oakley Men Manorburn Sunglasses",
+          "clicks": 1
         }
       },
       "byCategory": {
-        "electronics": 214,
+        "electronics": 216,
         "mobiles": 80,
         "laptops": 35,
         "fashion": 15,
@@ -2735,12 +2815,13 @@
         "2026-06-25": 70,
         "2026-06-26": 68,
         "2026-06-27": 5,
-        "2026-07-10": 4
+        "2026-07-10": 4,
+        "2026-07-11": 2
       },
       "monthlyClicks": {
         "2026-05": 1120,
         "2026-06": 350,
-        "2026-07": 4
+        "2026-07": 6
       }
     }
   },

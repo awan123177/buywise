@@ -628,7 +628,7 @@ export default function Home() {
         <div className="bg-[#111111]/80 backdrop-blur-md p-10 flex flex-col md:flex-row items-center gap-12 rounded-3xl border border-white/10 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF3B30]/5 blur-[80px] rounded-full pointer-events-none" />
            <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
-              <img src="/founder.png?v=2" alt="Awan Warsi" className="w-full h-full object-cover object-top" onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+              <img src="/founder.png?v=6" alt="Awan Warsi" className="w-full h-full object-cover object-top" onError={(e) => { e.currentTarget.src = "/founder.svg"; }} />
               <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
            </div>
            <div>
@@ -649,10 +649,17 @@ export default function Home() {
       <ChatAssistant results={sortedFilteredResults} />
 
       <footer className="w-full border-t border-[rgba(255,255,255,0.05)] px-4 md:px-12 py-12 text-[11px] text-white/60 font-medium bg-[#0a0a0a] relative z-[100] mt-10">
-        <div className="max-w-[1400px] mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8">
           <div>
-            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">BuyWise</h4>
+            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">BuyWise Platforms</h4>
             <p className="mb-4 text-white/50 leading-relaxed">AI-powered shopping and travel comparison platform. Never overpay again.</p>
+            <div className="flex flex-col gap-2 mb-4">
+              <a href="/deals" onClick={(e) => { e.preventDefault(); navigate('/deals'); }} className="hover:text-white transition-colors">🔥 Hot Shopping Deals</a>
+              <a href="/travel" onClick={(e) => { e.preventDefault(); navigate('/travel'); }} className="hover:text-white transition-colors">✈️ Travel & Flight Search</a>
+              <a href="/premium" onClick={(e) => { e.preventDefault(); navigate('/premium'); }} className="hover:text-white transition-colors">👑 Premium Club Access</a>
+              <a href="/rewards" onClick={(e) => { e.preventDefault(); navigate('/rewards'); }} className="hover:text-white transition-colors">🪙 Rewards Terminal</a>
+              <a href="/compare" onClick={(e) => { e.preventDefault(); navigate('/compare'); }} className="hover:text-white transition-colors">📊 Compare Products</a>
+            </div>
             <div className="flex items-center gap-2 text-[#FF3B30] text-[10px] font-black uppercase tracking-widest">
               <div className="w-1.5 h-1.5 bg-[#FF3B30] rounded-full animate-pulse" /> SYSTEM ACTIVE
             </div>
@@ -661,29 +668,49 @@ export default function Home() {
             <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Company</h4>
             <div className="flex flex-col gap-2">
               <a href="/about" onClick={(e) => { e.preventDefault(); navigate('/about'); }} className="hover:text-white transition-colors">About BuyWise</a>
-              <a href="/owner" onClick={(e) => { e.preventDefault(); navigate('/owner'); }} className="hover:text-white transition-colors">Founder, Owner & Chairman (Awan Warsi)</a>
+              <a href="/owner" onClick={(e) => { e.preventDefault(); navigate('/owner'); }} className="hover:text-white transition-colors">Founder & CEO (Awan Warsi)</a>
               <a href="/careers" onClick={(e) => { e.preventDefault(); navigate('/careers'); }} className="hover:text-white transition-colors">Careers</a>
               <a href="/press" onClick={(e) => { e.preventDefault(); navigate('/press'); }} className="hover:text-white transition-colors">Press & Media</a>
               <a href="/contact" onClick={(e) => { e.preventDefault(); navigate('/contact'); }} className="hover:text-white transition-colors">Contact Us</a>
+              <a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30] hover:underline mt-2 flex items-center gap-1.5 font-bold select-all">📧 mohammdsaeed24@gmail.com</a>
             </div>
           </div>
           <div>
-            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Legal</h4>
+            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Shopping Guides</h4>
             <div className="flex flex-col gap-2">
+              <a href="/guides" onClick={(e) => { e.preventDefault(); navigate('/guides'); }} className="hover:text-white transition-colors font-bold text-[#FF3B30]">All Shopping Guides</a>
+              <a href="/guides/best-phones-under-20000" onClick={(e) => { e.preventDefault(); navigate('/guides/best-phones-under-20000'); }} className="hover:text-white transition-colors">Best Phones Under ₹20,000</a>
+              <a href="/guides/best-laptops-under-50000" onClick={(e) => { e.preventDefault(); navigate('/guides/best-laptops-under-50000'); }} className="hover:text-white transition-colors">Best Laptops Under ₹50,000</a>
+              <a href="/guides/best-gaming-headphones" onClick={(e) => { e.preventDefault(); navigate('/guides/best-gaming-headphones'); }} className="hover:text-white transition-colors">Best Gaming Headphones</a>
+              <a href="/guides/best-smart-tvs" onClick={(e) => { e.preventDefault(); navigate('/guides/best-smart-tvs'); }} className="hover:text-white transition-colors">Best Smart TVs</a>
+              <a href="/guides/best-washing-machines" onClick={(e) => { e.preventDefault(); navigate('/guides/best-washing-machines'); }} className="hover:text-white transition-colors">Best Washing Machines</a>
+              <a href="/guides/best-air-conditioners" onClick={(e) => { e.preventDefault(); navigate('/guides/best-air-conditioners'); }} className="hover:text-white transition-colors">Best Air Conditioners</a>
+              <a href="/guides/best-refrigerators" onClick={(e) => { e.preventDefault(); navigate('/guides/best-refrigerators'); }} className="hover:text-white transition-colors">Best Refrigerators</a>
+              <a href="/guides/best-power-banks" onClick={(e) => { e.preventDefault(); navigate('/guides/best-power-banks'); }} className="hover:text-white transition-colors">Best Power Banks</a>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Market Hubs</h4>
+            <div className="flex flex-col gap-2">
+              <a href="/hub/mobiles" onClick={(e) => { e.preventDefault(); navigate('/hub/mobiles'); }} className="hover:text-white transition-colors">📱 Mobiles Price Index</a>
+              <a href="/hub/laptops" onClick={(e) => { e.preventDefault(); navigate('/hub/laptops'); }} className="hover:text-white transition-colors">💻 Laptops Spec Hub</a>
+              <a href="/hub/amazon" onClick={(e) => { e.preventDefault(); navigate('/hub/amazon'); }} className="hover:text-white transition-colors">🏷️ Amazon Promo Codes</a>
+              <a href="/hub/flipkart" onClick={(e) => { e.preventDefault(); navigate('/hub/flipkart'); }} className="hover:text-white transition-colors">🛍️ Flipkart Price Drops</a>
+            </div>
+          </div>
+          <div>
+            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Connect & Legal</h4>
+            <div className="flex flex-col gap-2 mb-4">
               <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate('/privacy'); }} className="hover:text-white transition-colors">Privacy Policy</a>
               <a href="/terms" onClick={(e) => { e.preventDefault(); navigate('/terms'); }} className="hover:text-white transition-colors">Terms of Service</a>
               <a href="/disclaimer" onClick={(e) => { e.preventDefault(); navigate('/disclaimer'); }} className="hover:text-white transition-colors">Disclaimer</a>
               <a href="/faq" onClick={(e) => { e.preventDefault(); navigate('/faq'); }} className="hover:text-white transition-colors">FAQ</a>
             </div>
-          </div>
-          <div>
-            <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">Connect</h4>
             <div className="flex flex-col gap-2">
               <a href="https://instagram.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Instagram</a>
-              <a href="https://linkedin.com/company/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">LinkedIn</a>
               <a href="https://t.me/buywiseofficial" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">Telegram</a>
-              <a href="https://youtube.com" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">YouTube</a>
               <a href="https://x.com/buywise" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">X (Twitter)</a>
+              <a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30] hover:underline mt-2 flex items-center gap-1.5 font-bold select-all">📧 mohammdsaeed24@gmail.com</a>
             </div>
           </div>
         </div>
