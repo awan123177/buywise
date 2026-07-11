@@ -175,71 +175,10 @@ export default function ProductCard({
       orderLink = `https://www.amazon.in/dp/${asin}`;
     }
 
-    // 3. Validation: Make sure it's a valid direct product link and belongs to the correct marketplace
-    if (!orderLink) {
-      console.error(`[BuyNow Debug] Product link is missing for: "${product.title}"`);
-      return "";
-    }
-
-    try {
-      const u = new URL(orderLink);
-      const host = u.hostname.toLowerCase();
-      const path = u.pathname;
-
-      // Ensure it is not a homepage, search page, or category page
-      const isSearchPage = 
-        path === "/" || 
-        path === "" || 
-        path.includes("/search") || 
-        path.includes("/s") || 
-        path.includes("/search/") ||
-        u.searchParams.has("k") || 
-        u.searchParams.has("q") ||
-        u.searchParams.has("query") ||
-        host.includes("google.com") || 
-        host.includes("serpapi.com") || 
-        host.includes("googleadservices.com");
-
-      if (isSearchPage) {
-        // Double check if it's an amazon DP page despite having some params
-        const isAmazonDp = host.includes("amazon") && (path.includes("/dp/") || path.includes("/gp/"));
-        if (!isAmazonDp) {
-          console.error(`[BuyNow Debug] Rejected search/homepage/redirect URL for "${product.title}":`, orderLink);
-          return "";
-        }
-      }
-
-      // Check correct marketplace domain association
-      if (src.includes("amazon") && !host.includes("amazon")) {
-        console.error(`[BuyNow Debug] Domain mismatch: expected Amazon, got "${host}" for product: "${product.title}"`);
-        return "";
-      }
-      if (src.includes("flipkart") && !host.includes("flipkart")) {
-        console.error(`[BuyNow Debug] Domain mismatch: expected Flipkart, got "${host}" for product: "${product.title}"`);
-        return "";
-      }
-      if (src.includes("meesho") && !host.includes("meesho")) {
-        console.error(`[BuyNow Debug] Domain mismatch: expected Meesho, got "${host}" for product: "${product.title}"`);
-        return "";
-      }
-      if (src.includes("myntra") && !host.includes("myntra")) {
-        console.error(`[BuyNow Debug] Domain mismatch: expected Myntra, got "${host}" for product: "${product.title}"`);
-        return "";
-      }
-      if (src.includes("ajio") && !host.includes("ajio")) {
-        console.error(`[BuyNow Debug] Domain mismatch: expected Ajio, got "${host}" for product: "${product.title}"`);
-        return "";
-      }
-      if (src.includes("croma") && !host.includes("croma")) {
-        console.error(`[BuyNow Debug] Domain mismatch: expected Croma, got "${host}" for product: "${product.title}"`);
-        return "";
-      }
-      if (src.includes("reliance") && !host.includes("reliance")) {
-        console.error(`[BuyNow Debug] Domain mismatch: expected Reliance, got "${host}" for product: "${product.title}"`);
-        return "";
-      }
-    } catch (e) {
-      console.error(`[BuyNow Debug] Invalid URL syntax "${orderLink}" for product: "${product.title}"`);
+    // 3. Relaxed Validation: Make sure it's a valid link starting with http.
+    // We allow redirect links, affiliate links, and search redirects to be clickable.
+    if (!orderLink || typeof orderLink !== "string" || !orderLink.startsWith("http")) {
+      console.error(`[BuyNow Debug] Product link is missing or invalid for: "${product.title}"`);
       return "";
     }
 

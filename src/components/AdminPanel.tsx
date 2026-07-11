@@ -54,6 +54,7 @@ export default function AdminPanel() {
   const [isParsingDeal, setIsParsingDeal] = useState(false);
   const [founderImage, setFounderImage] = useState<string | null>(null);
   const [isUploadingFounder, setIsUploadingFounder] = useState(false);
+  const founderInputRef = React.useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder'>('overview');
 
   const parseNameField = (nameStr: string) => {
@@ -1955,7 +1956,10 @@ export default function AdminPanel() {
                     </div>
                   </div>
                 ) : (
-                  <label className="cursor-pointer flex flex-col items-center space-y-2 text-center">
+                  <div 
+                    onClick={() => founderInputRef.current?.click()}
+                    className="cursor-pointer flex flex-col items-center space-y-2 text-center select-none"
+                  >
                     <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center bg-white/5 hover:bg-white/10 transition-all text-white/60">
                       <Upload size={20} />
                     </div>
@@ -1964,9 +1968,10 @@ export default function AdminPanel() {
                       <p className="text-[10px] text-white/30 mt-1">JPEG or PNG, up to 10MB</p>
                     </div>
                     <input 
+                      ref={founderInputRef}
                       type="file" 
                       accept="image/*" 
-                      className="hidden" 
+                      className="sr-only" 
                       onChange={(e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -1978,7 +1983,7 @@ export default function AdminPanel() {
                         }
                       }}
                     />
-                  </label>
+                  </div>
                 )}
               </div>
             </div>

@@ -515,14 +515,22 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
     }
   }
 
-  // Auto-grant 3 days premium trial to all users
-  if (!profile.isPremium && !profile.premiumExpiry) {
+  // Grant permanent premium status to mohammdsaeed24@gmail.com
+  if (email && email.toLowerCase() === "mohammdsaeed24@gmail.com") {
+    if (!profile.isPremium || profile.premiumExpiry !== "2030-01-01T00:00:00.000Z") {
+      profile.isPremium = true;
+      profile.premiumExpiry = "2030-01-01T00:00:00.000Z";
+      saveDatabase();
+      console.log("Granted permanent premium status to owner mohammdsaeed24@gmail.com");
+    }
+  } else if (!profile.isPremium && !profile.premiumExpiry) {
+    // Auto-grant 3 days premium trial to all other users
     profile.isPremium = true;
     const now = new Date();
     now.setDate(now.getDate() + 3); // 3 days trial
     profile.premiumExpiry = now.toISOString();
     saveDatabase();
-    console.log("Granted 3-day premium trial to [REDACTED]");
+    console.log("Granted 3-day premium trial to user");
   }
 
   return profile;
@@ -1314,17 +1322,8 @@ export function spinWheel(userId: string): { success: boolean, reward: string, c
     { type: "coins", amount: 0, label: "Better Luck Tomorrow", chance: 10 },
   ];
 
-  // Pick random based on chance
-  const rand = Math.random() * 100;
-  let cumulative = 0;
-  let selectedReward = outcomes[outcomes.length - 1];
-  for (const outcome of outcomes) {
-    cumulative += outcome.chance;
-    if (rand <= cumulative) {
-      selectedReward = outcome;
-      break;
-    }
-  }
+  // Pick a truly random outcome with uniform probability so they get a high variety of random rewards
+  const selectedReward = outcomes[Math.floor(Math.random() * outcomes.length)];
 
   let message = "";
   if (selectedReward.type === "coins" && selectedReward.amount > 0) {
