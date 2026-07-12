@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { X, Mail, User, ShieldCheck, Lock, Eye, EyeOff, ArrowLeft, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase, hasSupabase } from '../lib/supabase';
+import PasswordStrengthMeter from './PasswordStrengthMeter';
 
 type AuthMode = 'email-login' | 'email-signup' | 'forgot-password';
 
@@ -327,6 +328,7 @@ export default function LoginModal() {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    <PasswordStrengthMeter password={password} />
                   </div>
 
                   <motion.button

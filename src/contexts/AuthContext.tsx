@@ -20,6 +20,7 @@ interface AuthContextType {
   signIn: (email: string, password?: string, isSignUp?: boolean, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateAvatar: (url: string) => Promise<void>;
+  updateProfile: (data: { password?: string; name?: string }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -32,6 +33,7 @@ const AuthContext = createContext<AuthContextType>({
   signIn: async () => {},
   logout: async () => {},
   updateAvatar: async () => {},
+  updateProfile: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -243,8 +245,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const updateProfile = async (data: { password?: string; name?: string }) => {
+    if (!user) throw new Error("Not authenticated");
+    
+    if (hasSupabase) {
+      const updates: any = {};
+      if (data.password) updates.password = data.password;
+      if (data.name !== undefined) {
+        updates.data = { full_name: data.name };
+      }
+      
+      const { error } = await supabase.auth.updateUser(updates);
+      if (error) throw error;
+      
+      setUser(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          displayName: data.name !== undefined ? data.name : prev.displayName,
+        };
+      });
+    } else {
+      // Mock auth flow
+      const mockUserStr = localStorage.getItem('mock_user');
+      if (mockUserStr) {
+        const mockUser = JSON.parse(mockUserStr);
+        if (data.name !== undefined) {
+          mockUser.displayName = data.name;
+          mockUser.user_metadata = mockUser.user_metadata || {};
+          mockUser.user_metadata.full_name = data.name;
+        }
+        localStorage.setItem('mock_user', JSON.stringify(mockUser));
+      }
+      setUser(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          displayName: data.name !== undefined ? data.name : prev.displayName,
+        };
+      });
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginOpen, setLoginOpen, openLogin, signIn, logout, updateAvatar }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginOpen, setLoginOpen, openLogin, signIn, logout, updateAvatar, updateProfile }}>
       {children}
     </AuthContext.Provider>
   );

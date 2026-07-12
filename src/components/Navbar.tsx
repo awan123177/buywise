@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift, Sun, Moon } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift, Sun, Moon, Eye, EyeOff, Lock, Save } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
@@ -9,11 +9,13 @@ import { fetchGamificationProfile, deleteAccountAndData } from '../lib/api';
 import { useCurrency } from '../contexts/CurrencyContext';
 import GooeyNav from './GooeyNav';
 import Dock from './Dock';
+import PasswordStrengthMeter from './PasswordStrengthMeter';
+import toast from 'react-hot-toast';
 
 export default function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, openLogin, logout, updateAvatar } = useAuth();
+  const { user, openLogin, logout, updateAvatar, updateProfile } = useAuth();
   const { currency, setCurrency, rates } = useCurrency();
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -39,6 +41,17 @@ export default function Navbar() {
     }
   }, [isDark]);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const [newName, setNewName] = useState(user?.displayName || '');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [updatingProfile, setUpdatingProfile] = useState(false);
+
+  useEffect(() => {
+    if (user?.displayName) {
+      setNewName(user.displayName);
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user?.uid) {
@@ -256,7 +269,7 @@ export default function Navbar() {
               initial={{ scale: 0.95 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
-              className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-md"
+              className="bg-[#111] border border-white/10 rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar scrollbar-thin"
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-white font-bold">Profile & Security Settings</h3>
@@ -353,6 +366,76 @@ export default function Navbar() {
                     </button>
                   </div>
                 </div>
+              </div>
+
+              {/* Account Profile Update section */}
+              <div className="mt-6 pt-6 border-t border-white/5 space-y-4">
+                <h4 className="text-xs text-white/50 font-bold uppercase tracking-widest">Update Profile Details</h4>
+                
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 uppercase font-black tracking-wider block">Full Name / Display Name</label>
+                  <input
+                    type="text"
+                    placeholder="Enter your name"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#FF3B30] transition-colors"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 uppercase font-black tracking-wider block">Change Password</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      placeholder="Enter new password (optional)"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg pl-3 pr-10 py-2 text-white text-sm focus:outline-none focus:border-[#FF3B30] transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-white transition-colors"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <PasswordStrengthMeter password={newPassword} />
+                </div>
+
+                <button
+                  onClick={async () => {
+                    if (!newName.trim() && !newPassword) {
+                      toast.error("Please provide at least a name or a new password.");
+                      return;
+                    }
+                    setUpdatingProfile(true);
+                    try {
+                      await updateProfile({
+                        name: newName || undefined,
+                        password: newPassword || undefined
+                      });
+                      toast.success("Profile details updated successfully!");
+                      setNewPassword(''); // clear password field
+                    } catch (err: any) {
+                      toast.error(err.message || "Failed to update profile details");
+                    } finally {
+                      setUpdatingProfile(false);
+                    }
+                  }}
+                  disabled={updatingProfile}
+                  className="w-full py-2.5 px-4 bg-[#FF3B30] hover:bg-[#FF3B30]/80 disabled:opacity-50 text-white rounded-lg text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center space-x-2"
+                >
+                  {updatingProfile ? (
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Save Profile Changes</span>
+                    </>
+                  )}
+                </button>
               </div>
 
               {/* Data & Privacy (Right to be Forgotten) */}
