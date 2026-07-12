@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "postbuild": "node generate_sitemap.js",
     "preview": "vite preview",
     "cap:sync": "npx cap sync android",
@@ -12,7 +12,7 @@
     "cap:build": "npm run build && npx cap copy android",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "start": "node server.ts"
+    "start": "node dist/server.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.4.1",

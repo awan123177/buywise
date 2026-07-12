@@ -51,4 +51,11 @@ Sitemap: https://buywiser.store/sitemap.xml`;
 fs.writeFileSync(path.join(__dirname, 'public', 'sitemap.xml'), sitemap);
 fs.writeFileSync(path.join(__dirname, 'public', 'robots.txt'), robotsTxt);
 
+// Also write to dist/ if it exists so production build artifacts have them
+const distPath = path.join(__dirname, 'dist');
+if (fs.existsSync(distPath)) {
+  fs.writeFileSync(path.join(distPath, 'sitemap.xml'), sitemap);
+  fs.writeFileSync(path.join(distPath, 'robots.txt'), robotsTxt);
+}
+
 console.log('Sitemap and robots.txt generated successfully!');

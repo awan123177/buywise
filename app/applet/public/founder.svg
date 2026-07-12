@@ -1,0 +1,309 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <radialGradient id="bgGrad" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FCF8F5" />
+      <stop offset="60%" stop-color="#EFE5DC" />
+      <stop offset="100%" stop-color="#D9C7B7" />
+    </radialGradient>
+    
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFEEDD" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#FFEEDD" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Hair Gradients -->
+    <linearGradient id="hairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1A1A1A" />
+      <stop offset="70%" stop-color="#0D0D0D" />
+      <stop offset="100%" stop-color="#000000" />
+    </linearGradient>
+
+    <!-- Skin Tone Gradients -->
+    <linearGradient id="skinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#C68E65" />
+      <stop offset="100%" stop-color="#9C6B43" />
+    </linearGradient>
+    
+    <linearGradient id="skinShadow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#805330" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#805330" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Sunglasses Lens Gradient -->
+    <linearGradient id="lensGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2D2D30" />
+      <stop offset="40%" stop-color="#1E1E20" />
+      <stop offset="100%" stop-color="#0A0A0C" />
+    </linearGradient>
+
+    <!-- Gold Accent Gradients -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFE8A3" />
+      <stop offset="50%" stop-color="#D4AF37" />
+      <stop offset="100%" stop-color="#AA7C11" />
+    </linearGradient>
+
+    <!-- Balloon Gradients -->
+    <radialGradient id="peachBalloon" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#FFF0E6" />
+      <stop offset="60%" stop-color="#FFCAA6" />
+      <stop offset="100%" stop-color="#E09E74" />
+    </radialGradient>
+
+    <radialGradient id="whiteBalloon" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="75%" stop-color="#E2E6EA" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#BDC3C7" stop-opacity="0.6" />
+    </radialGradient>
+
+    <!-- Tie Dye/Watercolor Gradients -->
+    <radialGradient id="yellowSplash" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF033" stop-opacity="0.95" />
+      <stop offset="60%" stop-color="#FFE81A" stop-opacity="0.8" />
+      <stop offset="100%" stop-color="#FFDD00" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="pinkSplash" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FF4181" stop-opacity="0.85" />
+      <stop offset="70%" stop-color="#E91E63" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#C2185B" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="tealSplash" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.9" />
+      <stop offset="65%" stop-color="#00B8D4" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#00838F" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="greenSplash" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00FF87" stop-opacity="0.9" />
+      <stop offset="70%" stop-color="#00E676" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#00C853" stop-opacity="0" />
+    </radialGradient>
+
+    <radialGradient id="purpleSplash" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#D500F9" stop-opacity="0.75" />
+      <stop offset="75%" stop-color="#AA00FF" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#7B00FF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- 1. Background (Indoor Mall Store Vibe) -->
+  <rect width="600" height="600" fill="url(#bgGrad)" />
+
+  <!-- Recessed Ceiling Lights & Store Grid lines -->
+  <path d="M -50,40 L 650,-20 M -50,110 L 650,50 M -50,180 L 650,120" stroke="#E3D1C2" stroke-width="2" opacity="0.6" />
+  
+  <!-- Warm Spotlight Beams (Geometric paths representing glowing mall roof/fixtures) -->
+  <polygon points="120,-10 180,-10 240,150 80,150" fill="url(#glowGrad)" opacity="0.15" />
+  <polygon points="420,-10 480,-10 540,180 360,180" fill="url(#glowGrad)" opacity="0.15" />
+  
+  <!-- Ceiling Vents / Interior Outlines -->
+  <rect x="250" y="20" width="100" height="40" rx="4" fill="none" stroke="#D0BDAE" stroke-width="2" opacity="0.4" />
+  <line x1="270" y1="30" x2="330" y2="30" stroke="#D0BDAE" stroke-width="2" opacity="0.4" />
+  <line x1="270" y1="40" x2="330" y2="40" stroke="#D0BDAE" stroke-width="2" opacity="0.4" />
+  <line x1="270" y1="50" x2="330" y2="50" stroke="#D0BDAE" stroke-width="2" opacity="0.4" />
+
+  <!-- Ceiling Spot Lights -->
+  <circle cx="50" cy="80" r="15" fill="#FFFFFF" opacity="0.9" filter="drop-shadow(0 0 10px #FFF3D6)" />
+  <circle cx="50" cy="80" r="25" fill="#FFF3D6" opacity="0.4" />
+  
+  <circle cx="540" cy="140" r="10" fill="#FFFFFF" opacity="0.9" filter="drop-shadow(0 0 8px #FFF3D6)" />
+  <circle cx="540" cy="140" r="18" fill="#FFF3D6" opacity="0.3" />
+
+  <!-- 2. Background Floating Helium Balloons -->
+  <!-- Peach Balloon -->
+  <g transform="translate(480, 260)">
+    <!-- Balloon String -->
+    <path d="M 0,45 Q -20,120 10,240" fill="none" stroke="#A89485" stroke-width="1.5" opacity="0.5" />
+    <!-- Balloon Body -->
+    <ellipse cx="0" cy="0" rx="35" ry="45" fill="url(#peachBalloon)" filter="drop-shadow(0 15px 15px rgba(120,90,70,0.15))" />
+    <!-- Balloon Knot -->
+    <polygon points="-4,45 4,45 0,51" fill="#E09E74" />
+    <!-- Highlight Reflection -->
+    <ellipse cx="-12" cy="-15" rx="8" ry="12" fill="#FFFFFF" opacity="0.5" transform="rotate(-15, -12, -15)" />
+  </g>
+
+  <!-- White Translucent Balloon -->
+  <g transform="translate(420, 220)">
+    <!-- Balloon String -->
+    <path d="M 0,35 Q 15,100 -5,220" fill="none" stroke="#A89485" stroke-width="1.2" opacity="0.4" />
+    <!-- Balloon Body -->
+    <ellipse cx="0" cy="0" rx="28" ry="36" fill="url(#whiteBalloon)" opacity="0.9" filter="drop-shadow(0 10px 12px rgba(120,90,70,0.1))" />
+    <!-- Balloon Knot -->
+    <polygon points="-3,36 3,36 0,41" fill="#BDC3C7" />
+    <!-- Highlight Reflection -->
+    <ellipse cx="-10" cy="-12" rx="6" ry="10" fill="#FFFFFF" opacity="0.6" transform="rotate(-15, -10, -12)" />
+  </g>
+
+
+  <!-- 3. Founder Character Model -->
+  <g id="character" transform="translate(0, 50)">
+    
+    <!-- Neck -->
+    <rect x="260" y="320" width="80" height="90" rx="20" fill="url(#skinGrad)" />
+    <!-- Neck Shadow -->
+    <path d="M 260,320 C 260,320 300,355 340,320 L 340,345 C 340,345 300,370 260,345 Z" fill="#7D5130" opacity="0.4" />
+
+    <!-- Head Outline / Face Shape -->
+    <path d="M 200,210 C 200,120 220,120 300,120 C 380,120 400,120 400,210 C 400,300 370,335 300,335 C 230,335 200,300 200,210 Z" fill="url(#skinGrad)" />
+    
+    <!-- Ears -->
+    <!-- Left Ear -->
+    <path d="M 203,220 C 190,220 185,250 200,265 Z" fill="#9C6B43" />
+    <path d="M 201,230 C 193,230 191,245 200,255 Z" fill="#805330" />
+    <!-- Right Ear -->
+    <path d="M 397,220 C 410,220 415,250 400,265 Z" fill="#9C6B43" />
+    <path d="M 399,230 C 407,230 409,245 400,255 Z" fill="#805330" />
+
+    <!-- Hair -->
+    <!-- Back Hair volume -->
+    <path d="M 195,190 C 185,150 210,95 270,82 C 320,70 385,85 405,140 C 415,168 408,205 408,205 C 408,205 415,175 400,150 C 385,125 360,105 300,105 C 240,105 210,135 202,170 Z" fill="#0D0D0D" />
+    <!-- Thick Spike/Texture Front Hair -->
+    <path d="M 194,185 
+             C 190,165 205,145 215,135 
+             C 225,125 240,115 255,108 
+             C 270,100 290,95 310,98 
+             C 335,100 365,110 380,128 
+             C 395,145 408,168 406,190 
+             C 400,180 395,172 388,175
+             C 382,178 385,165 378,162
+             C 370,158 372,150 364,148
+             C 355,145 358,135 348,135
+             C 338,135 340,125 330,125
+             C 320,125 322,118 310,118
+             C 298,118 300,125 288,125
+             C 276,125 278,132 266,132
+             C 254,132 256,145 244,145
+             C 232,145 235,155 224,158
+             C 212,162 215,175 204,178
+             C 198,180 196,182 194,185 Z" fill="url(#hairGrad)" />
+
+    <!-- Cute Soft Face Features -->
+    <!-- Cheeks Soft Shadow -->
+    <ellipse cx="230" cy="280" rx="15" ry="10" fill="#805330" opacity="0.15" />
+    <ellipse cx="370" cy="280" rx="15" ry="10" fill="#805330" opacity="0.15" />
+    
+    <!-- Nose -->
+    <path d="M 293,258 Q 300,265 307,258" fill="none" stroke="#7D5130" stroke-width="2.5" stroke-linecap="round" />
+    
+    <!-- Slight Neutral Smile / Mouth -->
+    <path d="M 275,290 Q 300,302 325,290" fill="none" stroke="#7D5130" stroke-width="3" stroke-linecap="round" />
+    <!-- Soft lips -->
+    <path d="M 285,294 Q 300,299 315,294" fill="none" stroke="#A35D46" stroke-width="1.5" stroke-linecap="round" opacity="0.5" />
+
+    <!-- 4. ICONIC SUNGLASSES -->
+    <g id="sunglasses" filter="drop-shadow(0 8px 12px rgba(0,0,0,0.35))">
+      <!-- Dark Rim / Left Frame -->
+      <circle cx="258" cy="212" r="38" fill="#1A1A1C" />
+      <circle cx="258" cy="212" r="34" fill="url(#lensGrad)" />
+      
+      <!-- Lens Glare/Reflection Left -->
+      <path d="M 230,195 Q 262,185 275,205" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" opacity="0.6" />
+      <path d="M 234,218 C 242,210 250,215 258,225" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" opacity="0.3" />
+
+      <!-- Dark Rim / Right Frame -->
+      <circle cx="342" cy="212" r="38" fill="#1A1A1C" />
+      <circle cx="342" cy="212" r="34" fill="url(#lensGrad)" />
+      
+      <!-- Lens Glare/Reflection Right -->
+      <path d="M 314,195 Q 346,185 359,205" fill="none" stroke="#FFFFFF" stroke-width="3.5" stroke-linecap="round" opacity="0.6" />
+      <path d="M 318,218 C 326,210 334,215 342,225" fill="none" stroke="#FFFFFF" stroke-width="1" stroke-linecap="round" opacity="0.3" />
+
+      <!-- Gold Double Bridge -->
+      <!-- Upper Thin Bridge -->
+      <path d="M 288,194 Q 300,188 312,194" fill="none" stroke="url(#goldGrad)" stroke-width="2.5" />
+      <!-- Lower Curved Arch Bridge -->
+      <path d="M 288,206 Q 300,198 312,206" fill="none" stroke="url(#goldGrad)" stroke-width="4.5" stroke-linecap="round" />
+      <!-- Middle Gold Support Core -->
+      <rect x="298" y="193" width="4" height="12" fill="url(#goldGrad)" opacity="0.9" />
+
+      <!-- Golden Temple Accents & Front Rim Trim -->
+      <!-- Left side gold rivet -->
+      <circle cx="224" cy="204" r="2.5" fill="url(#goldGrad)" />
+      <path d="M 220,208 L 210,214" stroke="url(#goldGrad)" stroke-width="2" />
+      <!-- Right side gold rivet -->
+      <circle cx="376" cy="204" r="2.5" fill="url(#goldGrad)" />
+      <path d="M 380,208 L 390,214" stroke="url(#goldGrad)" stroke-width="2" />
+
+      <!-- Sunglass Temples / Arms (disappearing into hair) -->
+      <path d="M 220,204 Q 198,206 195,212" fill="none" stroke="#111" stroke-width="6" stroke-linecap="round" />
+      <path d="M 380,204 Q 402,206 405,212" fill="none" stroke="#111" stroke-width="6" stroke-linecap="round" />
+    </g>
+
+    <!-- Eyebrows (Slightly visible above glasses frame) -->
+    <path d="M 225,178 Q 255,165 278,180" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round" opacity="0.85" />
+    <path d="M 375,178 Q 345,165 322,180" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round" opacity="0.85" />
+
+  </g> <!-- End Character Group -->
+
+  <!-- 5. T-Shirt with EXQUISITE WATERCOLOR TIE-DYE SPLASH -->
+  <g id="tshirt">
+    <!-- Shirt Base Shape -->
+    <path d="M 180,440 
+             C 180,440 220,405 300,405 
+             C 380,405 420,440 420,440 
+             L 490,470 L 485,550 L 440,550 
+             L 435,610 L 165,610 L 160,550 
+             L 110,550 L 110,470 Z" fill="#FFFFFF" filter="drop-shadow(0 15px 25px rgba(0,0,0,0.15))" />
+
+    <!-- Crew Neck Collar Ribbing -->
+    <path d="M 230,420 C 230,420 260,442 300,442 C 340,442 370,420 370,420" fill="none" stroke="#E2E6E9" stroke-width="8" stroke-linecap="round" />
+    <path d="M 230,420 C 230,420 260,442 300,442 C 340,442 370,420 370,420" fill="none" stroke="#F1F3F5" stroke-width="4" stroke-linecap="round" />
+
+    <!-- VIBRANT WATERCOLOR TIE-DYE PAINT SPLASH LAYER -->
+    <!-- Clip path to keep tie-dye contained on the shirt -->
+    <g clip-path="url(#shirtClip)">
+      <clipPath id="shirtClip">
+        <path d="M 180,440 C 180,440 220,405 300,405 C 380,405 420,440 420,440 L 490,470 L 485,610 L 110,610 L 110,470 Z" />
+      </clipPath>
+
+      <!-- Yellow Tie-Dye Core Splash (Centred and expanding) -->
+      <circle cx="310" cy="530" r="140" fill="url(#yellowSplash)" />
+      <path d="M 240,480 Q 180,510 220,560 T 360,570 T 310,450 Z" fill="url(#yellowSplash)" opacity="0.7" />
+
+      <!-- Lime Green Splatters / Blends -->
+      <circle cx="210" cy="510" r="95" fill="url(#greenSplash)" />
+      <circle cx="370" cy="550" r="80" fill="url(#greenSplash)" />
+      <path d="M 170,460 Q 210,440 230,500 T 150,560 Z" fill="url(#greenSplash)" opacity="0.6" />
+
+      <!-- Vivid Bright Teal / Ocean Blue Splash -->
+      <circle cx="280" cy="550" r="110" fill="url(#tealSplash)" />
+      <circle cx="160" cy="540" r="75" fill="url(#tealSplash)" />
+      <path d="M 330,480 Q 300,560 220,550 T 260,610 Z" fill="url(#tealSplash)" opacity="0.7" />
+
+      <!-- Bright Pink / Magenta Splash (Upper Left Shoulder & Chest overlay) -->
+      <circle cx="170" cy="470" r="85" fill="url(#pinkSplash)" />
+      <circle cx="340" cy="500" r="90" fill="url(#pinkSplash)" />
+      <path d="M 120,450 Q 170,480 190,420 T 130,510 Z" fill="url(#pinkSplash)" opacity="0.6" stroke="#FF4181" stroke-width="2" opacity="0.2" />
+
+      <!-- Deep Purple Accents for shadow/intensity -->
+      <circle cx="140" cy="500" r="50" fill="url(#purpleSplash)" />
+      <circle cx="380" cy="520" r="65" fill="url(#purpleSplash)" />
+
+      <!-- Fine Watercolor Splatter Dots (Adding realism) -->
+      <circle cx="260" cy="460" r="8" fill="#FFF033" opacity="0.8" />
+      <circle cx="350" cy="445" r="5" fill="#FF4181" opacity="0.7" />
+      <circle cx="190" cy="580" r="12" fill="#00E5FF" opacity="0.9" />
+      <circle cx="205" cy="595" r="6" fill="#00FF87" opacity="0.8" />
+      <circle cx="410" cy="490" r="10" fill="#FF4181" opacity="0.7" />
+      <circle cx="430" cy="520" r="7" fill="#00E5FF" opacity="0.6" />
+      <circle cx="315" cy="465" r="4" fill="#00FF87" opacity="0.7" />
+      <circle cx="150" cy="440" r="6" fill="#D500F9" opacity="0.5" />
+
+      <!-- "PREDICT" Elegant Text (Vaporwave/Streetwear minimalist typography) -->
+      <text x="375" y="525" fill="#1C1B1F" font-family="'Inter', 'Helvetica', 'Arial', sans-serif" font-weight="900" font-size="11" letter-spacing="4" opacity="0.85" transform="rotate(18, 375, 525)">PREDICT</text>
+      <!-- Tiny double horizontal strike/accent line -->
+      <line x1="375" y1="512" x2="435" y2="531" stroke="#1C1B1F" stroke-width="2" opacity="0.85" />
+      <line x1="378" y1="509" x2="418" y2="522" stroke="#1C1B1F" stroke-width="1" opacity="0.85" />
+
+    </g> <!-- End Clip Group -->
+
+    <!-- Realistic Shadow Fold lines on T-shirt for depth -->
+    <path d="M 210,450 Q 230,520 200,580" fill="none" stroke="#D3D3D3" stroke-width="2.5" opacity="0.25" />
+    <path d="M 390,450 Q 370,520 400,580" fill="none" stroke="#D3D3D3" stroke-width="2.5" opacity="0.25" />
+    <path d="M 300,455 Q 310,500 290,560" fill="none" stroke="#D3D3D3" stroke-width="2" opacity="0.15" />
+
+  </g> <!-- End T-Shirt Group -->
+</svg>
