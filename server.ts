@@ -35,7 +35,8 @@ import {
   addDealDirectly,
   spinWheel,
   completeMission,
-  deleteUserProfile
+  deleteUserProfile,
+  setFounderImage
 } from "./src/server/gamificationDb.ts";
 
 dotenv.config();
@@ -1404,29 +1405,8 @@ Telegram Message:
     }
 
     try {
-      // Decode base64
-      const matches = imageBase64.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
-      let base64Data = imageBase64;
-      if (matches && matches.length === 3) {
-        base64Data = matches[2];
-      }
-
-      const buffer = Buffer.from(base64Data, "base64");
-      
-      // Save to public/
-      const publicPath = path.join(process.cwd(), "public", "founder.jpg");
-      fs.writeFileSync(publicPath, buffer);
-      fs.writeFileSync(path.join(process.cwd(), "public", "founder.png"), buffer);
-
-      // Save to dist/
-      const distPath = path.join(process.cwd(), "dist", "founder.jpg");
-      if (fs.existsSync(path.join(process.cwd(), "dist"))) {
-        fs.writeFileSync(distPath, buffer);
-        fs.writeFileSync(path.join(process.cwd(), "dist", "founder.png"), buffer);
-      }
-
-      console.log("Successfully overwrote founder.jpg in public/ and dist/");
-      res.json({ success: true, message: "Founder portrait updated successfully!" });
+      const result = setFounderImage(imageBase64);
+      res.json(result);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

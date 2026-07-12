@@ -143,6 +143,7 @@ export interface DatabaseSchema {
   scans?: BarcodeScan[];
   affiliateSettings?: AffiliateSettings;
   telegramConfig?: TelegramConfig;
+  founderImage?: string;
 }
 
 // High-quality real product images from Unsplash to display beautiful photos of the products
@@ -411,10 +412,35 @@ export function loadDatabase() {
         reviews: (loaded.reviews && loaded.reviews.length >= INITIAL_REVIEWS.length) ? loaded.reviews : [...(loaded.reviews || []), ...INITIAL_REVIEWS.filter(ir => !(loaded.reviews || []).find((r: any) => r.id === ir.id))],
         scans: loaded.scans || [],
         affiliateSettings: loaded.affiliateSettings || undefined,
-        telegramConfig: loaded.telegramConfig || undefined
+        telegramConfig: loaded.telegramConfig || undefined,
+        founderImage: loaded.founderImage || undefined
       };
       if (dbData.affiliateSettings && dbData.affiliateSettings.stores && dbData.affiliateSettings.stores.amazon) {
         dbData.affiliateSettings.stores.amazon.tag = "buywiseind0f8-21";
+      }
+
+      if (loaded.founderImage) {
+        try {
+          let base64Data = loaded.founderImage;
+          const matches = base64Data.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
+          if (matches && matches.length === 3) {
+            base64Data = matches[2];
+          }
+          const buffer = Buffer.from(base64Data, "base64");
+          
+          const publicPath = path.join(process.cwd(), "public", "founder.jpg");
+          fs.writeFileSync(publicPath, buffer);
+          fs.writeFileSync(path.join(process.cwd(), "public", "founder.png"), buffer);
+          
+          const distPath = path.join(process.cwd(), "dist", "founder.jpg");
+          if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+            fs.writeFileSync(distPath, buffer);
+            fs.writeFileSync(path.join(process.cwd(), "dist", "founder.png"), buffer);
+          }
+          console.log("Successfully restored founder image from DB on server startup.");
+        } catch (err: any) {
+          console.error("Failed to restore founder image on server startup:", err.message);
+        }
       }
 
       console.log("Database successfully loaded from with product photos mapped,", DB_FILE);
@@ -1422,5 +1448,44 @@ export function deleteUserProfile(userId: string): { success: boolean; message: 
     success: true,
     message: "User gamification profile and all associated data deleted successfully."
   };
+}
+
+// ---------------------- FOUNDER IMAGE MANAGEMENT ----------------------
+
+export function setFounderImage(imageBase64: string): { success: boolean; message: string } {
+  try {
+    dbData.founderImage = imageBase64;
+    saveDatabase();
+
+    // Decode and save locally so it works immediately without server reboot
+    let base64Data = imageBase64;
+    const matches = base64Data.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
+    if (matches && matches.length === 3) {
+      base64Data = matches[2];
+    }
+    const buffer = Buffer.from(base64Data, "base64");
+
+    // Save to public/
+    const publicPath = path.join(process.cwd(), "public", "founder.jpg");
+    fs.writeFileSync(publicPath, buffer);
+    fs.writeFileSync(path.join(process.cwd(), "public", "founder.png"), buffer);
+
+    // Save to dist/
+    const distPath = path.join(process.cwd(), "dist", "founder.jpg");
+    if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+      fs.writeFileSync(distPath, buffer);
+      fs.writeFileSync(path.join(process.cwd(), "dist", "founder.png"), buffer);
+    }
+
+    console.log("Successfully stored founder image base64 in dbData and wrote static files.");
+    return { success: true, message: "Founder image updated permanently!" };
+  } catch (err: any) {
+    console.error("Error saving founder image in setFounderImage:", err.message);
+    throw err;
+  }
+}
+
+export function getFounderImage(): string | undefined {
+  return dbData.founderImage;
 }
 
