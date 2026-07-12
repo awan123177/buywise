@@ -158,12 +158,12 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 131,
+      "coins": 133,
       "referralCode": "TEST256",
       "referredBy": null,
-      "searchesCount": 6,
-      "totalSaved": 1053,
-      "lastSearchDate": "2026-07-11",
+      "searchesCount": 8,
+      "totalSaved": 1790,
+      "lastSearchDate": "2026-07-12",
       "lastLoginDate": "2026-07-12",
       "streakCount": 3,
       "lastStreakCheckDate": "2026-07-12",
@@ -215,6 +215,13 @@
     }
   },
   "transactions": [
+    {
+      "id": "txn_1783853189782_788",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 2,
+      "reason": "First search of the day bonus",
+      "timestamp": "2026-07-12T10:46:29.782Z"
+    },
     {
       "id": "txn_1783845737940_471",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -597,6 +604,25 @@
   "referrals": [],
   "deals": [
     {
+      "id": "deal_tele_1783853741785",
+      "views": 0,
+      "saves": 0,
+      "purchases": 0,
+      "createdAt": "2026-07-12T10:55:41.785Z",
+      "title": "Woman's Yellow Lehenga Choli",
+      "category": "fashion",
+      "oldPrice": 17500,
+      "newPrice": 12075,
+      "discountPercent": 31,
+      "thumbnail": "https://encrypted-tbn2.gstatic.com/shopping?q=tbn:ANd9GcROnLRAd4DZUxG_FaW2ObrKYsmBwt30teuEkSwCkAhMuh5o_9CGq3PcORYZiZ8V63noKzdyp5B7hHt4_ILznQmZxpjhCJEImQXMZDx5sS9dDtb8pXUp-GXW",
+      "source": "Amazon.in",
+      "link": "https://www.amazon.in/gp/product/B0H7JS5HP2?smid=AUHUIAHGSR283&psc=1&linkCode=ll2&tag=buywiseind0f8-21&linkId=5446649d81e1fa2ea9f549a1783aad99&ref_=as_li_ss_tl",
+      "isBestSeller": true,
+      "isEditorPick": true,
+      "isFlashDeal": true,
+      "timeRemaining": "24h 00m"
+    },
+    {
       "id": "deal_samsung_s24_ultra",
       "title": "Samsung S24 Ultra",
       "category": "mobiles",
@@ -617,13 +643,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 25001,
-    "totalUsers": 1433,
-    "productsCompared": 50130,
-    "priceAlertsTriggered": 1303,
+    "totalSearches": 25137,
+    "totalUsers": 1438,
+    "productsCompared": 50545,
+    "priceAlertsTriggered": 1327,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1851353
+    "totalSavedAmount": 1854415
   },
   "bannedUsers": [],
   "reviews": [

@@ -263,28 +263,44 @@ function cleanProductTitle(rawTitle: string): string {
 // Fetch the actual product title from Google Search via SerpApi for a given URL
 async function getProductTitleFromUrl(urlStr: string): Promise<string> {
   const serpApiKey = process.env.SERP_API_KEY || "";
+  let query = urlStr;
+  
+  // Try to extract Amazon ASIN
+  const asinMatch = urlStr.match(/\/(?:dp|product|asin|o\/ASIN)\/(B[0-9A-Z]{9})/i) || urlStr.match(/\b(B[0-9A-Z]{9})\b/i);
+  if (asinMatch) {
+    query = `amazon ${asinMatch[1]}`;
+    console.log(`[URL Resolver] Extracted ASIN ${asinMatch[1]} from URL. Using query: "${query}"`);
+  }
+
   try {
-    console.log(`[URL Resolver] Querying SerpApi Google for URL: "${urlStr}"`);
+    console.log(`[URL Resolver] Querying SerpApi Google for: "${query}"`);
     const response = await axios.get("https://serpapi.com/search", {
-      params: { engine: "google", q: urlStr, api_key: serpApiKey, hl: "en", gl: "in" }
+      params: { engine: "google", q: query, api_key: serpApiKey, hl: "en", gl: "in" }
     });
     
     if (response.data && Array.isArray(response.data.organic_results) && response.data.organic_results.length > 0) {
       const rawTitle = response.data.organic_results[0].title;
       const cleaned = cleanProductTitle(rawTitle);
-      console.log(`[URL Resolver] Successfully resolved URL to title: "${cleaned}" (raw: "${rawTitle}")`);
+      console.log(`[URL Resolver] Successfully resolved to title: "${cleaned}" (raw: "${rawTitle}")`);
       return cleaned;
     }
   } catch (err: any) {
-    console.warn(`[URL Resolver] SerpApi Google search failed for URL:`, err.message);
+    console.warn(`[URL Resolver] SerpApi Google search failed:`, err.message);
   }
   
   // Fallback to URL path extraction if SerpApi query fails or has no results
   try {
+    if (asinMatch) return `Amazon Product ${asinMatch[1]}`;
     const urlObj = new URL(urlStr);
     const pathParts = urlObj.pathname.split('/').filter(Boolean);
-    const lastPart = pathParts[pathParts.length - 1] || urlObj.hostname;
-    const title = lastPart.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    // Find the longest path part that might be a product slug
+    let bestPart = pathParts[pathParts.length - 1] || urlObj.hostname;
+    for (const part of pathParts) {
+      if (part.includes('-') && part.length > bestPart.length) {
+        bestPart = part;
+      }
+    }
+    const title = bestPart.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     return title;
   } catch {
     return urlStr;
@@ -1398,16 +1414,18 @@ Telegram Message:
       const buffer = Buffer.from(base64Data, "base64");
       
       // Save to public/
-      const publicPath = path.join(process.cwd(), "public", "founder.png");
+      const publicPath = path.join(process.cwd(), "public", "founder.jpg");
       fs.writeFileSync(publicPath, buffer);
+      fs.writeFileSync(path.join(process.cwd(), "public", "founder.png"), buffer);
 
       // Save to dist/
-      const distPath = path.join(process.cwd(), "dist", "founder.png");
+      const distPath = path.join(process.cwd(), "dist", "founder.jpg");
       if (fs.existsSync(path.join(process.cwd(), "dist"))) {
         fs.writeFileSync(distPath, buffer);
+        fs.writeFileSync(path.join(process.cwd(), "dist", "founder.png"), buffer);
       }
 
-      console.log("Successfully overwrote founder.png in public/ and dist/");
+      console.log("Successfully overwrote founder.jpg in public/ and dist/");
       res.json({ success: true, message: "Founder portrait updated successfully!" });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -1495,14 +1513,9 @@ Telegram Message:
       } catch (err: any) {
         console.warn("Gemini Detect failed, using local parser:", err.message);
         if (isUrl) {
-          try {
-            const urlObj = new URL(resolvedUrl || urlStr);
-            const pathParts = urlObj.pathname.split('/').filter(Boolean);
-            const lastPart = pathParts[pathParts.length - 1] || urlObj.hostname;
-            parsed.result = lastPart.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-          } catch {
-            parsed.result = text;
-          }
+          // Fallback to the resolved text (which might be the product title)
+          // Avoid re-parsing the URL poorly if we already resolved a title
+          parsed.result = text;
         }
         geminiCache.detect[cacheKey] = parsed;
       }
@@ -2031,6 +2044,20 @@ Please feel free to ask a specific question, or select one of our suggested ques
     console.log(`[API Search] Product name: "${queryStr}", originalUrl: "${origUrlStr}"`);
 
     let urlToAnalyze = (origUrlStr.startsWith('http') ? origUrlStr : (queryStr.startsWith('http') ? queryStr : ''));
+
+    // If queryStr is just an ASIN, let's lookup its real name
+    if (!urlToAnalyze && queryStr.match(/^B[0-9A-Z]{9}$/i)) {
+      try {
+        console.log(`[API Search] Query is a raw ASIN: "${queryStr}". Looking up real name...`);
+        const extractedTitle = await getProductTitleFromUrl("https://www.amazon.in/dp/" + queryStr);
+        if (extractedTitle && !extractedTitle.includes(queryStr)) {
+          queryStr = extractedTitle;
+          console.log(`[API Search] Resolved ASIN to descriptive title: "${queryStr}"`);
+        }
+      } catch(err: any) {
+        console.warn(`[API Search] Error resolving ASIN:`, err.message);
+      }
+    }
 
     if (urlToAnalyze) {
       try {

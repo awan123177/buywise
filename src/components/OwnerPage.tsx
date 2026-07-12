@@ -114,7 +114,7 @@ export default function OwnerPage() {
             <div className="relative w-full aspect-[3/4] max-w-[320px] rounded-3xl overflow-hidden border border-amber-500/30 bg-[#050505] shadow-[0_20px_50px_rgba(0,0,0,0.5)] flex items-center justify-center shrink-0 group/photo">
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10" />
               <img 
-                src={`/founder.png?v=${Date.now()}`} 
+                src={`/founder.jpg?v=${Date.now()}`} 
                 alt="Awan Warsi" 
                 className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover/photo:scale-110"
                 onError={(e) => { 

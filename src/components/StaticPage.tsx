@@ -26,7 +26,7 @@ const PAGES = {
       <>
         <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
           <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
-             <img src={`/founder.png?v=${Date.now()}`} alt="Awan Warsi" className="w-full h-full object-cover object-top absolute inset-0" onError={(e) => { e.currentTarget.src = "/founder.svg"; }} />
+             <img src={`/founder.jpg?v=${Date.now()}`} alt="Awan Warsi" className="w-full h-full object-cover object-top absolute inset-0" onError={(e) => { e.currentTarget.src = "/founder.svg"; }} />
              <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
           </div>
           <div>
