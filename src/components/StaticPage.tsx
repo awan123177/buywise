@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import OwnerPage from './OwnerPage';
+import SEO from './SEO';
 
 const PAGES = {
   about: {
@@ -139,6 +140,54 @@ const PAGES = {
         </div>
       </>
     )
+  },
+  'refund-policy': {
+    title: "Refund & Cancellation Policy",
+    seoTitle: "BuyWise Refund & Cancellation Policy",
+    description: "Read BuyWise's Refund & Cancellation Policy for Premium subscriptions, payment issues, duplicate payments and customer support.",
+    content: (
+      <>
+        <p className="text-white/50 mb-8 font-mono text-xs">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        
+        <h3 className="text-xl font-bold mb-4">Overview</h3>
+        <p className="text-white/70 mb-8">BuyWise provides digital Premium subscriptions and online shopping comparison services. We help users find the real lowest prices across shopping and travel, while offering premium features to enhance the shopping experience.</p>
+        
+        <h3 className="text-xl font-bold mb-4">Premium Subscription Refund Policy</h3>
+        <p className="text-white/70 mb-8">Because BuyWise Premium is a digital product, payments are generally non-refundable once Premium has been activated. Upon upgrading, users receive immediate access to our advanced AI-driven comparison tools, flight trackers, and rewards hub.</p>
+        
+        <h3 className="text-xl font-bold mb-4">Duplicate Payment</h3>
+        <p className="text-white/70 mb-8">If a customer is charged twice for the same purchase due to a technical error or billing system glitch, BuyWise will thoroughly investigate the issue. Once the duplicate transaction is verified, a refund for the extra charge will be issued immediately.</p>
+        
+        <h3 className="text-xl font-bold mb-4">Failed Premium Activation</h3>
+        <p className="text-white/70 mb-8">If a payment is successful but the Premium subscription is not automatically activated on the user's account, please contact our support team. BuyWise will activate the Premium manually or, if activation cannot be completed due to eligibility or other errors, issue a full refund.</p>
+        
+        <h3 className="text-xl font-bold mb-4">Cancellation Policy</h3>
+        <p className="text-white/70 mb-8">Users may cancel future renewals of their Premium subscriptions at any time if recurring billing is introduced in the future. Once cancelled, your current Premium subscription will remain fully active with all premium perks until its designated expiry date, and no further charges will be made.</p>
+        
+        <h3 className="text-xl font-bold mb-4">Refund Processing Time</h3>
+        <p className="text-white/70 mb-8">Approved refunds are processed and sent to the billing provider within 7–10 business days. The actual arrival of the funds in the customer's account depends on the policies of the original payment method / issuing bank.</p>
+        
+        <h3 className="text-xl font-bold mb-4">Contact Information</h3>
+        <div className="bg-white/5 p-6 rounded-xl border border-white/10 space-y-4">
+          <div>
+            <h4 className="text-white/40 text-[10px] font-black uppercase tracking-wider mb-1">Owner & Chairman</h4>
+            <p className="text-white font-bold text-base">Awan Warsi</p>
+          </div>
+          <div>
+            <h4 className="text-white/40 text-[10px] font-black uppercase tracking-wider mb-1">Website</h4>
+            <a href="https://buywiser.store" target="_blank" rel="noopener noreferrer" className="text-[#FF3B30] hover:underline font-mono text-sm">https://buywiser.store</a>
+          </div>
+          <div>
+            <h4 className="text-white/40 text-[10px] font-black uppercase tracking-wider mb-1">Support Email</h4>
+            <a href="mailto:awanwarsi790@gmail.com" className="text-[#FF3B30] hover:underline font-mono text-sm">awanwarsi790@gmail.com</a>
+          </div>
+          <div>
+            <h4 className="text-white/40 text-[10px] font-black uppercase tracking-wider mb-1">Contact Page</h4>
+            <a href="https://buywiser.store/contact" target="_blank" rel="noopener noreferrer" className="text-[#FF3B30] hover:underline font-mono text-sm">https://buywiser.store/contact</a>
+          </div>
+        </div>
+      </>
+    )
   }
 };
 
@@ -184,6 +233,14 @@ export default function StaticPage() {
 
   return (
     <div className="min-h-screen pt-32 pb-20 px-4 md:px-12 max-w-[1000px] mx-auto">
+      {pageData && (
+        <SEO 
+          title={pageData.seoTitle || `${pageData.title} - BuyWise`} 
+          description={pageData.description || `Read about ${pageData.title} on BuyWise.`}
+          canonicalUrl={`https://buywiser.store/${pageId}`}
+        />
+      )}
+      
       <script type="application/ld+json">
         {JSON.stringify(jsonLd)}
       </script>

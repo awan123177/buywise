@@ -158,15 +158,15 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 111,
+      "coins": 131,
       "referralCode": "TEST256",
       "referredBy": null,
       "searchesCount": 6,
       "totalSaved": 1053,
       "lastSearchDate": "2026-07-11",
-      "lastLoginDate": "2026-07-11",
-      "streakCount": 2,
-      "lastStreakCheckDate": "2026-07-11",
+      "lastLoginDate": "2026-07-12",
+      "streakCount": 3,
+      "lastStreakCheckDate": "2026-07-12",
       "achievements": [
         "streak_3",
         "first_search",
@@ -182,7 +182,7 @@
       "createdAt": "2026-06-26T06:59:49.010Z",
       "activeBadge": "💎 COINS LEGEND",
       "isPremium": true,
-      "premiumExpiry": "2099-12-31T00:00:00.000Z",
+      "premiumExpiry": "2030-01-01T00:00:00.000Z",
       "lastSpinDate": "2026-07-11"
     },
     "6022454b-b82f-4478-927c-310f7964f4c1": {
@@ -215,6 +215,13 @@
     }
   },
   "transactions": [
+    {
+      "id": "txn_1783845737940_471",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 20,
+      "reason": "Daily login (Streak: 3 days) + 3-Day Streak bonus!",
+      "timestamp": "2026-07-12T08:42:17.940Z"
+    },
     {
       "id": "txn_1783747269809_543",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -610,13 +617,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 24999,
+    "totalSearches": 25001,
     "totalUsers": 1433,
-    "productsCompared": 50125,
+    "productsCompared": 50130,
     "priceAlertsTriggered": 1303,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1851235
+    "totalSavedAmount": 1851353
   },
   "bannedUsers": [],
   "reviews": [

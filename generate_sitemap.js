@@ -17,6 +17,7 @@ const pages = [
   '/contact',
   '/privacy',
   '/terms',
+  '/refund-policy',
   '/founder',
   '/faq',
   '/disclaimer',

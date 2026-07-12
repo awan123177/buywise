@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
+    "postbuild": "node generate_sitemap.js",
     "preview": "vite preview",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android",
