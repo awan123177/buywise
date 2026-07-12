@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import OwnerPage from './OwnerPage';
+import FounderPage from './FounderPage';
 import SEO from './SEO';
 
 const PAGES = {
@@ -202,7 +202,7 @@ export default function StaticPage() {
   }, [pageId]);
 
   if (pageId === 'founder' || pageId === 'owner' || pageId === 'chairman') {
-    return <OwnerPage />;
+    return <FounderPage />;
   }
 
   if (!pageData) {
