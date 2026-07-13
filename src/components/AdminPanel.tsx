@@ -1641,16 +1641,16 @@ export default function AdminPanel() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
              {[
-               { label: 'Searches', value: '45.2K', change: '+12%', up: true },
-               { label: 'Comparisons', value: '12.8K', change: '+5%', up: true },
-               { label: 'Wishlist Adds', value: '3.4K', change: '-2%', up: false },
-               { label: 'AI Usage (Tokens)', value: '1.2M', change: '+45%', up: true },
+               { label: 'Total Revenue', value: '₹145.2K', change: '+22%', up: true },
+               { label: 'Affiliate Earnings', value: '₹92.8K', change: '+15%', up: true },
+               { label: 'Premium Subs', value: '₹52.4K', change: '+35%', up: true },
+               { label: 'API & Hosting Costs', value: '₹12.1K', change: '+5%', up: false, cost: true },
              ].map((stat, i) => (
                <div key={i} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex flex-col justify-between">
                  <div className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-2">{stat.label}</div>
                  <div className="flex justify-between items-end">
                    <div className="text-3xl font-black text-white">{stat.value}</div>
-                   <div className={`text-[10px] font-black tracking-widest px-2 py-1 rounded ${stat.up ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                   <div className={`text-[10px] font-black tracking-widest px-2 py-1 rounded ${stat.up ? (stat.cost ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400') : (!stat.cost ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400')}`}>
                      {stat.change}
                    </div>
                  </div>
@@ -1660,24 +1660,40 @@ export default function AdminPanel() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
              <div className="lg:col-span-2 p-6 bg-white/[0.02] border border-white/5 rounded-2xl min-h-[300px] flex items-center justify-center">
-                <div className="text-center">
-                   <BarChart3 size={48} className="mx-auto text-white/20 mb-4" />
-                   <p className="text-xs text-white/40 font-black uppercase tracking-widest">Traffic & Event Chart Placeholder</p>
+                <div className="text-center w-full max-w-lg">
+                   <div className="flex justify-between text-xs text-white/50 font-black tracking-widest uppercase mb-4 border-b border-white/10 pb-4">
+                     <span>Net Profit Margin</span>
+                     <span className="text-emerald-400">91.6%</span>
+                   </div>
+                   <div className="h-48 flex items-end justify-between gap-2 opacity-80 mt-8">
+                     {[30, 45, 40, 60, 55, 80, 75, 90, 85, 100].map((h, j) => (
+                       <div key={j} className="w-full bg-emerald-500/20 rounded-t-sm hover:bg-emerald-500/40 transition-colors relative group" style={{ height: `${h}%` }}>
+                         <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                           ₹{(h * 1.4).toFixed(1)}K
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                   <div className="flex justify-between mt-4 text-[10px] text-white/40 uppercase font-black tracking-widest">
+                     <span>Oct</span>
+                     <span>Current</span>
+                   </div>
                 </div>
              </div>
+
              <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 pb-4 border-b border-white/10">Top Traffic Sources</h3>
-                <div className="space-y-4">
+                <h3 className="text-xs font-black text-white uppercase tracking-widest mb-6 pb-4 border-b border-white/10">Revenue Streams</h3>
+                <div className="space-y-6">
                   {[
-                    { source: 'Direct', percent: 45, color: 'bg-blue-500' },
-                    { source: 'Google Search', percent: 30, color: 'bg-green-500' },
-                    { source: 'Telegram Bot', percent: 15, color: 'bg-cyan-500' },
-                    { source: 'Referrals', percent: 10, color: 'bg-yellow-500' },
+                    { source: 'Amazon Affiliates', value: '₹45,200', percent: 45, color: 'bg-orange-500' },
+                    { source: 'Flipkart Affiliates', value: '₹32,500', percent: 30, color: 'bg-blue-500' },
+                    { source: 'Premium Users', value: '₹52,400', percent: 55, color: 'bg-yellow-500' },
+                    { source: 'Ad Placements', value: '₹15,100', percent: 15, color: 'bg-emerald-500' },
                   ].map((s, i) => (
                     <div key={i}>
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-1 text-white/70">
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest mb-2 text-white/70">
                         <span>{s.source}</span>
-                        <span>{s.percent}%</span>
+                        <span className="text-white">{s.value}</span>
                       </div>
                       <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
                         <div className={`h-full ${s.color}`} style={{ width: `${s.percent}%` }} />

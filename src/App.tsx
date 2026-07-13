@@ -10,12 +10,10 @@ import Premium from './components/Premium';
 import GiftCards from './components/GiftCards';
 import DealsPage from './components/DealsPage';
 import RewardsHub from './components/RewardsHub';
-import SupportChat from './components/SupportChat';
 import LoginModal from './components/LoginModal';
 import ScannerPage from './components/ScannerPage';
 import ProductPage from './components/ProductPage';
 import PersonalShopper from './components/PersonalShopper';
-import SmartNotifications from './components/SmartNotifications';
 import StaticPage from './components/StaticPage';
 import ShoppingGuides from './components/ShoppingGuides';
 import CompareProducts from './components/CompareProducts';
@@ -68,6 +66,7 @@ export default function App() {
               <Route path="/scanner" element={<ScannerPage />} />
               <Route path="/product/:id" element={<ProductPage />} />
               <Route path="/ref/:code" element={<Home />} />
+              <Route path="/personal-shopper" element={<PersonalShopper />} />
               <Route path="/compare" element={<CompareProducts />} />
               <Route path="/wishlist" element={<Radar />} />
               <Route path="/guides" element={<ShoppingGuides />} />
@@ -76,8 +75,6 @@ export default function App() {
               <Route path="/:pageId" element={<StaticPage />} />
             </Routes>
           </main>
-          
-          <SupportChat />
           </div>
           </AffiliateProvider>
         </CurrencyProvider>

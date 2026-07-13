@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift, Sun, Moon, Eye, EyeOff, Lock, Save } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift, Sun, Moon, Eye, EyeOff, Lock, Save, GitCompare, BookOpen } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
@@ -117,6 +118,7 @@ export default function Navbar() {
               items={[
                 { label: 'HOME', href: '/' },
                 { label: 'COMPARE', href: '/compare' },
+                { label: 'SHOPPER', href: '/personal-shopper' },
                 { label: 'DEALS', href: '/deals' },
                 { label: 'GUIDES', href: '/guides' },
                 { label: 'SCANNER', href: '/scanner' },
@@ -125,6 +127,7 @@ export default function Navbar() {
                 { label: 'GIFTS', href: '/gifts' },
                 { label: 'CLUB', href: '/rewards' },
                 { label: 'PREMIUM', href: '/premium' },
+                { label: 'FOUNDER', href: '/founder' },
                 { label: 'ADMIN', href: '/admin' },
               ]}
             />
@@ -238,23 +241,30 @@ export default function Navbar() {
       </nav>
 
       {/* Bottom Mobile Tab Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-[100] pb-2 sm:pb-4 flex justify-center">
-        <Dock
-          items={[
-            { label: 'HOME', icon: <LayoutDashboard size={18} />, onClick: () => navigate('/') },
-            { label: 'DEALS', icon: <Flame size={18} />, onClick: () => navigate('/deals') },
-            { label: 'SCANNER', icon: <Scan size={18} />, onClick: () => navigate('/scanner') },
-            { label: 'RADAR', icon: <Search size={18} />, onClick: () => navigate('/radar') },
-            { label: 'GIFTS', icon: <Gift size={18} />, onClick: () => navigate('/gifts') },
-            { label: 'TRAVEL', icon: <Plane size={18} />, onClick: () => navigate('/travel') },
-            { label: 'CLUB', icon: <Trophy size={18} />, onClick: () => navigate('/rewards') },
-            { label: 'PREM', icon: <Diamond size={18} />, onClick: () => navigate('/premium') },
-            { label: 'USER', icon: <User size={18} />, onClick: () => user ? setShowAvatarModal(true) : openLogin() },
-          ]}
-          panelHeight={55}
-          baseItemSize={typeof window !== 'undefined' && window.innerWidth < 400 ? 34 : 40}
-          magnification={60}
-        />
+      <div className="fixed bottom-0 left-0 right-0 z-[100] pb-2 sm:pb-4 flex justify-center xl:hidden pointer-events-none">
+        <div className="pointer-events-auto">
+          <Dock
+            items={[
+              { label: 'HOME', icon: <LayoutDashboard size={18} />, onClick: () => navigate('/') },
+              { label: 'COMPARE', icon: <GitCompare size={18} />, onClick: () => navigate('/compare') },
+              { label: 'SHOPPER', icon: <Bot size={18} />, onClick: () => navigate('/personal-shopper') },
+              { label: 'DEALS', icon: <Flame size={18} />, onClick: () => navigate('/deals') },
+              { label: 'GUIDES', icon: <BookOpen size={18} />, onClick: () => navigate('/guides') },
+              { label: 'SCANNER', icon: <Scan size={18} />, onClick: () => navigate('/scanner') },
+              { label: 'RADAR', icon: <Search size={18} />, onClick: () => navigate('/radar') },
+              { label: 'GIFTS', icon: <Gift size={18} />, onClick: () => navigate('/gifts') },
+              { label: 'TRAVEL', icon: <Plane size={18} />, onClick: () => navigate('/travel') },
+              { label: 'CLUB', icon: <Trophy size={18} />, onClick: () => navigate('/rewards') },
+              { label: 'PREM', icon: <Diamond size={18} />, onClick: () => navigate('/premium') },
+              { label: 'ADMIN', icon: <ShieldCheck size={18} />, onClick: () => navigate('/admin') },
+              { label: 'FOUNDER', icon: <Star size={18} />, onClick: () => navigate('/founder') },
+              { label: 'USER', icon: <User size={18} />, onClick: () => user ? setShowAvatarModal(true) : openLogin() },
+            ]}
+            panelHeight={90}
+            baseItemSize={typeof window !== 'undefined' && window.innerWidth < 400 ? 24 : 32}
+            magnification={50}
+          />
+        </div>
       </div>
 
       <AnimatePresence>
