@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift, Sun, Moon, Eye, EyeOff, Lock, Save, GitCompare, BookOpen } from 'lucide-react';
+import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, Menu, X, Plane, Flame, Trophy, ChevronDown, Scan, Bot, Gift, Sun, Moon, Eye, EyeOff, Lock, Save, GitCompare, BookOpen, HeartHandshake } from 'lucide-react';
 import { Star } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import VisualSearch from './VisualSearch';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { fetchGamificationProfile, deleteAccountAndData } from '../lib/api';
@@ -127,6 +128,7 @@ export default function Navbar() {
                 { label: 'GIFTS', href: '/gifts' },
                 { label: 'CLUB', href: '/rewards' },
                 { label: 'PREMIUM', href: '/premium' },
+                { label: 'SUPPORT', href: '/support' },
                 { label: 'FOUNDER', href: '/founder' },
                 { label: 'ADMIN', href: '/admin' },
               ]}
@@ -180,6 +182,7 @@ export default function Navbar() {
           </div>
           
           
+          <VisualSearch variant="nav" />
           {user ? (
             <div className="flex justify-center items-center gap-2 sm:gap-3">
                <Link to="/rewards" className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-yellow-500/40 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 text-yellow-400 text-[10px] sm:text-xs font-black font-mono shadow-[0_0_15px_rgba(250,204,21,0.15)] hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all cursor-pointer group">
@@ -249,23 +252,65 @@ export default function Navbar() {
               { label: 'COMPARE', icon: <GitCompare size={18} />, onClick: () => navigate('/compare') },
               { label: 'SHOPPER', icon: <Bot size={18} />, onClick: () => navigate('/personal-shopper') },
               { label: 'DEALS', icon: <Flame size={18} />, onClick: () => navigate('/deals') },
-              { label: 'GUIDES', icon: <BookOpen size={18} />, onClick: () => navigate('/guides') },
-              { label: 'SCANNER', icon: <Scan size={18} />, onClick: () => navigate('/scanner') },
-              { label: 'RADAR', icon: <Search size={18} />, onClick: () => navigate('/radar') },
-              { label: 'GIFTS', icon: <Gift size={18} />, onClick: () => navigate('/gifts') },
-              { label: 'TRAVEL', icon: <Plane size={18} />, onClick: () => navigate('/travel') },
-              { label: 'CLUB', icon: <Trophy size={18} />, onClick: () => navigate('/rewards') },
-              { label: 'PREM', icon: <Diamond size={18} />, onClick: () => navigate('/premium') },
-              { label: 'ADMIN', icon: <ShieldCheck size={18} />, onClick: () => navigate('/admin') },
-              { label: 'FOUNDER', icon: <Star size={18} />, onClick: () => navigate('/founder') },
-              { label: 'USER', icon: <User size={18} />, onClick: () => user ? setShowAvatarModal(true) : openLogin() },
+              { label: 'MORE', icon: <Menu size={18} />, onClick: () => setIsMobileMenuOpen(true) },
             ]}
-            panelHeight={90}
-            baseItemSize={typeof window !== 'undefined' && window.innerWidth < 400 ? 24 : 32}
-            magnification={50}
+            panelHeight={70}
+            baseItemSize={typeof window !== 'undefined' && window.innerWidth < 400 ? 28 : 36}
+            magnification={60}
           />
         </div>
       </div>
+
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: "100%" }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="fixed inset-0 z-[200] bg-[#000000]/95 backdrop-blur-xl flex flex-col xl:hidden"
+          >
+            <div className="flex justify-between items-center p-6 border-b border-white/10">
+              <div className="flex flex-col">
+                <h1 className="text-xl font-black tracking-tighter text-[#f5f5f5] uppercase leading-none">BUY<span className="text-[#FF3B30]">WISE</span></h1>
+                <span className="text-[8px] uppercase tracking-[0.4em] font-black text-[#f5f5f5]/40 mt-1">Menu</span>
+              </div>
+              <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 bg-white/10 rounded-full text-white">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+              {[
+                { label: 'HOME', href: '/', icon: <LayoutDashboard size={20} /> },
+                { label: 'COMPARE', href: '/compare', icon: <GitCompare size={20} /> },
+                { label: 'PERSONAL SHOPPER', href: '/personal-shopper', icon: <Bot size={20} /> },
+                { label: 'DEALS', href: '/deals', icon: <Flame size={20} /> },
+                { label: 'SHOPPING GUIDES', href: '/guides', icon: <BookOpen size={20} /> },
+                { label: 'BARCODE SCANNER', href: '/scanner', icon: <Scan size={20} /> },
+                { label: 'PRICE RADAR', href: '/radar', icon: <Search size={20} /> },
+                { label: 'GIFT CARDS', href: '/gifts', icon: <Gift size={20} /> },
+                { label: 'FLIGHTS & TRAVEL', href: '/travel', icon: <Plane size={20} /> },
+                { label: 'REWARDS CLUB', href: '/rewards', icon: <Trophy size={20} /> },
+                { label: 'PREMIUM', href: '/premium', icon: <Diamond size={20} /> },
+                { label: 'HUMAN SUPPORT', href: '/support', icon: <HeartHandshake size={20} /> },
+                { label: 'ADMIN PANEL', href: '/admin', icon: <ShieldCheck size={20} /> },
+                { label: 'FOUNDER', href: '/founder', icon: <Star size={20} /> },
+              ].map((item) => (
+                <Link 
+                  key={item.href}
+                  to={item.href} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/5 text-white hover:bg-white/10 hover:border-white/20 transition-all"
+                >
+                  <div className="text-[#FF3B30]">{item.icon}</div>
+                  <span className="font-black tracking-widest text-sm uppercase">{item.label}</span>
+                </Link>
+              ))}
+              <div className="h-20" /> {/* Spacer for bottom dock */}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showAvatarModal && (

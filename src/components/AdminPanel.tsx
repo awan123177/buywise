@@ -1,10 +1,11 @@
+import AdminSupportDashboard from "./AdminSupportDashboard";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
   Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X,
   Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode, Download,
-  Settings, Upload
+  Settings, Upload, MessageSquare
 } from 'lucide-react';
 import { fetchAdminStats, runAdminGamificationAction, api } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -55,7 +56,7 @@ export default function AdminPanel() {
   const [founderImage, setFounderImage] = useState<string | null>(null);
   const [isUploadingFounder, setIsUploadingFounder] = useState(false);
   const founderInputRef = React.useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder' | 'support' | 'livechat'>('overview');
 
   const parseNameField = (nameStr: string) => {
     if (!nameStr) return { displayName: 'Unknown', screenshot: null };
@@ -293,6 +294,8 @@ export default function AdminPanel() {
     { id: 'premium', label: 'Premium', icon: ShieldCheck, group: 'Ecosystem' },
     { id: 'giftcards', label: 'Gift Cards', icon: Gift, group: 'Ecosystem' },
     { id: 'telegram', label: 'Telegram Bot', icon: Sparkles, group: 'Communication' },
+    { id: 'livechat', label: 'Live Chat Support', icon: MessageSquare, group: 'Communication' },
+    { id: 'support', label: 'Offline Tickets', icon: Activity, group: 'Communication' },
     { id: 'ai', label: 'AI Control', icon: Activity, group: 'Advanced' },
     { id: 'analytics', label: 'Analytics', icon: Search, group: 'Advanced' },
     { id: 'settings', label: 'System Settings', icon: Settings, group: 'Advanced' },
@@ -2009,6 +2012,13 @@ export default function AdminPanel() {
         </div>
       )}
 
+      {activeTab === 'support' && (
+        <AdminSupportDashboard email={email} passcode={passcode} />
+      )}
+      {activeTab === 'livechat' && (
+        <AdminSupportDashboard email={email} passcode={passcode} defaultFilter="livechat" />
+      )}
+
       {activeTab === 'settings' && (
         <div className="space-y-6">
           <div className="mb-6">
@@ -2045,7 +2055,7 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'founder' && (
+      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'support' && activeTab !== 'livechat' && activeTab !== 'founder' && (
         <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-6">
            <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
               <ShieldCheck size={48} className="text-white/20" />

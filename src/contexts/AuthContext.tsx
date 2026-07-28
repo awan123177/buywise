@@ -49,6 +49,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     let fallbackInterval: any = null;
 
     const setupUser = (sessionUser: any, token: string) => {
+       // Fire and forget profile sync
+       if (hasSupabase) {
+         (async () => {
+           try {
+             const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', sessionUser.id).single();
+             if (!existingProfile) {
+                await supabase.from('profiles').insert({
+                   id: sessionUser.id,
+                   email: sessionUser.email,
+                   full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0],
+                   avatar_url: sessionUser.user_metadata?.avatar_url || sessionUser.user_metadata?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sessionUser.email}`,
+                   premium: false,
+                   buywise_coins: 0,
+                   created_at: new Date().toISOString(),
+                   last_login: new Date().toISOString()
+                });
+             } else {
+                await supabase.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', sessionUser.id);
+             }
+           } catch(e) { console.log(e); }
+         })();
+       }
        setAccessToken(token);
        const baseUser: BuyWiseUser = {
           uid: sessionUser.id,

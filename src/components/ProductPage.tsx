@@ -190,7 +190,7 @@ export default function ProductPage() {
                       activeImage === idx ? 'border-[#FF3B30] scale-105' : 'border-white/10 opacity-50 hover:opacity-100'
                     }`}
                   >
-                    <img src={img} alt="thumbnail" className="w-full h-full object-cover" />
+                    <img src={img} onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&auto=format&fit=crop&q=60"; }} alt="thumbnail" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   </button>
                 ))}
               </div>

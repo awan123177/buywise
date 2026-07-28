@@ -63,7 +63,7 @@ function TrackedItemCard({ item, i }: { item: any, i: number }) {
 
       <div className="w-24 h-24 bg-white/5 rounded-lg border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center">
         {item.thumbnail ? (
-          <img src={item.thumbnail} alt="" className="w-full h-full object-contain mix-blend-screen" />
+          <img src={item.thumbnail} alt="" className="w-full h-full object-contain mix-blend-screen" referrerPolicy="no-referrer" />
         ) : (
           <Crosshair className="text-white/20" size={32} />
         )}
@@ -445,7 +445,7 @@ export default function Radar() {
 
                 <div className="w-24 h-24 bg-white/5 rounded-lg border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center">
                   {item.thumbnail ? (
-                    <img src={item.thumbnail} alt="" className="w-full h-full object-contain mix-blend-screen" />
+                    <img src={item.thumbnail} alt="" className="w-full h-full object-contain mix-blend-screen" referrerPolicy="no-referrer" />
                   ) : (
                     <Heart className="text-white/20" size={32} />
                   )}

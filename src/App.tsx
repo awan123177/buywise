@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-route
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import Home from './components/Home';
+import PremiumLogin from './components/PremiumLogin';
 import AdminPanel from './components/AdminPanel';
 import Radar from './components/Radar';
 import Travel from './components/Travel';
@@ -18,6 +19,8 @@ import StaticPage from './components/StaticPage';
 import ShoppingGuides from './components/ShoppingGuides';
 import CompareProducts from './components/CompareProducts';
 import HubPage from './components/HubPage';
+import SupportChat from './components/SupportChat';
+import HumanSupport from './components/HumanSupport';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { AffiliateProvider } from './contexts/AffiliateContext';
@@ -42,6 +45,7 @@ export default function App() {
             <div className="min-h-screen bg-transparent text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-black">
           <Navbar />
           <LoginModal />
+          <SupportChat />
           <Toaster 
             position="bottom-right"
             toastOptions={{
@@ -56,6 +60,7 @@ export default function App() {
           <main className="relative z-10 pb-32">
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/login" element={<PremiumLogin />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/radar" element={<Radar />} />
               <Route path="/travel" element={<Travel />} />
@@ -72,6 +77,7 @@ export default function App() {
               <Route path="/guides" element={<ShoppingGuides />} />
               <Route path="/guides/:slug" element={<ShoppingGuides />} />
               <Route path="/hub/:slug" element={<HubPage />} />
+              <Route path="/support" element={<HumanSupport />} />
               <Route path="/:pageId" element={<StaticPage />} />
             </Routes>
           </main>

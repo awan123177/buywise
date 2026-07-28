@@ -50,7 +50,9 @@ export async function triggerDailyCheckIn() {
     }
     return response.data;
   } catch (e: any) {
-    console.error("triggerDailyCheckIn error:", e);
+    if (e.response?.status !== 429) {
+      console.error("triggerDailyCheckIn error:", e);
+    }
     throw e;
   }
 }
@@ -78,6 +80,10 @@ export async function submitMission(missionId: string) {
 
 export async function logSearchAction(queryText: string) {
   try {
+    if (!api.defaults.headers.common["x-user-id"]) {
+      // Guest search - no user context to record gamification coins
+      return;
+    }
     const response = await api.post("/gamification/search", { query: queryText });
     const { coinsAwarded, savedAmount, referralReward } = response.data;
     if (coinsAwarded > 0) {
@@ -95,7 +101,9 @@ export async function logSearchAction(queryText: string) {
     }
     return response.data;
   } catch (e: any) {
-    console.error("logSearchAction error:", e);
+    if (e?.response?.status !== 401) {
+      console.warn("logSearchAction:", e?.message || e);
+    }
   }
 }
 

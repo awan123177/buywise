@@ -68,6 +68,31 @@ export default function LoginModal() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      if (hasSupabase) {
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin,
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            }
+          }
+        });
+        if (error) throw error;
+      } else {
+        toast.error("Google Auth requires Supabase configuration.");
+      }
+    } catch (error: any) {
+      toast.error(error.message || "Failed to sign in with Google");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Pre-generate background floating particles
   const particles = [
     { id: 1, x: 10, y: 80, size: 3, delay: 0, duration: 14 },
@@ -259,6 +284,25 @@ export default function LoginModal() {
                       </>
                     )}
                   </motion.button>
+
+                  <div className="mt-6 flex items-center gap-3 before:flex-1 before:h-px before:bg-white/10 after:flex-1 after:h-px after:bg-white/10">
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Or continue with</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    className="w-full mt-4 py-3.5 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-orange-500/50 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 group cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.67 15.63 16.89 16.78 15.75 17.55V20.29H19.32C21.41 18.36 22.56 15.56 22.56 12.25Z" fill="#4285F4"/>
+                      <path d="M12 23C14.97 23 17.46 22.02 19.32 20.29L15.75 17.55C14.74 18.23 13.48 18.63 12 18.63C9.13 18.63 6.7 16.69 5.82 14.07H2.15V16.92C3.96 20.52 7.69 23 12 23Z" fill="#34A853"/>
+                      <path d="M5.82 14.07C5.59 13.4 5.47 12.71 5.47 12C5.47 11.29 5.59 10.6 5.82 9.93V7.08H2.15C1.41 8.56 1 10.23 1 12C1 13.77 1.41 15.44 2.15 16.92L5.82 14.07Z" fill="#FBBC05"/>
+                      <path d="M12 5.38C13.62 5.38 15.06 5.94 16.21 7.03L19.4 3.84C17.45 2.01 14.97 1 12 1C7.69 1 3.96 3.48 2.15 7.08L5.82 9.93C6.7 7.31 9.13 5.38 12 5.38Z" fill="#EA4335"/>
+                    </svg>
+                    <span className="text-xs font-black uppercase tracking-widest text-white/90 group-hover:text-white transition-colors">Continue with Google</span>
+                  </button>
                 </motion.form>
               )}
 
@@ -347,6 +391,25 @@ export default function LoginModal() {
                       </>
                     )}
                   </motion.button>
+
+                  <div className="mt-6 flex items-center gap-3 before:flex-1 before:h-px before:bg-white/10 after:flex-1 after:h-px after:bg-white/10">
+                    <span className="text-[10px] font-mono text-white/40 uppercase tracking-widest">Or continue with</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    disabled={loading}
+                    className="w-full mt-4 py-3.5 bg-white/5 hover:bg-white/10 border border-white/15 hover:border-orange-500/50 rounded-xl flex items-center justify-center gap-3 transition-all duration-300 group cursor-pointer shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M22.56 12.25C22.56 11.47 22.49 10.72 22.36 10H12V14.26H17.92C17.67 15.63 16.89 16.78 15.75 17.55V20.29H19.32C21.41 18.36 22.56 15.56 22.56 12.25Z" fill="#4285F4"/>
+                      <path d="M12 23C14.97 23 17.46 22.02 19.32 20.29L15.75 17.55C14.74 18.23 13.48 18.63 12 18.63C9.13 18.63 6.7 16.69 5.82 14.07H2.15V16.92C3.96 20.52 7.69 23 12 23Z" fill="#34A853"/>
+                      <path d="M5.82 14.07C5.59 13.4 5.47 12.71 5.47 12C5.47 11.29 5.59 10.6 5.82 9.93V7.08H2.15C1.41 8.56 1 10.23 1 12C1 13.77 1.41 15.44 2.15 16.92L5.82 14.07Z" fill="#FBBC05"/>
+                      <path d="M12 5.38C13.62 5.38 15.06 5.94 16.21 7.03L19.4 3.84C17.45 2.01 14.97 1 12 1C7.69 1 3.96 3.48 2.15 7.08L5.82 9.93C6.7 7.31 9.13 5.38 12 5.38Z" fill="#EA4335"/>
+                    </svg>
+                    <span className="text-xs font-black uppercase tracking-widest text-white/90 group-hover:text-white transition-colors">Continue with Google</span>
+                  </button>
                 </motion.form>
               )}
 

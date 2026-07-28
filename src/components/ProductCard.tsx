@@ -7,6 +7,7 @@ import { db } from "../lib/firebase";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useAffiliate } from "../contexts/AffiliateContext";
 import toast from "react-hot-toast";
+import PremiumProductImage from "./PremiumProductImage";
 import TiltedCard from "./TiltedCard";
 
 interface ProductCardProps {
@@ -23,7 +24,12 @@ interface ProductCardProps {
     features?: string[];
     isOriginalLink?: boolean;
     coupon?: string;
+    cashback?: string;
+    seller?: string;
+    warranty?: string;
     aiScore?: number;
+    aiConfidence?: number;
+    matchExplanation?: string;
   };
   isBest?: boolean;
   isLoading?: boolean;
@@ -176,10 +182,13 @@ export default function ProductCard({
     }
 
     // 3. Relaxed Validation: Make sure it's a valid link starting with http.
-    // We allow redirect links, affiliate links, and search redirects to be clickable.
+    // If missing or invalid, generate a working search fallback link.
     if (!orderLink || typeof orderLink !== "string" || !orderLink.startsWith("http")) {
-      console.error(`[BuyNow Debug] Product link is missing or invalid for: "${product.title}"`);
-      return "";
+      const cleanTitle = (product.title || "product").replace(/[^a-zA-Z0-9\s]/g, " ").trim();
+      if (src.includes("amazon")) {
+        return `https://www.amazon.in/s?k=${encodeURIComponent(cleanTitle)}`;
+      }
+      return `https://www.google.com/search?q=${encodeURIComponent(cleanTitle)}&tbm=shop`;
     }
 
     return orderLink;
@@ -252,11 +261,16 @@ export default function ProductCard({
             >
               <div className="absolute top-4 left-4 flex flex-col gap-2 z-20 pointer-events-none">
                  {isBest && (
-                   <div className="bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
-                     <Zap size={10} className="fill-white" /> AI Pick
+                   <div className="bg-gradient-to-r from-amber-500 to-emerald-500 text-black text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 animate-pulse">
+                     <span>🏆 CHEAPEST DEAL</span>
                    </div>
                  )}
-                 {savings && savings > 10 && (
+                 {product.isOriginalLink && (
+                   <div className="bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                     <span>Shared Link Match</span>
+                   </div>
+                 )}
+                 {savings && savings > 5 && (
                    <div className="bg-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
                      <TrendingDown size={10} /> {savings}% OFF
                    </div>
@@ -268,11 +282,11 @@ export default function ProductCard({
                  )}
               </div>
 
-              <div className="absolute top-4 right-4 z-20">
+              <div className="absolute top-4 right-4 z-20 flex flex-col items-end gap-1.5">
                 <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center shadow-lg">
                    <div className="text-[10px] text-center leading-none">
-                     <div className="font-black text-[#FF3B30]">{aiScore}</div>
-                     <div className="text-[6px] text-white/50 uppercase tracking-widest">Score</div>
+                     <div className="font-black text-[#FF3B30]">{product.aiConfidence || aiScore}%</div>
+                     <div className="text-[6px] text-white/50 uppercase tracking-widest">Match</div>
                    </div>
                 </div>
               </div>
@@ -282,11 +296,10 @@ export default function ProductCard({
                 className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none p-12"
                 style={{ transform: "translateZ(50px)" }}
               >
-                <img
-                  src={product.thumbnail}
-                  alt={product.title}
-                  className="w-full h-full object-contain filter drop-shadow-[0_20px_30px_rgba(0,0,0,0.5)] transition-transform duration-700 ease-out group-hover:scale-125 group-hover:-translate-y-4 opacity-90 group-hover:opacity-100"
-                  referrerPolicy="no-referrer"
+                <PremiumProductImage 
+                  src={product.thumbnail} 
+                  alt={product.title} 
+                  className="w-full h-full p-2" 
                 />
               </div>
             </div>
@@ -324,19 +337,25 @@ export default function ProductCard({
           </div>
         )}
 
-        {/* AI Insights (Price Prediction & Cashback) */}
+        {/* AI Insights (Match Reason & Delivery/Seller) */}
         <div className="mt-2 space-y-1.5 border border-white/5 bg-white/[0.02] p-2.5 rounded-xl">
            <div className="flex justify-between items-center">
-             <span className="text-[9px] font-black uppercase tracking-widest text-white/40">AI Prediction</span>
-             <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">Wait 7 Days (85%)</span>
+             <span className="text-[9px] font-black uppercase tracking-widest text-white/40">AI Match Engine</span>
+             <span className="text-[9px] font-black uppercase tracking-widest text-emerald-400">
+               {product.aiConfidence ? `${product.aiConfidence}% Verified` : 'Exact Match'}
+             </span>
            </div>
-           <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-             <div className="h-full bg-emerald-500 w-[85%] rounded-full" />
-           </div>
-           <div className="flex justify-between items-center pt-1 border-t border-white/5">
-             <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Smart Cashback</span>
-             <span className="text-[9px] font-black uppercase tracking-widest text-[#FFD700]">Earn ~2%</span>
-           </div>
+           {product.matchExplanation && (
+             <div className="text-[10px] text-white/70 font-medium leading-tight pt-1">
+               {product.matchExplanation}
+             </div>
+           )}
+           {product.seller && (
+             <div className="flex justify-between items-center pt-1 border-t border-white/5">
+               <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Seller</span>
+               <span className="text-[9px] font-bold text-white/80">{product.seller}</span>
+             </div>
+           )}
         </div>
 
         <div className="mt-auto pt-4 flex flex-col gap-6">

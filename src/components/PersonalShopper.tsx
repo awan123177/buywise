@@ -36,8 +36,8 @@ export default function PersonalShopper() {
   const [plan, setPlan] = useState<ShoppingPlan | null>(null);
   const [savedPlans, setSavedPlans] = useState<ShoppingPlan[]>([]);
   const { user, openLogin } = useAuth();
-  const navigate = useNavigate();
 
+  const navigate = useNavigate();
   useEffect(() => {
     if (user && !user.isPremium) {
       const timer = setTimeout(() => {
@@ -86,7 +86,30 @@ export default function PersonalShopper() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-20 lg:pb-12 px-4 max-w-7xl mx-auto">
+    <div className="min-h-screen pt-24 pb-20 lg:pb-12 px-4 max-w-7xl mx-auto relative z-10">
+      {/* Under Working Overlay to "fully close" the page */}
+      <div className="fixed inset-0 z-50 bg-[#000000]/95 backdrop-blur-xl flex flex-col items-center justify-center p-4">
+        <div className="bg-[#111] border border-[#FF3B30]/30 p-8 rounded-3xl max-w-md w-full text-center shadow-[0_0_50px_rgba(255,59,48,0.15)] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#FF3B30]/0 via-[#FF3B30] to-[#FF3B30]/0"></div>
+          <Bot size={48} className="text-[#FF3B30] mx-auto mb-6 animate-pulse" />
+          <h2 className="text-2xl font-black uppercase tracking-widest mb-2 text-white font-display">Under Working</h2>
+          <p className="text-white/50 text-sm mb-6 leading-relaxed">
+            The AI Personal Shopper engine is currently undergoing system upgrades and model fine-tuning. Check back soon for custom shopping plans and exclusive premium recommendations!
+          </p>
+          <div className="flex gap-4 justify-center">
+            <button 
+              onClick={() => {
+                toast.success("Notification request received. We'll update you once the module is fully active!");
+                navigate('/');
+              }}
+              className="px-6 py-3 bg-[#FF3B30]/10 text-[#FF3B30] font-bold uppercase tracking-widest text-xs rounded-xl border border-[#FF3B30]/20 w-full hover:bg-[#FF3B30]/20 transition-colors"
+            >
+              Notify Me When Live
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="mb-12 text-center mt-8">
         <motion.div
@@ -115,25 +138,8 @@ export default function PersonalShopper() {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-3xl mx-auto mb-16 relative"
       >
-        {!user?.isPremium && (
-          <div className="absolute inset-0 z-20 backdrop-blur-sm bg-black/40 rounded-2xl flex flex-col items-center justify-center border border-[#FF3B30]/30 shadow-[0_0_50px_rgba(255,59,48,0.1)]">
-            <div className="bg-[#FF3B30] text-white p-3 rounded-full mb-4 shadow-lg shadow-[#FF3B30]/20">
-              <Lock size={24} />
-            </div>
-            <h3 className="text-xl font-black text-white uppercase tracking-wider mb-2">Premium Feature</h3>
-            <p className="text-white/60 text-sm font-mono text-center max-w-sm mb-6">
-              Unlock the AI Personal Shopper to curate custom shopping plans and maximize your savings.
-            </p>
-            <button 
-              onClick={() => navigate('/premium')}
-              className="flex items-center gap-2 bg-gradient-to-r from-orange-500 to-[#FF3B30] text-white px-8 py-3 rounded-full font-black uppercase tracking-widest text-xs hover:scale-105 transition-transform"
-            >
-              <Diamond size={16} /> Upgrade to Premium
-            </button>
-          </div>
-        )}
 
-        <div className={`transition-all duration-300 ${!user?.isPremium ? 'opacity-30 pointer-events-none filter blur-sm select-none' : ''}`}>
+        <div className="transition-all duration-300">
           <form onSubmit={handleGeneratePlan} className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-[#FF3B30] to-orange-500 rounded-2xl blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
             <div className="relative flex items-center bg-[#0A0A0A] border border-white/10 rounded-2xl p-2 shadow-2xl">

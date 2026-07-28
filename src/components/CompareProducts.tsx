@@ -408,6 +408,7 @@ export default function CompareProducts() {
                 <div className="p-6 pt-10 flex flex-col items-center text-center border-b border-white/5">
                   <div className="w-32 h-32 bg-white/5 rounded-2xl flex items-center justify-center p-4 mb-4 relative overflow-hidden group border border-white/5">
                     <img 
+                      onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&auto=format&fit=crop&q=60"; }}
                       src={product.thumbnail} 
                       alt={product.title} 
                       className="w-full h-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform duration-300" 
@@ -607,7 +608,7 @@ export default function CompareProducts() {
                               className="w-full p-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-left flex gap-3 items-center transition-all group"
                             >
                               <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center p-1 shrink-0">
-                                <img src={item.thumbnail} alt="" className="w-full h-full object-contain mix-blend-screen" referrerPolicy="no-referrer" />
+                                <img src={item.thumbnail} onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&auto=format&fit=crop&q=60"; }} alt="" className="w-full h-full object-contain mix-blend-screen" referrerPolicy="no-referrer" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-bold text-white line-clamp-1 group-hover:text-[#FF3B30] transition-colors">{item.title}</div>

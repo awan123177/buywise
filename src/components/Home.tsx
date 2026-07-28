@@ -12,6 +12,7 @@ import { useCurrency } from '../contexts/CurrencyContext';
 
 import Aurora from './Aurora';
 import ScrollStack, { ScrollStackItem } from './ScrollStack';
+import VisualSearch from './VisualSearch';
 
 const REALTIME_EVENTS = [
   "aman.kapoor*** saved ₹502 comparing iPhone 15 prices",
@@ -27,10 +28,13 @@ const REALTIME_EVENTS = [
   "tanvi.j*** redeemed 100 coins for secret exclusive deals"
 ];
 
+import DeveloperDebugPanel, { DebugInfoPayload } from './DeveloperDebugPanel';
+
 export default function Home() {
   const { formatPrice } = useCurrency();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
+  const [debugInfo, setDebugInfo] = useState<DebugInfoPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [searchingStatus, setSearchingStatus] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -160,6 +164,10 @@ export default function Home() {
       const dataPromise = searchProducts(detected, activeQuery);
       
       const [features, data] = await Promise.all([featuresPromise, dataPromise]);
+
+      if (data.debugInfo) {
+        setDebugInfo(data.debugInfo);
+      }
       
       if (data.shopping_results) {
          const processed = data.shopping_results.map((item: any) => {
@@ -268,7 +276,7 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, ease: "circOut" }}
             >
-              <h1 className="text-[12vw] sm:text-[9vw] leading-[0.85] tracking-[-0.04em] font-black uppercase font-display text-white relative z-10 w-[max-content] max-w-full">
+              <h1 className="text-[12vw] sm:text-[9vw] leading-[0.85] tracking-[-0.04em] font-black uppercase font-display text-white relative z-10 w-auto max-w-full">
                 <span className="relative z-10">PRICE</span><br/>
                 <span className="text-[#FF3B30] relative z-10 inline-block drop-shadow-md">
                   CONTROL.
@@ -298,7 +306,7 @@ export default function Home() {
                   <span className="text-white/60 text-xs font-bold uppercase tracking-wider">500+ Verified Reviews</span>
                 </div>
               </div>
-              <p className="text-xl font-medium text-white max-w-md leading-snug">
+              <p className="text-lg sm:text-xl font-medium text-white max-w-md leading-snug">
                 The global standard for real-time market sourcing and competitive intelligence.
               </p>
               <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-[0.4em] text-white/50">
@@ -363,35 +371,28 @@ export default function Home() {
             transition={{ delay: 0.5 }}
             className={`bg-[#111111] border border-transparent rounded-2xl flex flex-col md:flex-row items-stretch md:items-center p-0 overflow-hidden ${loading ? 'opacity-50' : ''}`}
           >
-            <div className="flex-grow flex items-center h-20 md:h-24 px-6 md:px-12 bg-transparent">
-              <span className="mr-4 md:mr-6 text-white/30 font-black tracking-tighter text-xl">#</span>
+            <div className="flex-grow flex items-center h-20 md:h-24 px-6 md:px-8 bg-transparent">
+              <span className="mr-3 md:mr-4 text-white/30 font-black tracking-tighter text-2xl md:text-3xl">#</span>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="INPUT MARKET QUERY OR URL"
-                className="bg-transparent border-none outline-none text-white w-full text-lg md:text-2xl font-black placeholder:text-white/30 uppercase tracking-tighter"
+                className="bg-transparent border-none outline-none text-white w-full text-xl md:text-3xl font-black placeholder:text-white/30 uppercase tracking-tighter"
               />
             </div>
             <div className="flex h-20 md:h-24">
               <button 
-                onClick={() => navigate('/scanner')}
-                className="w-16 md:w-24 flex items-center justify-center border-l border-white/5 text-white/50 transition-all hover:bg-white/5 hover:text-white"
-                title="Smart Barcode Scanner"
-              >
-                <Scan size={24} className="w-5 h-5 md:w-6 md:h-6" />
-              </button>
-              <button 
                 onClick={startVoiceSearch}
-                className={`w-16 md:w-24 flex items-center justify-center border-l border-white/5 transition-all hover:bg-white/5 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/50'}`}
+                className={`w-14 md:w-20 flex items-center justify-center border-l border-white/5 transition-all hover:bg-white/5 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/50'}`}
               >
                 <Mic size={24} className="w-5 h-5 md:w-6 md:h-6" />
               </button>
               <button
                 onClick={() => handleSearch()}
                 disabled={loading}
-                className="btn-brutalist !border-none !rounded-none min-w-[140px] md:min-w-[200px] flex-grow md:flex-grow-0 h-full flex items-center justify-center text-[10px] md:text-xs !bg-[#FF3B30] !text-white hover:!bg-red-600 transition-all"
+                className="btn-brutalist !border-none !rounded-none min-w-[120px] md:min-w-[160px] flex-grow md:flex-grow-0 h-full flex items-center justify-center text-[10px] md:text-xs !bg-[#FF3B30] !text-white hover:!bg-red-600 transition-all"
               >
                 {loading ? <Loader2 className="animate-spin w-5 h-5 md:w-6 md:h-6" /> : 'RETRIEVE'}
               </button>
@@ -564,6 +565,9 @@ export default function Home() {
                   ))}
                 </div>
               )}
+
+              {/* Developer Debug Pipeline Panel */}
+              <DeveloperDebugPanel debugInfo={debugInfo} query={query} />
             </motion.div>
           ) : (
             <motion.div 

@@ -60,6 +60,7 @@ const SEO: React.FC<SEOProps> = ({
     <Helmet>
       <title>{title}</title>
       <meta name="description" content={description} />
+      <meta name="keywords" content="BuyWise, AI shopping, travel comparison, best deals, price tracker, discount finder, Awan Warsi" />
       <link rel="canonical" href={canonicalUrl} />
 
       {/* Open Graph / Facebook */}

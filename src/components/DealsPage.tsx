@@ -495,7 +495,7 @@ export default function DealsPage() {
                           className="flex gap-4 items-start flex-1 mb-4 cursor-pointer"
                         >
                         <div className="w-20 h-20 bg-white rounded-lg p-1.5 shrink-0 flex items-center justify-center border border-white/10 overflow-hidden relative">
-                          <img src={deal.thumbnail} alt={deal.title} className="w-full h-full object-contain filter group-hover:scale-105 transition-transform" referrerPolicy="no-referrer" />
+                          <img src={deal.thumbnail} onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&auto=format&fit=crop&q=60"; }} alt={deal.title} className="w-full h-full object-contain filter group-hover:scale-105 transition-transform" referrerPolicy="no-referrer" />
                         </div>
                         <div className="space-y-1 flex-1">
                           <h4 className="text-xs font-bold text-white tracking-tight line-clamp-2 leading-snug group-hover:text-[#FF3B30] transition-colors">
