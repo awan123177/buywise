@@ -19,7 +19,6 @@ import StaticPage from './components/StaticPage';
 import ShoppingGuides from './components/ShoppingGuides';
 import CompareProducts from './components/CompareProducts';
 import HubPage from './components/HubPage';
-import SupportChat from './components/SupportChat';
 import HumanSupport from './components/HumanSupport';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
@@ -45,7 +44,6 @@ export default function App() {
             <div className="min-h-screen bg-transparent text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-black">
           <Navbar />
           <LoginModal />
-          <SupportChat />
           <Toaster 
             position="bottom-right"
             toastOptions={{

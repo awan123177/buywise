@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import FounderPage from './FounderPage';
 import SEO from './SEO';
+import ContentCreatorForm from './ContentCreatorForm';
 
 const PAGES = {
   about: {
@@ -99,17 +100,8 @@ const PAGES = {
     )
   },
   careers: {
-    title: "Careers",
-    content: (
-      <>
-        <p className="text-white/70 mb-6">Join us in building the future of AI-powered commerce.</p>
-        <div className="bg-white/5 p-8 rounded-xl border border-white/10 text-center">
-          <h3 className="text-xl font-bold mb-2">No Open Roles</h3>
-          <p className="text-white/50 mb-4">We aren't actively hiring right now, but we're always looking for talented engineers and designers.</p>
-          <a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30]">mohammdsaeed24@gmail.com</a>
-        </div>
-      </>
-    )
+    title: "Careers & Creator Opportunities",
+    content: <ContentCreatorForm />
   },
   press: {
     title: "Press & Media",

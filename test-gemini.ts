@@ -1,10 +1,18 @@
 import { GoogleGenAI } from "@google/genai";
+import dotenv from "dotenv";
+dotenv.config();
+
 async function test() {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-  const res = await ai.models.generateContent({
-    model: "gemini-3.5-flash",
-    contents: "What product is Amazon ASIN B0H7JS5HP2? If you don't know, just guess based on recent releases."
-  });
-  console.log(res.text);
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      config: { systemInstruction: "Be polite" },
+      contents: [{ role: "user", parts: [{ text: "hi" }] }]
+    });
+    console.log("Success:", response.text);
+  } catch (err) {
+    console.error("Error:", err);
+  }
 }
 test();

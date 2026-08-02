@@ -1,11 +1,12 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { ExternalLink, Star, Truck, TrendingDown, Check, Heart, ShieldCheck, Zap, Tag } from "lucide-react";
+import { ExternalLink, Star, Truck, TrendingDown, Check, Heart, ShieldCheck, Zap, Tag, GitCompare, Share2, Bookmark, CheckCircle, PackageCheck } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { doc, setDoc } from "../lib/firebase";
 import { db } from "../lib/firebase";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { useAffiliate } from "../contexts/AffiliateContext";
+import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import PremiumProductImage from "./PremiumProductImage";
 import TiltedCard from "./TiltedCard";
@@ -40,6 +41,7 @@ export default function ProductCard({
   isBest,
   isLoading,
 }: ProductCardProps) {
+  const navigate = useNavigate();
   const { user, openLogin } = useAuth();
   const { formatPrice: contextFormatPrice } = useCurrency();
   const { triggerRedirect } = useAffiliate();
@@ -293,13 +295,13 @@ export default function ProductCard({
 
               {/* The 2D product picture overlaid or centered to ensure it's always clearly visible */}
               <div 
-                className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none p-12"
+                className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none p-4"
                 style={{ transform: "translateZ(50px)" }}
               >
                 <PremiumProductImage 
                   src={product.thumbnail} 
                   alt={product.title} 
-                  className="w-full h-full p-2" 
+                  className="w-full h-full p-2 bg-white/5 rounded-2xl border border-white/10" 
                 />
               </div>
             </div>
@@ -370,61 +372,91 @@ export default function ProductCard({
                 </span>
               )}
             </div>
-            <div className="text-[9px] text-[#FF3B30]/70 uppercase tracking-[0.2em] font-black flex items-center gap-2 mt-1">
-              <Truck size={12} className="text-[#FF3B30]" />
-              {product.delivery || "FREE PRIORITY DELIVERY"}
+            <div className="flex justify-between items-center text-[9px] text-[#FF3B30]/80 uppercase tracking-[0.15em] font-black mt-1">
+              <span className="flex items-center gap-1.5">
+                <Truck size={12} className="text-[#FF3B30]" />
+                {product.delivery || "FREE PRIORITY DELIVERY"}
+              </span>
+              <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                <CheckCircle size={10} /> In Stock
+              </span>
             </div>
           </div>
 
-          <div className="flex gap-2">
-            <motion.button
-              disabled={!getOrderLink()}
-              onClick={() => {
-                const urlOpened = getOrderLink();
-                console.log("=== Buy Now Click Details ===");
-                console.log("Product Title:", product.title);
-                console.log("Marketplace:", product.source || "Unknown");
-                console.log("Product URL received from SerpAPI:", product.link || (product as any).product_link);
-                console.log("URL opened when Buy Now is clicked:", urlOpened);
-                console.log("=============================");
-                
-                triggerRedirect({
-                  url: urlOpened,
-                  store: product.source || "amazon",
-                  productId: product.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50),
-                  productTitle: product.title,
-                  category: "electronics"
-                });
-              }}
-              whileHover={getOrderLink() ? { scale: 1.05 } : {}}
-              whileTap={getOrderLink() ? { scale: 0.95 } : {}}
-              className={`w-full py-4 text-[11px] font-black tracking-[0.2em] uppercase transition-all text-center flex items-center justify-center gap-2 rounded-xl shadow-[0_0_15px_rgba(255,59,48,0.2)] hover:shadow-[0_0_25px_rgba(255,59,48,0.5)] ${
-                !getOrderLink()
-                  ? "bg-white/5 text-white/20 cursor-not-allowed shadow-none hover:shadow-none"
-                  : isBest
-                    ? "bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white cursor-pointer"
-                    : "bg-white text-black hover:bg-[#FF3B30] hover:text-white cursor-pointer"
-              }`}
-            >
-              {getOrderLink() ? (
-                <>Buy Now <ExternalLink size={14} /></>
-              ) : (
-                "Product link unavailable"
-              )}
-            </motion.button>
-            <motion.button
-              onClick={handleWishlist}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              className={`px-4 rounded-xl flex items-center justify-center transition-all ${
-                isWishlisted 
-                  ? "bg-[#FF3B30]/20 border border-[#FF3B30] text-[#FF3B30] shadow-[0_0_15px_rgba(255,59,48,0.3)]" 
-                  : "bg-[#0a0a0a] border border-white/10 text-white hover:border-[#FF3B30] hover:text-[#FF3B30]"
-              }`}
-              title={isWishlisted ? "Wishlisted!" : "Add to Wishlist"}
-            >
-               <Heart size={18} className={isWishlisted ? "fill-[#FF3B30]" : ""} />
-            </motion.button>
+          <div className="flex flex-col gap-2">
+            <div className="flex gap-2">
+              <motion.button
+                disabled={!getOrderLink()}
+                onClick={() => {
+                  const urlOpened = getOrderLink();
+                  triggerRedirect({
+                    url: urlOpened,
+                    store: product.source || "amazon",
+                    productId: product.title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 50),
+                    productTitle: product.title,
+                    category: "electronics"
+                  });
+                }}
+                whileHover={getOrderLink() ? { scale: 1.02 } : {}}
+                whileTap={getOrderLink() ? { scale: 0.98 } : {}}
+                className={`flex-1 py-3 px-3 text-[10px] font-black tracking-[0.15em] uppercase transition-all text-center flex items-center justify-center gap-1.5 rounded-xl shadow-[0_0_15px_rgba(255,59,48,0.2)] ${
+                  !getOrderLink()
+                    ? "bg-white/5 text-white/20 cursor-not-allowed"
+                    : isBest
+                      ? "bg-gradient-to-r from-[#FF3B30] to-[#FF3B30] text-white cursor-pointer"
+                      : "bg-white text-black hover:bg-[#FF3B30] hover:text-white cursor-pointer"
+                }`}
+              >
+                {getOrderLink() ? (
+                  <>View Product <ExternalLink size={12} /></>
+                ) : (
+                  "Unavailable"
+                )}
+              </motion.button>
+
+              <motion.button
+                onClick={() => {
+                  navigate(`/compare?items=${encodeURIComponent(product.title)}`);
+                  toast.success(`Comparing ${product.title.substring(0, 25)}...`);
+                }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                className="py-3 px-3 text-[10px] font-black tracking-[0.15em] uppercase bg-white/10 hover:bg-[#FF3B30]/20 hover:border-[#FF3B30] text-white border border-white/10 rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                title="Compare this product"
+              >
+                <GitCompare size={12} className="text-[#FF3B30]" />
+                Compare
+              </motion.button>
+            </div>
+
+            <div className="flex gap-2">
+              <motion.button
+                onClick={() => {
+                  const url = getOrderLink() || window.location.href;
+                  navigator.clipboard.writeText(url);
+                  toast.success("Product link copied!");
+                }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex-1 py-2 bg-black/40 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all"
+              >
+                <Share2 size={12} /> Share
+              </motion.button>
+
+              <motion.button
+                onClick={handleWishlist}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className={`flex-1 py-2 border rounded-xl text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${
+                  isWishlisted 
+                    ? "bg-[#FF3B30]/20 border-[#FF3B30] text-[#FF3B30]" 
+                    : "bg-black/40 border-white/10 text-white/70 hover:text-white hover:border-[#FF3B30]"
+                }`}
+              >
+                <Heart size={12} className={isWishlisted ? "fill-[#FF3B30] text-[#FF3B30]" : ""} /> 
+                {isWishlisted ? "Saved" : "Save"}
+              </motion.button>
+            </div>
           </div>
         </div>
       </div>

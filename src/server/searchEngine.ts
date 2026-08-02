@@ -1,4 +1,5 @@
 import axios from "axios";
+import { getProductCategoryPhoto } from "../lib/productImages.js";
 
 // ---------------------------------------------------------------------------
 // TYPES & INTERFACES
@@ -23,7 +24,23 @@ export interface ParsedQuerySpecs {
   rawQuery: string;
   cleanQuery: string;
   isCategorySearch: boolean;
-  category: "Smartphone" | "Laptop" | "Television" | "Audio" | "Camera" | "Footwear" | "Wearables" | "Tablet" | null;
+  category: 
+    | "Smartphone" 
+    | "Laptop" 
+    | "Television" 
+    | "Audio" 
+    | "Camera" 
+    | "Footwear" 
+    | "Wearables" 
+    | "Tablet" 
+    | "Furniture" 
+    | "Appliances" 
+    | "Fashion" 
+    | "Beauty" 
+    | "Sports" 
+    | "Books" 
+    | "Accessories" 
+    | null;
   brand: string | null;
   model: string | null;
   storage: string | null;
@@ -31,6 +48,13 @@ export interface ParsedQuerySpecs {
   size: string | null;
   ram: string | null;
   processor: string | null;
+  chip: string | null;
+  camera: string | null;
+  display: string | null;
+  aiFeatures: string | null;
+  battery: string | null;
+  marketingKeywords: string[];
+  promotionalText: string[];
   isAccessorySearch: boolean;
   negativeTerms: string[];
 }
@@ -55,7 +79,50 @@ export interface SearchResultItem {
   isBest?: boolean;
   aiScore?: number;
   aiConfidence?: number;
+  matchType?: 'exact' | 'variant' | 'alternative' | 'rejected';
   matchExplanation?: string;
+}
+
+// BANNED / GENERIC TITLES LIST
+export const BANNED_GENERIC_TITLES = [
+  "amazon.in",
+  "amazon",
+  "amazon.com",
+  "flipkart.com",
+  "flipkart",
+  "sign in",
+  "robot check",
+  "shopping",
+  "online shopping",
+  "buy online",
+  "page not found",
+  "404 not found",
+  "access denied",
+  "captcha",
+  "security check",
+  "loading...",
+  "null",
+  "undefined",
+  "product details",
+  "my account",
+  "welcome to amazon",
+  "welcome to flipkart"
+];
+
+export function isBannedOrGenericTitle(title: string | null | undefined): boolean {
+  if (!title) return true;
+  const clean = title.trim().toLowerCase();
+  if (clean.length < 3) return true;
+  for (const banned of BANNED_GENERIC_TITLES) {
+    if (clean === banned || clean.startsWith(`${banned}:`) || clean.endsWith(`- ${banned}`)) {
+      return true;
+    }
+  }
+  // Check if title is purely domain or generic store name
+  if (/^(https?:\/\/)?(www\.)?[a-z0-9\-]+\.[a-z]{2,}(\/.*)?$/i.test(clean)) {
+    return true;
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------
@@ -321,6 +388,70 @@ export async function resolveAndExpandUrl(urlStr: string): Promise<ResolvedUrlIn
   };
 }
 
+export function cleanProductTitle(rawTitle: string): string {
+  if (isBannedOrGenericTitle(rawTitle)) {
+    return "";
+  }
+  let title = rawTitle
+    .replace(/\s*:\s*(Amazon|Flipkart|Croma|Reliance Digital|Myntra|Ajio|Tata CliQ|Nykaa)\.in.*/i, "")
+    .replace(/\s*\|\s*(Amazon|Flipkart|Croma|Reliance Digital|Myntra|Ajio|Tata CliQ|Nykaa).*/i, "")
+    .replace(/\s*-\s*(Amazon|Flipkart|Croma|Reliance Digital|Myntra|Ajio|Tata CliQ|Nykaa).*/i, "")
+    .replace(/^Buy\s+/i, "")
+    .replace(/\s+Online at Best Price.*/i, "")
+    .replace(/\s+Online in India.*/i, "")
+    .replace(/\s+at Low Prices in India.*/i, "");
+
+  if (isBannedOrGenericTitle(title)) {
+    return "";
+  }
+  return title.trim();
+}
+
+export async function getProductTitleFromUrl(urlStr: string): Promise<string | null> {
+  try {
+    const urlObj = new URL(urlStr);
+    const pathSegments = urlObj.pathname.split("/").filter(Boolean);
+
+    // 1. Check path slug for Amazon or Flipkart
+    for (const segment of pathSegments) {
+      if (segment.length > 10 && !segment.startsWith("dp") && !segment.startsWith("p") && !segment.startsWith("itm")) {
+        const readableSlug = segment.replace(/[-_]/g, " ").trim();
+        if (!isBannedOrGenericTitle(readableSlug) && readableSlug.split(" ").length >= 2) {
+          const cleaned = cleanProductTitle(readableSlug);
+          if (cleaned) return cleaned;
+        }
+      }
+    }
+
+    // 2. Fetch HTML page title / og:title
+    const response = await axios.get(urlStr, {
+      timeout: 4000,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
+
+    const html = response.data;
+    if (typeof html === "string") {
+      // OG Title check
+      const ogMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i) || html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:title["']/i);
+      if (ogMatch && ogMatch[1]) {
+        const cleanedOg = cleanProductTitle(ogMatch[1]);
+        if (cleanedOg) return cleanedOg;
+      }
+
+      // Title tag check
+      const titleMatch = html.match(/<title>([^<]+)<\/title>/i);
+      if (titleMatch && titleMatch[1]) {
+        const cleanedTitle = cleanProductTitle(titleMatch[1]);
+        if (cleanedTitle) return cleanedTitle;
+      }
+    }
+  } catch (_) {}
+
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // 2. QUERY PARSER, SPELLING CORRECTOR & CATEGORY RECOGNIZER
 // ---------------------------------------------------------------------------
@@ -344,8 +475,52 @@ export function correctSpellingAndNormalize(query: string): string {
 }
 
 export function parseProductQuery(queryText: string): ParsedQuerySpecs {
-  const normalized = correctSpellingAndNormalize(queryText);
-  const clean = normalized.replace(/https?:\/\/[^\s]+/g, "").trim();
+  let normalized = correctSpellingAndNormalize(queryText);
+
+  // Extract query if URL is present or if query contains URL slugs
+  const urlMatches = normalized.match(/https?:\/\/[^\s]+/gi);
+  if (urlMatches) {
+    for (const url of urlMatches) {
+      try {
+        const urlObj = new URL(url);
+        const pathname = urlObj.pathname;
+        const slugMatch = pathname.match(/\/([a-z0-9\-]+)(?:\/p\/|\/dl\/|\/dp\/|\/s\/)?/i);
+        if (slugMatch && slugMatch[1] && slugMatch[1].length > 5 && !slugMatch[1].startsWith("s/")) {
+          const extractedSlug = slugMatch[1].replace(/-/g, " ");
+          normalized = `${normalized} ${extractedSlug}`;
+        }
+      } catch (_) {}
+    }
+  }
+
+  // Remove URLs
+  let clean = normalized.replace(/https?:\/\/[^\s]+/gi, "").trim();
+
+  // Strip conversational intro phrases and marketplace names
+  const conversationalPhrases = [
+    /\btake a look at this\b/gi,
+    /\bcheck out this\b/gi,
+    /\bcheck this\b/gi,
+    /\blook at this\b/gi,
+    /\blook at\b/gi,
+    /\bsearch for\b/gi,
+    /\bcan you find\b/gi,
+    /\bfind me\b/gi,
+    /\bshow me\b/gi,
+    /\bprice of\b/gi,
+    /\bbuy\b/gi,
+    /\bon flipkart\b/gi,
+    /\bfrom flipkart\b/gi,
+    /\bon amazon\b/gi,
+    /\bfrom amazon\b/gi,
+    /\bflipkart\b/gi,
+    /\bamazon\b/gi
+  ];
+  for (const phraseRegex of conversationalPhrases) {
+    clean = clean.replace(phraseRegex, " ");
+  }
+
+  clean = clean.replace(/\s+/g, " ").trim();
   const lower = clean.toLowerCase();
 
   // Category Detection
@@ -353,41 +528,28 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
   let isCategorySearch = false;
 
   const categoryKeywords = {
-    Laptop: ["laptop", "laptops", "notebook", "ultrabook"],
-    Smartphone: ["phone", "phones", "mobile", "mobiles", "smartphone", "smartphones"],
+    Laptop: ["laptop", "laptops", "notebook", "ultrabook", "macbook"],
+    Smartphone: ["phone", "phones", "mobile", "mobiles", "smartphone", "smartphones", "iphone"],
     Television: ["tv", "tvs", "television", "televisions", "smart tv"],
     Audio: ["headphone", "headphones", "earphone", "earphones", "earbud", "earbuds", "airpods", "audio"],
     Camera: ["camera", "cameras", "dslr"],
-    Footwear: ["shoes", "shoe", "sneaker", "sneakers", "footwear"],
+    Footwear: ["shoes", "shoe", "sneaker", "sneakers", "footwear", "boots", "sandals"],
     Wearables: ["watch", "watches", "smartwatch", "smartwatches"],
-    Tablet: ["tablet", "tablets", "tab"],
+    Tablet: ["tablet", "tablets", "tab", "ipad"],
+    Furniture: ["chair", "chairs", "office chair", "gaming chair", "desk", "table", "sofa", "bed", "furniture"],
+    Appliances: ["refrigerator", "fridge", "washing machine", "air conditioner", "ac", "microwave", "vacuum"],
+    Fashion: ["shirt", "t-shirt", "tshirt", "jeans", "jacket", "hoodie", "dress", "saree", "kurti"],
+    Beauty: ["perfume", "makeup", "lipstick", "sunscreen", "shampoo", "skincare"],
+    Sports: ["treadmill", "cycle", "dumbbells", "badminton", "cricket bat", "football"],
+    Books: ["book", "books", "novel", "textbook"],
+    Accessories: ["case", "cover", "screen protector", "charger", "cable", "adapter", "power bank"]
   };
 
   for (const [cat, keywords] of Object.entries(categoryKeywords)) {
-    if (keywords.some((kw) => lower === kw || lower === kw + "s")) {
+    if (keywords.some((kw) => lower === kw || lower === kw + "s" || lower.includes(kw))) {
       category = cat as ParsedQuerySpecs["category"];
-      isCategorySearch = true;
+      isCategorySearch = keywords.some(kw => lower === kw || lower === kw + "s");
       break;
-    }
-  }
-
-  if (!category) {
-    if (lower.includes("phone") || lower.includes("iphone") || lower.includes("galaxy") || lower.includes("mobile") || lower.includes("pixel")) {
-      category = "Smartphone";
-    } else if (lower.includes("laptop") || lower.includes("macbook") || lower.includes("thinkpad") || lower.includes("zenbook")) {
-      category = "Laptop";
-    } else if (lower.includes("tv") || lower.includes("bravia") || lower.includes("qled") || lower.includes("oled")) {
-      category = "Television";
-    } else if (lower.includes("headphone") || lower.includes("earbud") || lower.includes("airpods") || lower.includes("airdopes")) {
-      category = "Audio";
-    } else if (lower.includes("camera") || lower.includes("canon") || lower.includes("nikon") || lower.includes("alpha")) {
-      category = "Camera";
-    } else if (lower.includes("shoe") || lower.includes("jordan") || lower.includes("ultrabook") || lower.includes("sneaker")) {
-      category = "Footwear";
-    } else if (lower.includes("watch") || lower.includes("smartwatch")) {
-      category = "Wearables";
-    } else if (lower.includes("ipad") || lower.includes("tablet") || lower.includes("galaxy tab")) {
-      category = "Tablet";
     }
   }
 
@@ -397,7 +559,8 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
     "Huawei", "Honor", "Infinix", "Avita", "Realme", "Xiaomi", "Sony", "OnePlus", "Nothing", "Google",
     "Motorola", "POCO", "Vivo", "Oppo", "iQOO", "Nokia", "JBL", "boAt", "Bose", "Sennheiser", "Marshall",
     "Noise", "Fire-Boltt", "Boult", "TCL", "Hisense", "Vu", "Panasonic", "Nike", "Adidas", "Puma", "Reebok",
-    "Asics", "New Balance", "Skechers", "Converse", "Vans", "Woodland", "Canon", "Nikon", "Fujifilm", "GoPro", "DJI"
+    "Asics", "New Balance", "Skechers", "Converse", "Vans", "Woodland", "Canon", "Nikon", "Fujifilm", "GoPro", "DJI",
+    "Green Soul", "Sleepwell", "Wakefit", "Cellbell", "Pepperfry", "IKEA", "Godrej"
   ];
 
   let detectedBrand: string | null = null;
@@ -408,10 +571,12 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
     }
   }
 
-  if (!detectedBrand && (lower.includes("iphone") || lower.includes("macbook") || lower.includes("ipad") || lower.includes("airpods"))) {
-    detectedBrand = "Apple";
-  } else if (!detectedBrand && (lower.includes("galaxy") || lower.includes("s25") || lower.includes("s24"))) {
-    detectedBrand = "Samsung";
+  if (!detectedBrand && category !== "Furniture") {
+    if (lower.includes("iphone") || lower.includes("macbook") || lower.includes("ipad") || lower.includes("airpods")) {
+      detectedBrand = "Apple";
+    } else if (lower.includes("galaxy") || lower.includes("s25") || lower.includes("s24")) {
+      detectedBrand = "Samsung";
+    }
   }
 
   // Model & specs extraction
@@ -420,11 +585,16 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
   if (storageMatch) detectedStorage = storageMatch[1].toUpperCase().replace(/\s+/g, "");
 
   let detectedRam: string | null = null;
-  const ramMatch = clean.match(/\b(8\s*gb|16\s*gb|24\s*gb|32\s*gb|64\s*gb)\s*ram\b/i);
+  const ramMatch = clean.match(/\b(4\s*gb|8\s*gb|12\s*gb|16\s*gb|24\s*gb|32\s*gb|64\s*gb)\s*ram\b/i);
   if (ramMatch) detectedRam = ramMatch[1].toUpperCase().replace(/\s+/g, "");
 
   let detectedColor: string | null = null;
-  const colors = ["Black Titanium", "White Titanium", "Desert Titanium", "Natural Titanium", "Space Black", "Midnight", "Starlight", "Silver", "Gold", "Phantom Black", "Blue", "Red"];
+  const colors = [
+    "Deep Blue", "Space Black", "Black Titanium", "White Titanium", "Desert Titanium", "Natural Titanium",
+    "Midnight", "Starlight", "Phantom Black", "Pacific Blue", "Sierra Blue", "Deep Purple", "Cosmic Orange",
+    "Titanium Gray", "Titanium Grey", "Titanium Silver", "Titanium Gold", "Silver", "Gold", "Blue", "Red",
+    "Green", "Grey", "Gray", "Yellow", "Pink", "Teal", "Ultramarine", "Black", "White"
+  ];
   for (const c of colors) {
     if (lower.includes(c.toLowerCase())) {
       detectedColor = c;
@@ -432,10 +602,82 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
     }
   }
 
-  const isAccessorySearch = /\b(case|cover|protector|tempered|guard|pouch|sleeve|cable|charger|adapter|strap)\b/i.test(lower);
+  // Optional Specs Detection: Chip, Camera, Display, AI, Battery, Marketing
+  let detectedChip: string | null = null;
+  const chipMatch = clean.match(/\b(a1[0-9]\s*pro|a1[0-9]|m[1-4]\s*(pro|max|ultra)?|snapdragon\s*\d+(\s*gen\s*\d+)?|dimensity\s*\d+|intel\s*core\s*i[3579]|intel\s*core\s*ultra\s*\d|ryzen\s*[3579]|bionic|tensor\s*g[1-4])(\s*chip|\s*processor)?\b/i);
+  if (chipMatch) detectedChip = chipMatch[0].trim();
+
+  let detectedCamera: string | null = null;
+  const cameraMatch = clean.match(/\b(\d+\s*mp(\s*camera)?|triple\s*camera|dual\s*camera|quad\s*camera|4k\s*camera)\b/i);
+  if (cameraMatch) detectedCamera = cameraMatch[0].trim();
+
+  let detectedDisplay: string | null = null;
+  const displayMatch = clean.match(/\b(super\s*retina(\s*xdr)?|liquid\s*retina|dynamic\s*amoled(\s*2x)?|oled|120hz|promotion|4k\s*display|uhd|fhd\+?)\b/i);
+  if (displayMatch) detectedDisplay = displayMatch[0].trim();
+
+  let detectedAi: string | null = null;
+  const aiMatch = clean.match(/\b(apple\s*intelligence|galaxy\s*ai|ai\s*features?|copilot\+?|gemini\s*nano)\b/i);
+  if (aiMatch) detectedAi = aiMatch[0].trim();
+
+  let detectedBattery: string | null = null;
+  const batteryMatch = clean.match(/\b(\d{4,5}\s*mah|all\s*day\s*battery)\b/i);
+  if (batteryMatch) detectedBattery = batteryMatch[0].trim();
+
+  const marketingKeywords: string[] = [];
+  const marketingRegexes = [/\b5g\b/i, /\btitanium\b/i, /\bunlocked\b/i, /\bfast\s*charging\b/i, /\bwaterproof\b/i, /\bisense\b/i];
+  for (const reg of marketingRegexes) {
+    const m = clean.match(reg);
+    if (m) marketingKeywords.push(m[0]);
+  }
+
+  const promotionalText: string[] = [];
+  const promoRegexes = [/\bbest\s*price\b/i, /\bfree\s*delivery\b/i, /\bsale\b/i, /\bdiscount\b/i, /\bofficial\b/i];
+  for (const reg of promoRegexes) {
+    const m = clean.match(reg);
+    if (m) promotionalText.push(m[0]);
+  }
+
+  // Derive Core Model Name (strip detected brand & optional specs from clean)
+  let coreModelStr = clean;
+  if (detectedBrand) {
+    coreModelStr = coreModelStr.replace(new RegExp(`\\b${detectedBrand}\\b`, "gi"), "");
+  }
+  
+  // Remove detected color, storage, and specs
+  if (detectedColor) {
+    coreModelStr = coreModelStr.replace(new RegExp(`\\b${detectedColor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "gi"), "");
+  }
+  coreModelStr = coreModelStr.replace(/\b(64|128|256|512)\s*gb\b/gi, "");
+  coreModelStr = coreModelStr.replace(/\b[12]\s*tb\b/gi, "");
+
+  const removeTerms = [
+    detectedStorage, detectedRam, detectedChip, detectedCamera,
+    detectedDisplay, detectedAi, detectedBattery, ...marketingKeywords, ...promotionalText,
+    "chip", "processor", "camera", "display", "screen", "ram", "gb", "tb", "intelligence", "apple intelligence", "galaxy ai"
+  ].filter(Boolean) as string[];
+
+  for (const term of removeTerms) {
+    try {
+      coreModelStr = coreModelStr.replace(new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "gi"), "");
+    } catch (_) {}
+  }
+
+  // Strip stranded punctuation
+  coreModelStr = coreModelStr.replace(/[\(\)\,\-\_\|\[\]\{\}\/]/g, " ").replace(/\s+/g, " ").trim();
+
+  if (coreModelStr.length < 2) {
+    coreModelStr = clean;
+  }
+
+  const isAccessorySearch = /\b(case|cover|protector|tempered|guard|pouch|sleeve|cable|charger|adapter|strap|garbage bag|trash bag)\b/i.test(lower);
   const negativeTerms: string[] = [];
-  if (!isAccessorySearch && category === "Smartphone") {
-    negativeTerms.push("case", "cover", "screen protector", "glass", "pouch", "cable", "adapter");
+
+  if (!isAccessorySearch) {
+    negativeTerms.push("case", "cover", "screen protector", "tempered glass", "pouch", "cable", "adapter", "garbage bag", "trash bag", "back cover");
+  }
+
+  if (category === "Furniture") {
+    negativeTerms.push("phone", "iphone", "apple", "samsung", "charger", "cable", "case");
   }
 
   return {
@@ -444,12 +686,19 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
     isCategorySearch,
     category,
     brand: detectedBrand,
-    model: clean,
+    model: coreModelStr,
     storage: detectedStorage,
     color: detectedColor,
     size: null,
     ram: detectedRam,
-    processor: null,
+    processor: detectedChip,
+    chip: detectedChip,
+    camera: detectedCamera,
+    display: detectedDisplay,
+    aiFeatures: detectedAi,
+    battery: detectedBattery,
+    marketingKeywords,
+    promotionalText,
     isAccessorySearch,
     negativeTerms,
   };
@@ -1066,7 +1315,11 @@ export function generateCategoryCatalogResults(categoryName: string): SearchResu
     price: item.price,
     old_price: item.oldPrice,
     thumbnail: item.image,
-    link: `https://www.google.com/search?q=${encodeURIComponent(item.title)}&tbm=shop`,
+    link: item.source.toLowerCase().includes("amazon") 
+      ? `https://www.amazon.in/s?k=${encodeURIComponent(item.title)}`
+      : item.source.toLowerCase().includes("flipkart")
+      ? `https://www.flipkart.com/search?q=${encodeURIComponent(item.title)}`
+      : `https://www.amazon.in/s?k=${encodeURIComponent(item.title)}`,
     source: item.source,
     rating: item.rating,
     reviews: item.reviews,
@@ -1088,49 +1341,325 @@ export function generateCategoryCatalogResults(categoryName: string): SearchResu
 export function evaluateCandidateRelevance(
   candidate: SearchResultItem,
   specs: ParsedQuerySpecs
-): { isRelevant: boolean; confidence: number; explanation: string } {
-  const titleLower = (candidate.title || "").toLowerCase();
+): { isRelevant: boolean; matchType: 'exact' | 'variant' | 'alternative' | 'rejected'; confidence: number; explanation: string } {
+  const rawTitle = candidate.title || "";
+  const titleLower = rawTitle.toLowerCase();
 
-  // 1. Rejection of accessories if searching for main product
+  // 1. Rejection of Banned / Generic Titles
+  if (isBannedOrGenericTitle(rawTitle)) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 0, explanation: "Rejected generic retailer title." };
+  }
+
+  // 2. Rejection of accessories & garbage items if searching for main product
   if (!specs.isAccessorySearch) {
-    for (const term of ["case", "cover", "screen protector", "tempered glass", "pouch", "cable", "adapter"]) {
+    const accessoryTerms = ["garbage bag", "trash bag", "case", "cover", "screen protector", "tempered glass", "pouch", "cable", "adapter", "back cover"];
+    for (const term of accessoryTerms) {
       if (titleLower.includes(term)) {
-        return { isRelevant: false, confidence: 15, explanation: `Filtered out accessory (${term}).` };
+        // Check if title is a main product bundled with a free/included accessory
+        const isBundleOrMain =
+          /\b(with|plus|\+|\bfree\b|\bincluded\b|\bbundle\b|\bwith free\b)\b/i.test(titleLower) ||
+          /\b(smartphone|mobile|phone|5g|256gb|512gb|1tb|128gb|64gb)\b/i.test(titleLower);
+
+        const isExplicitAccessory =
+          new RegExp(`\\b(for|for the|compatible|fits|suit[s]?|designed for)\\b`, "i").test(titleLower) ||
+          new RegExp(`^${term}\\b`, "i").test(titleLower) ||
+          new RegExp(`\\b${term}\\s+(for|for the|compatible|fits)\\b`, "i").test(titleLower);
+
+        if (isExplicitAccessory || !isBundleOrMain) {
+          return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Filtered out accessory (${term}).` };
+        }
       }
     }
   }
 
-  // 2. Category Mismatch check
-  if (specs.category === "Smartphone") {
-    if (titleLower.includes("macbook") || titleLower.includes("laptop") || titleLower.includes("television")) {
-      return { isRelevant: false, confidence: 10, explanation: "Category mismatch: device is not a smartphone." };
+  // 3. REQUIRED FILTERS: Brand, Model, Category
+
+  // 3a. Category check
+  if (specs.category === "Furniture") {
+    if (titleLower.includes("iphone") || titleLower.includes("galaxy") || titleLower.includes("laptop") || titleLower.includes("macbook")) {
+      return { isRelevant: false, matchType: 'rejected', confidence: 10, explanation: "Category mismatch: furniture is not a tech device." };
+    }
+  } else if (specs.category === "Smartphone") {
+    if (titleLower.includes("chair") || titleLower.includes("desk") || titleLower.includes("macbook") || titleLower.includes("laptop") || titleLower.includes("television")) {
+      return { isRelevant: false, matchType: 'rejected', confidence: 10, explanation: "Category mismatch: device is not a smartphone." };
+    }
+  } else if (specs.category === "Laptop") {
+    if (titleLower.includes("chair") || titleLower.includes("phone") || titleLower.includes("television")) {
+      return { isRelevant: false, matchType: 'rejected', confidence: 10, explanation: "Category mismatch: device is not a laptop." };
     }
   }
 
-  // 3. Brand Mismatch check if user specified brand
+  // 3b. Brand check
   if (specs.brand) {
     const brandLower = specs.brand.toLowerCase();
-    if (brandLower === "apple" && (titleLower.includes("samsung") || titleLower.includes("dell") || titleLower.includes("hp"))) {
-      return { isRelevant: false, confidence: 20, explanation: "Brand mismatch." };
+    const brandAliases: Record<string, string[]> = {
+      apple: ["apple", "iphone", "macbook", "ipad", "airpods"],
+      samsung: ["samsung", "galaxy"],
+      dell: ["dell", "xps", "inspiron", "alienware"],
+      hp: ["hp", "spectre", "pavilion", "envy", "omen"],
+      lenovo: ["lenovo", "thinkpad", "yoga", "legion"],
+      sony: ["sony", "bravia", "playstation"],
+      oneplus: ["oneplus"],
+      google: ["google", "pixel"]
+    };
+    const validTokens = brandAliases[brandLower] || [brandLower];
+    const matchesBrand = validTokens.some(tok => titleLower.includes(tok));
+    if (!matchesBrand) {
+      return { isRelevant: false, matchType: 'rejected', confidence: 20, explanation: `Brand mismatch (${specs.brand} expected).` };
     }
-    if (brandLower === "samsung" && (titleLower.includes("iphone") || titleLower.includes("apple"))) {
-      return { isRelevant: false, confidence: 20, explanation: "Brand mismatch." };
+  }
+
+  // 3c. Model check
+  const rawModelStr = specs.model || specs.cleanQuery;
+  const modelStr = rawModelStr;
+  const cleanedModelStr = rawModelStr.toLowerCase().replace(/[\(\)\,\-\_\|\[\]\{\}\/]/g, " ");
+  const modelTokens = cleanedModelStr.split(/\s+/).filter(t => 
+    t.length > 1 && 
+    !["apple", "samsung", "dell", "hp", "lenovo", "sony", "google", "the", "and", "with", "for", "take", "look", "at", "this", "on", "from", "flipkart", "amazon", "buy", "price", "deep", "color"].includes(t) &&
+    !/^(64|128|256|512)gb$/i.test(t) &&
+    !/^[12]tb$/i.test(t)
+  );
+
+  const matchedModelTokens = modelTokens.filter(tok => titleLower.includes(tok));
+  const isModelMatch = modelTokens.length === 0 || matchedModelTokens.length >= Math.ceil(modelTokens.length * 0.6);
+
+  if (!isModelMatch) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 25, explanation: `Model mismatch for "${rawModelStr}".` };
+  }
+
+  // 3c-1. Model Tier Precision Check (Pro vs Pro Max vs Ultra vs Plus vs Base)
+  const queryLowerForTier = rawModelStr.toLowerCase();
+
+  const queryHasProMax = /\b(pro\s*max|promax)\b/i.test(queryLowerForTier);
+  const titleHasProMax = /\b(pro\s*max|promax)\b/i.test(titleLower);
+
+  const queryHasPro = !queryHasProMax && /\bpro\b/i.test(queryLowerForTier);
+  const titleHasPro = !titleHasProMax && /\bpro\b/i.test(titleLower);
+
+  const queryHasUltra = /\bultra\b/i.test(queryLowerForTier);
+  const titleHasUltra = /\bultra\b/i.test(titleLower);
+
+  const queryHasPlus = /\b(plus|\+)\b/i.test(queryLowerForTier);
+  const titleHasPlus = /\b(plus|\+)\b/i.test(titleLower);
+
+  const queryHasMini = /\bmini\b/i.test(queryLowerForTier);
+  const titleHasMini = /\bmini\b/i.test(titleLower);
+
+  const queryHasAir = /\bair\b/i.test(queryLowerForTier);
+  const titleHasAir = /\bair\b/i.test(titleLower);
+
+  const queryHasFE = /\b(fe|fan\s*edition)\b/i.test(queryLowerForTier);
+  const titleHasFE = /\b(fe|fan\s*edition)\b/i.test(titleLower);
+
+  if (queryHasProMax && !titleHasProMax) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected Pro Max, got ${titleHasPro ? 'Pro' : 'base model'}.` };
+  }
+  if (!queryHasProMax && titleHasProMax) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is Pro Max.` };
+  }
+
+  if (queryHasPro && !titleHasPro) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected Pro model.` };
+  }
+  if (!queryHasPro && !queryHasProMax && titleHasPro) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is Pro model.` };
+  }
+
+  if (queryHasUltra && !titleHasUltra) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected Ultra model.` };
+  }
+  if (!queryHasUltra && titleHasUltra) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is Ultra model.` };
+  }
+
+  if (queryHasPlus && !titleHasPlus) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected Plus model.` };
+  }
+  if (!queryHasPlus && titleHasPlus) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is Plus model.` };
+  }
+
+  if (queryHasMini && !titleHasMini) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected Mini model.` };
+  }
+  if (!queryHasMini && titleHasMini) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is Mini model.` };
+  }
+
+  if (queryHasAir && !titleHasAir) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected Air model.` };
+  }
+  if (!queryHasAir && titleHasAir) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is Air model.` };
+  }
+
+  if (queryHasFE && !titleHasFE) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected FE model.` };
+  }
+  if (!queryHasFE && titleHasFE) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is FE model.` };
+  }
+
+  // 3c-2. Generation / Number Strictness Check
+  const genNumMatch = queryLowerForTier.match(/\b(17|16|15|14|13|12|11|25|24|23|22|21|20|9|8|7|6|5)\b/);
+  if (genNumMatch) {
+    const requiredGenNum = genNumMatch[1];
+    const conflictingNums: Record<string, string[]> = {
+      "17": ["16", "15", "14", "13", "12", "11"],
+      "16": ["17", "15", "14", "13", "12", "11"],
+      "15": ["17", "16", "14", "13", "12", "11"],
+      "25": ["24", "23", "22", "21", "20"],
+      "24": ["25", "23", "22", "21", "20"],
+      "9": ["8", "7", "6", "5"],
+      "8": ["9", "7", "6", "5"]
+    };
+    const badNums = conflictingNums[requiredGenNum];
+    if (badNums) {
+      for (const bad of badNums) {
+        const regex = new RegExp(`\\b(iphone|galaxy|s|pixel|ipad|macbook|watch|series)\\s*${bad}\\b`, "i");
+        if (regex.test(titleLower)) {
+          return { isRelevant: false, matchType: 'rejected', confidence: 10, explanation: `Generation mismatch: requested series ${requiredGenNum}, listing is series ${bad}.` };
+        }
+      }
     }
   }
 
-  let confidence = 85;
-  let explanation = "Matching product identified across multi-store index.";
+  const requiredPassedSummary = `Brand=${specs.brand || 'Auto'}, Model=${modelStr}, Category=${specs.category || 'Auto'}`;
 
-  if (specs.model && titleLower.includes(specs.model.toLowerCase())) {
-    confidence += 10;
-    explanation = `Exact query match for "${specs.model}".`;
+  // 4. OPTIONAL FILTERS EVALUATION
+  const foundOptional: string[] = [];
+  const missingOptional: string[] = [];
+
+  const featuresText = candidate.features ? candidate.features.join(" ").toLowerCase() : "";
+  const combinedListingText = `${titleLower} ${featuresText}`;
+
+  // Check Storage
+  if (specs.storage) {
+    const normStorage = specs.storage.toLowerCase().replace(/\s+/g, "");
+    const normText = combinedListingText.replace(/\s+/g, "");
+    if (normText.includes(normStorage)) {
+      foundOptional.push(`Storage (${specs.storage})`);
+    } else {
+      missingOptional.push(`Storage (${specs.storage})`);
+    }
   }
 
-  if (specs.storage && titleLower.includes(specs.storage.toLowerCase())) {
-    confidence += 4;
+  // Check Color
+  if (specs.color) {
+    const colorLower = specs.color.toLowerCase();
+    const colorParts = colorLower.split(/\s+/);
+    if (colorParts.some(p => combinedListingText.includes(p))) {
+      foundOptional.push(`Color (${specs.color})`);
+    } else {
+      missingOptional.push(`Color (${specs.color})`);
+    }
   }
 
-  return { isRelevant: true, confidence: Math.min(confidence, 99), explanation };
+  // Check RAM
+  if (specs.ram) {
+    const normRam = specs.ram.toLowerCase().replace(/\s+/g, "");
+    const normText = combinedListingText.replace(/\s+/g, "");
+    if (normText.includes(normRam)) {
+      foundOptional.push(`RAM (${specs.ram})`);
+    } else {
+      missingOptional.push(`RAM (${specs.ram})`);
+    }
+  }
+
+  // Check Chip
+  if (specs.chip || specs.processor) {
+    const chipVal = specs.chip || specs.processor || "";
+    if (combinedListingText.includes(chipVal.toLowerCase())) {
+      foundOptional.push(`Chip (${chipVal})`);
+    } else {
+      missingOptional.push(`Chip (${chipVal})`);
+    }
+  }
+
+  // Check Camera
+  if (specs.camera) {
+    if (combinedListingText.includes(specs.camera.toLowerCase())) {
+      foundOptional.push(`Camera (${specs.camera})`);
+    } else {
+      missingOptional.push(`Camera (${specs.camera})`);
+    }
+  }
+
+  // Check Display technology
+  if (specs.display) {
+    if (combinedListingText.includes(specs.display.toLowerCase())) {
+      foundOptional.push(`Display technology (${specs.display})`);
+    } else {
+      missingOptional.push(`Display technology (${specs.display})`);
+    }
+  }
+
+  // Check AI features
+  if (specs.aiFeatures) {
+    if (combinedListingText.includes(specs.aiFeatures.toLowerCase())) {
+      foundOptional.push(`AI features (${specs.aiFeatures})`);
+    } else {
+      missingOptional.push(`AI features (${specs.aiFeatures})`);
+    }
+  }
+
+  // Check Battery
+  if (specs.battery) {
+    if (combinedListingText.includes(specs.battery.toLowerCase())) {
+      foundOptional.push(`Battery (${specs.battery})`);
+    } else {
+      missingOptional.push(`Battery (${specs.battery})`);
+    }
+  }
+
+  // Check Marketing keywords
+  if (specs.marketingKeywords && specs.marketingKeywords.length > 0) {
+    for (const kw of specs.marketingKeywords) {
+      if (combinedListingText.includes(kw.toLowerCase())) {
+        foundOptional.push(`Marketing keyword (${kw})`);
+      } else {
+        missingOptional.push(`Marketing keyword (${kw})`);
+      }
+    }
+  }
+
+  // Check Promotional text
+  if (specs.promotionalText && specs.promotionalText.length > 0) {
+    for (const promo of specs.promotionalText) {
+      if (combinedListingText.includes(promo.toLowerCase())) {
+        foundOptional.push(`Promotional text (${promo})`);
+      } else {
+        missingOptional.push(`Promotional text (${promo})`);
+      }
+    }
+  }
+
+  // ACCEPT PRODUCT SINCE ALL REQUIRED FILTERS PASSED!
+  let confidence = 92;
+  if (foundOptional.length > 0) {
+    confidence = Math.min(99, 92 + foundOptional.length * 2);
+  }
+
+  let matchType: 'exact' | 'variant' | 'alternative' = 'exact';
+  if (specs.storage && missingOptional.some(m => m.includes('Storage'))) {
+    matchType = 'variant';
+  }
+
+  let explanation = `Exact match for ${specs.brand || ''} ${modelStr}.`.trim();
+  if (missingOptional.length > 0) {
+    explanation += ` Unavailable in listing: ${missingOptional.join(", ")}`;
+  } else if (foundOptional.length > 0) {
+    explanation += ` Verified specs: ${foundOptional.join(", ")}`;
+  }
+
+  // LOG AUDIT MANDATED BY INSTRUCTIONS
+  console.log(`[Filter Audit] Candidate Title: "${rawTitle}"`);
+  console.log(`[Filter Audit] Required filters passed: ${requiredPassedSummary}`);
+  console.log(`[Filter Audit] Optional filters found: ${foundOptional.length > 0 ? foundOptional.join(', ') : 'None'}`);
+  console.log(`[Filter Audit] Optional filters missing: ${missingOptional.length > 0 ? missingOptional.join(', ') : 'None'}`);
+  console.log(`[Filter Audit] Final confidence: ${confidence}%`);
+
+  return { isRelevant: true, matchType, confidence, explanation };
 }
 
 // ---------------------------------------------------------------------------
@@ -1172,7 +1701,10 @@ export function generateExactStoreVariants(
   } else if (baseTitle.toLowerCase().includes("s25") || baseTitle.toLowerCase().includes("s24")) {
     basePriceNum = 129999;
   } else {
-    basePriceNum = 69900;
+    
+    const charSum = baseTitle.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
+    basePriceNum = 1000 + (charSum % 40) * 1500;
+
   }
 
   const results: SearchResultItem[] = [];
@@ -1193,28 +1725,50 @@ export function generateExactStoreVariants(
     const cleanSearchSlug = encodeURIComponent(fullProductTitle);
 
     let productLink = "";
-    if (st.source === "Amazon") {
+    const srcLower = st.source.toLowerCase();
+    if (srcLower.includes("amazon")) {
       productLink = resolvedInfo?.domain.includes("amazon") ? resolvedInfo.resolvedUrl : `https://www.amazon.in/s?k=${cleanSearchSlug}`;
-    } else if (st.source === "Flipkart") {
+    } else if (srcLower.includes("flipkart")) {
       productLink = resolvedInfo?.domain.includes("flipkart") ? resolvedInfo.resolvedUrl : `https://www.flipkart.com/search?q=${cleanSearchSlug}`;
-    } else if (st.source === "Croma") {
+    } else if (srcLower.includes("croma")) {
       productLink = `https://www.croma.com/searchB?q=${cleanSearchSlug}`;
-    } else if (st.source === "Reliance Digital") {
+    } else if (srcLower.includes("reliance")) {
       productLink = `https://www.reliancedigital.in/search?q=${cleanSearchSlug}`;
-    } else if (st.source === "Tata CliQ") {
+    } else if (srcLower.includes("jiomart")) {
+      productLink = `https://www.jiomart.com/search/${cleanSearchSlug}`;
+    } else if (srcLower.includes("vijay")) {
+      productLink = `https://www.vijaysales.com/search/${cleanSearchSlug}`;
+    } else if (srcLower.includes("tata cliq") || srcLower.includes("tatacliq")) {
       productLink = `https://www.tatacliq.com/search/?searchCategory=all&text=${cleanSearchSlug}`;
+    } else if (srcLower.includes("myntra")) {
+      productLink = `https://www.myntra.com/${cleanSearchSlug}`;
+    } else if (srcLower.includes("ajio")) {
+      productLink = `https://www.ajio.com/search/?text=${cleanSearchSlug}`;
+    } else if (srcLower.includes("nykaa")) {
+      productLink = `https://www.nykaa.com/search/result/?q=${cleanSearchSlug}`;
+    } else if (srcLower.includes("firstcry")) {
+      productLink = `https://www.firstcry.com/search?q=${cleanSearchSlug}`;
+    } else if (srcLower.includes("boat")) {
+      productLink = `https://www.boAt-lifestyle.com/search?q=${cleanSearchSlug}`;
+    } else if (srcLower.includes("samsung")) {
+      productLink = `https://www.samsung.com/in/multistore/?search=${cleanSearchSlug}`;
+    } else if (srcLower.includes("apple")) {
+      productLink = `https://www.apple.com/in/shop/goto/${cleanSearchSlug}`;
+    } else if (srcLower.includes("oneplus")) {
+      productLink = `https://www.oneplus.in/search?q=${cleanSearchSlug}`;
+    } else if (srcLower.includes("dell")) {
+      productLink = `https://www.dell.com/en-in/search/${cleanSearchSlug}`;
+    } else if (srcLower.includes("hp")) {
+      productLink = `https://www.hp.com/in-en/shop/catalogsearch/result/?q=${cleanSearchSlug}`;
+    } else if (srcLower.includes("lenovo")) {
+      productLink = `https://www.lenovo.com/in/en/search?fq=&text=${cleanSearchSlug}`;
+    } else if (srcLower.includes("asus")) {
+      productLink = `https://in.store.asus.com/catalogsearch/result/?q=${cleanSearchSlug}`;
     } else {
-      productLink = `https://www.google.com/search?q=${cleanSearchSlug}&tbm=shop`;
+      productLink = `https://www.amazon.in/s?k=${cleanSearchSlug}`;
     }
 
-    let imgUrl = "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&auto=format&fit=crop&q=80";
-    if (baseTitle.toLowerCase().includes("macbook")) {
-      imgUrl = "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80";
-    } else if (baseTitle.toLowerCase().includes("galaxy") || baseTitle.toLowerCase().includes("s25") || baseTitle.toLowerCase().includes("s24")) {
-      imgUrl = "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?w=800&auto=format&fit=crop&q=80";
-    } else if (baseTitle.toLowerCase().includes("sony") || baseTitle.toLowerCase().includes("headphone")) {
-      imgUrl = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80";
-    }
+    const imgUrl = getProductCategoryPhoto(fullProductTitle);
 
     results.push({
       title: fullProductTitle,

@@ -115,21 +115,36 @@ export default function AdminSupportDashboard({ email, passcode, defaultFilter =
   const filteredTickets = tickets.filter(t => {
     const matchesSearch = (t.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (t.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (t.subject || '').toLowerCase().includes(searchTerm.toLowerCase());
+                          (t.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          (t.id || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     let matchesFilter = false;
     switch(filter) {
+      case 'all': matchesFilter = true; break;
       case 'open': matchesFilter = t.status === 'open'; break;
       case 'pending': matchesFilter = t.status === 'pending'; break;
       case 'resolved': matchesFilter = t.status === 'resolved'; break;
-      case 'high_priority': matchesFilter = t.priority === 'high'; break;
+      case 'high_priority': matchesFilter = t.priority === 'high' || (t.subject || '').toLowerCase().includes('urgent'); break;
       case 'premium_users': matchesFilter = t.isPremiumUser; break;
-      case 'livechat': matchesFilter = t.subject === 'Live Chat Support Request'; break;
+      case 'livechat': 
+        matchesFilter = (t.id || '').startsWith('TK-') || 
+                        (t.subject || '').toLowerCase().includes('support request') || 
+                        (t.subject || '').toLowerCase().includes('live chat') ||
+                        (t.messages && t.messages.length >= 1) ||
+                        t.status === 'open'; 
+        break;
       default: matchesFilter = true;
     }
     
     return matchesSearch && matchesFilter;
   });
+
+  // Auto select first ticket if none selected or if selected ticket no longer visible
+  useEffect(() => {
+    if (!selectedTicket && filteredTickets.length > 0) {
+      setSelectedTicket(filteredTickets[0]);
+    }
+  }, [filteredTickets, selectedTicket]);
 
   return (
     <div className="flex h-[calc(100vh-140px)] bg-black border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl font-sans text-white">
@@ -157,6 +172,7 @@ export default function AdminSupportDashboard({ email, passcode, defaultFilter =
           
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
             {[
+              { id: 'all', label: 'All Requests' },
               { id: 'open', label: 'Open' },
               { id: 'pending', label: 'Pending' },
               { id: 'resolved', label: 'Resolved' },

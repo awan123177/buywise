@@ -168,7 +168,7 @@ export default function VisualSearch({ variant = 'default' }: { variant?: 'defau
                   </div>
                 ) : (
                   <div className="relative w-full h-64 rounded-2xl overflow-hidden bg-black flex items-center justify-center">
-                    <img src={imagePreview} alt="Preview" className="max-w-full max-h-full object-contain opacity-50 mix-blend-screen" />
+                    <img src={imagePreview} alt="Preview" className="max-w-full max-h-full object-contain rounded-xl" />
                     
                     {isAnalyzing && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">

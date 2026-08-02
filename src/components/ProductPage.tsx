@@ -175,7 +175,7 @@ export default function ProductPage() {
                     transition={{ duration: 0.3 }}
                     src={product.images[activeImage]}
                     alt={product.name}
-                    className="w-full h-full object-cover mix-blend-screen"
+                    className="w-full h-full object-contain p-4"
                   />
               </AnimatePresence>
             </div>
@@ -512,7 +512,7 @@ export default function ProductPage() {
           {[1, 2, 3, 4].map((item) => (
             <div key={item} className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 hover:border-[#FF3B30]/30 transition-all cursor-pointer group">
               <div className="aspect-square bg-white/5 rounded-xl mb-4 p-4 flex items-center justify-center overflow-hidden">
-                <img src={`https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=300&auto=format&fit=crop&q=80`} alt="related" className="w-full h-full object-contain filter group-hover:scale-110 transition-transform duration-500 mix-blend-screen" />
+                <img src={`https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=300&auto=format&fit=crop&q=80`} alt="related" className="w-full h-full object-contain filter group-hover:scale-110 transition-transform duration-500" />
               </div>
               <h4 className="text-sm font-bold text-white line-clamp-2 mb-2 group-hover:text-[#FF3B30] transition-colors">Apple iPhone 15 Plus</h4>
               <div className="text-lg font-black font-mono text-white">{formatPrice(89900)}</div>

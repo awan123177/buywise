@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import helmet from "helmet";
+import { createClient } from "@supabase/supabase-js";
 import {
   getOrCreateProfile,
   awardCoins,
@@ -38,6 +39,7 @@ import {
   deleteUserProfile,
   setFounderImage
 } from "./src/server/gamificationDb.ts";
+import { getProductCategoryPhoto } from "./src/lib/productImages.js";
 import {
   extractUrlFromShareInput,
   classifyInputType,
@@ -47,9 +49,25 @@ import {
   generateExactStoreVariants,
   generateCategoryCatalogResults,
   correctSpellingAndNormalize,
+  isBannedOrGenericTitle,
+  getProductTitleFromUrl
 } from "./src/server/searchEngine.ts";
 
 dotenv.config();
+
+function getSupabaseClient() {
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key || url.includes("placeholder") || key.includes("placeholder")) {
+    return null;
+  }
+  try {
+    return createClient(url, key);
+  } catch (e) {
+    console.error("Failed to initialize Supabase client in server.ts:", e);
+    return null;
+  }
+}
 
 let cloudProjectId = process.env.GOOGLE_CLOUD_PROJECT || process.env.GCP_PROJECT || "";
 
@@ -123,7 +141,7 @@ function extractDirectUrl(urlStr: string): string | null {
 
 // Generate fallback search URL on the merchant's actual platform domain
 function getFallbackPlatformLink(source: string, title: string, queryStr: string): string {
-  const encodeQ = encodeURIComponent(title || queryStr);
+  const encodeQ = encodeURIComponent(title || queryStr || "electronics");
   const src = source.toLowerCase();
 
   if (src.includes("amazon")) {
@@ -138,6 +156,51 @@ function getFallbackPlatformLink(source: string, title: string, queryStr: string
   if (src.includes("reliance")) {
     return `https://www.reliancedigital.in/search?q=${encodeQ}`;
   }
+  if (src.includes("jiomart") || src.includes("jio mart")) {
+    return `https://www.jiomart.com/search/${encodeQ}`;
+  }
+  if (src.includes("vijay sales") || src.includes("vijaysales")) {
+    return `https://www.vijaysales.com/search/${encodeQ}`;
+  }
+  if (src.includes("tata cliq") || src.includes("tatacliq")) {
+    return `https://www.tatacliq.com/search/?searchCategory=all&text=${encodeQ}`;
+  }
+  if (src.includes("myntra")) {
+    return `https://www.myntra.com/${encodeQ}`;
+  }
+  if (src.includes("ajio")) {
+    return `https://www.ajio.com/search/?text=${encodeQ}`;
+  }
+  if (src.includes("nykaa")) {
+    return `https://www.nykaa.com/search/result/?q=${encodeQ}`;
+  }
+  if (src.includes("firstcry")) {
+    return `https://www.firstcry.com/search?q=${encodeQ}`;
+  }
+  if (src.includes("boat")) {
+    return `https://www.boAt-lifestyle.com/search?q=${encodeQ}`;
+  }
+  if (src.includes("samsung")) {
+    return `https://www.samsung.com/in/multistore/?search=${encodeQ}`;
+  }
+  if (src.includes("apple")) {
+    return `https://www.apple.com/in/shop/goto/${encodeQ}`;
+  }
+  if (src.includes("oneplus")) {
+    return `https://www.oneplus.in/search?q=${encodeQ}`;
+  }
+  if (src.includes("dell")) {
+    return `https://www.dell.com/en-in/search/${encodeQ}`;
+  }
+  if (src.includes("hp")) {
+    return `https://www.hp.com/in-en/shop/catalogsearch/result/?q=${encodeQ}`;
+  }
+  if (src.includes("lenovo")) {
+    return `https://www.lenovo.com/in/en/search?fq=&text=${encodeQ}`;
+  }
+  if (src.includes("asus")) {
+    return `https://in.store.asus.com/catalogsearch/result/?q=${encodeQ}`;
+  }
   if (src.includes("ikea")) {
     return `https://www.ikea.com/in/en/search/?q=${encodeQ}`;
   }
@@ -147,23 +210,8 @@ function getFallbackPlatformLink(source: string, title: string, queryStr: string
   if (src.includes("wakefit")) {
     return `https://www.wakefit.co/search?q=${encodeQ}`;
   }
-  if (src.includes("tata cliq") || src.includes("tatacliq")) {
-    return `https://www.tatacliq.com/search/?text=${encodeQ}`;
-  }
   if (src.includes("home centre") || src.includes("homecentre")) {
     return `https://www.homecentre.in/in/en/search?text=${encodeQ}`;
-  }
-  if (src.includes("myntra")) {
-    return `https://www.myntra.com/search?q=${encodeQ}`;
-  }
-  if (src.includes("ajio")) {
-    return `https://www.ajio.com/search/?text=${encodeQ}`;
-  }
-  if (src.includes("vijay sales") || src.includes("vijaysales")) {
-    return `https://www.vijaysales.com/search/${encodeQ}`;
-  }
-  if (src.includes("jiomart") || src.includes("jio mart")) {
-    return `https://www.jiomart.com/search/${encodeQ}`;
   }
 
   // Domain fallback (e.g., decathlon.in -> www.decathlon.in/search)
@@ -173,8 +221,8 @@ function getFallbackPlatformLink(source: string, title: string, queryStr: string
     return `https://www.${domain}/search?q=${encodeQ}`;
   }
 
-  // Google site search fallback
-  return `https://www.google.com/search?q=site:${src.replace(/\s+/g, '')}+${encodeQ}`;
+  // Default direct merchant fallback to Amazon India
+  return `https://www.amazon.in/s?k=${encodeQ}`;
 }
 
 // Helper function to safely process history for Gemini API multi-turn conversation
@@ -242,120 +290,12 @@ async function resolveRedirect(urlStr: string): Promise<string> {
   }
 }
 
-// Clean retail suffixes from the page title
-function cleanProductTitle(rawTitle: string): string {
-  let title = rawTitle;
-  
-  // Remove "Buy " at the start
-  if (title.toLowerCase().startsWith('buy ')) {
-    title = title.substring(4);
-  }
-  
-  // Remove common retail suffixes
-  const suffixes = [
-    /Online at Low Prices in India/i,
-    /Online at Best Prices/i,
-    /at Amazon\.in/i,
-    /:\s*Amazon\.in/i,
-    /-\s*Amazon\.in/i,
-    /\|\s*Amazon\.in/i,
-    /-\s*Flipkart\.com/i,
-    /\|\s*Flipkart\.com/i,
-    /Online at Flipkart/i,
-  ];
-  
-  for (const suffix of suffixes) {
-    title = title.replace(suffix, '');
-  }
-  
-  return title.trim();
-}
-
-// Fetch the actual product title from web page metadata or SerpApi for a given URL
-async function getProductTitleFromUrl(urlStr: string): Promise<string> {
-  // 1. Try fetching HTML page metadata (og:title / title tag) directly
-  try {
-    const htmlRes = await axios.get(urlStr, {
-      timeout: 3000,
-      headers: {
-        "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
-    const html = htmlRes.data;
-    if (typeof html === "string") {
-      const ogTitleMatch = html.match(/<meta\s+property=["']og:title["']\s+content=["']([^"']+)["']/i) ||
-                          html.match(/<meta\s+content=["']([^"']+)["']\s+property=["']og:title["']/i);
-      if (ogTitleMatch && ogTitleMatch[1]) {
-        const cleaned = cleanProductTitle(ogTitleMatch[1]);
-        if (cleaned.length > 5 && !cleaned.toLowerCase().includes("page not found") && !cleaned.toLowerCase().includes("robot check")) {
-          console.log(`[URL Resolver] Extracted og:title from page: "${cleaned}"`);
-          return cleaned;
-        }
-      }
-
-      const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      if (titleTagMatch && titleTagMatch[1]) {
-        const cleaned = cleanProductTitle(titleTagMatch[1]);
-        if (cleaned.length > 5 && !cleaned.toLowerCase().includes("page not found") && !cleaned.toLowerCase().includes("robot check")) {
-          console.log(`[URL Resolver] Extracted title tag from page: "${cleaned}"`);
-          return cleaned;
-        }
-      }
-    }
-  } catch (_) {
-    // Direct HTML fetch failed/timed out, proceed to SerpApi or slug fallback
-  }
-
-  // 2. SerpApi lookup (only if SERP_API_KEY is configured and valid)
-  const serpApiKey = process.env.SERP_API_KEY || "";
-  if (serpApiKey && serpApiKey !== "placeholder" && serpApiKey.length > 20) {
-    try {
-      const asinMatch = urlStr.match(/\/(?:dp|product|asin|o\/ASIN)\/(B[0-9A-Z]{9})/i) || urlStr.match(/\b(B[0-9A-Z]{9})\b/i);
-      const query = asinMatch ? `amazon ${asinMatch[1]}` : urlStr;
-
-      const response = await axios.get("https://serpapi.com/search", {
-        params: { engine: "google", q: query, api_key: serpApiKey, hl: "en", gl: "in" },
-        validateStatus: (status) => status === 200,
-        timeout: 3000,
-      });
-
-      if (response.data && Array.isArray(response.data.organic_results) && response.data.organic_results.length > 0) {
-        const rawTitle = response.data.organic_results[0].title;
-        const cleaned = cleanProductTitle(rawTitle);
-        console.log(`[URL Resolver] Resolved via SerpApi: "${cleaned}"`);
-        return cleaned;
-      }
-    } catch (_) {
-      // Catch 401 or network errors quietly
-    }
-  }
-
-  // 3. Fallback to URL path slug extraction
-  try {
-    const asinMatch = urlStr.match(/\/(?:dp|product|asin|o\/ASIN)\/(B[0-9A-Z]{9})/i) || urlStr.match(/\b(B[0-9A-Z]{9})\b/i);
-    if (asinMatch) return `Amazon Product ${asinMatch[1]}`;
-    const urlObj = new URL(urlStr);
-    const pathParts = urlObj.pathname.split('/').filter(Boolean);
-    let bestPart = pathParts[pathParts.length - 1] || urlObj.hostname;
-    for (const part of pathParts) {
-      if (part.includes('-') && part.length > bestPart.length) {
-        bestPart = part;
-      }
-    }
-    const title = bestPart.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    return title;
-  } catch {
-    return urlStr;
-  }
-}
+// Using cleanProductTitle and getProductTitleFromUrl imported from searchEngine.ts
 
 async function startServer() {
   // 1. ENVIRONMENT VARIABLES VALIDATION
   if (!process.env.GEMINI_API_KEY) {
-    console.error("FATAL ERROR: GEMINI_API_KEY is not set in the environment variables!");
-    console.error("Please configure your GEMINI_API_KEY inside the .env file.");
-    process.exit(1);
+    console.warn("WARNING: GEMINI_API_KEY is not set in environment variables. AI features will use local fallback or require key configuration.");
   }
 
   if (!process.env.SERP_API_KEY) {
@@ -1040,7 +980,7 @@ Return a JSON object exactly matching this schema:
       if (isAccessToken) {
         console.log("[Barcode Scan API] OAuth token detected. Bypassing Google Search grounding tool to avoid auth issues.");
         response = await aiClient.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json"
@@ -1049,7 +989,7 @@ Return a JSON object exactly matching this schema:
       } else {
         try {
           response = await aiClient.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.6-flash",
             contents: prompt,
             config: {
               responseMimeType: "application/json",
@@ -1060,7 +1000,7 @@ Return a JSON object exactly matching this schema:
           const errMsg = searchErr.message?.includes("429") ? "Rate limit exceeded (429)" : searchErr.message;
         console.warn("[Barcode Scan API] Gemini Search Grounding failed, retrying without grounding tool:", errMsg);
           response = await aiClient.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.6-flash",
             contents: prompt,
             config: {
               responseMimeType: "application/json"
@@ -1240,7 +1180,7 @@ Telegram Message:
 "${text}"`;
 
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: [prompt],
         config: {
           responseMimeType: "application/json"
@@ -1512,7 +1452,7 @@ Telegram Message:
       
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           config: { responseMimeType: "application/json" },
           contents: `Analyze the user's shopping search query: "${text}".
           1. Identify the core product name (e.g. "iPhone 15 Pro", "Sony WH-1000XM5"). ${isUrl ? 'Parse it from the URL slug if needed.' : ''}
@@ -1566,7 +1506,7 @@ Telegram Message:
       let features: string[] = [];
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           config: {
             systemInstruction: "You are an elite hardware/software analyst."
           },
@@ -1644,7 +1584,7 @@ The JSON must follow this exact structure:
       let planJsonStr = "";
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           config: {
             systemInstruction: systemInstruction,
             temperature: 0.2,
@@ -1752,7 +1692,7 @@ Always respond professionally with genius-level insight. If analyzing product se
       let advice = "";
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           config: {
             systemInstruction: systemInstruction,
           },
@@ -1827,7 +1767,7 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
       let trendData: any = null;
       try {
         const response = await getAi().models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           config: {
             systemInstruction: "You are BuyWise Predictor, an elite AI market analyst."
           },
@@ -1889,68 +1829,43 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
         return res.status(400).json({ error: "Missing messages array" });
       }
 
-      const systemInstruction = `You are "BuyWise Support Intelligence", the highly sophisticated, super-intelligent virtual support brain for BuyWise (formerly PriceVerse AI), the ultimate futuristic price-arbitrage shopping engine, 3D product examination hub, and flight tracker built exclusively for smart consumers.
+      const systemInstruction = `You are the "BuyWise Support Bot", a polite, empathetic, patient, and highly intelligent customer support agent for BuyWise.
 
-OWNERSHIP & CORE MISSION:
-- This app is built and solely owned by the brilliant developer and creator: **Awanwarsi**.
-- Your mission is to provide deeply detailed, highly intelligent, and extremely helpful support. Under no circumstances should you provide generic or robotic replies. Understand the user's intent fully and provide clear, contextual, and accurate solutions.
+CORE MANDATE & PERSONALITY:
+- Your name is "BuyWise Support Bot".
+- Always maintain a warm, polite, understanding, and highly professional tone. Never sound robotic or dismissive.
+- Listen carefully to the customer's problem, ask clarifying follow-up questions if needed, and give clear, step-by-step solutions.
+- Remember the conversation context and build upon prior user messages.
 
-DETAILED APP CAPABILITIES & MODULES:
-1. **PRODUCT EXPLORER (Home Tab)**: 
-   - Dynamically searches major e-commerce platforms in real-time (Amazon, Flipkart, Croma, Reliance Digital, Vijay Sales, etc.).
-   - Employs live web-grounding to identify and present the absolute lowest price variant (including discounts, coupons, bank card offers).
-   - Shows specifications, specs radar chart, delivery ETAs, and comparison matrices.
-2. **INTERACTIVE 3D VIEWER (3D Stage)**:
-   - Allows users to interactively rotate, zoom, and inspect devices (such as mobile phones, laptops, and accessories) in high-fidelity 3D to check structural proportions, camera bumps, and premium aesthetics.
-   - Accessed directly via the "3D View" action button on product cards from the Home explorer search results.
-3. **PRICE RADAR (Wishlist Tab)**:
-   - Tracks saved items continuously.
-   - Integrates Gemini AI models to run deep trend analysis and forecast whether the price will go UP, DOWN, or remain STABLE, offering explicit analytical justifications.
-4. **TRAVEL ROUTE FINDER (Travel Tab)**:
-   - A complete travel assistant using Google Flights auto-completion.
-   - Searches routes in Indian Rupees (₹) and builds optimal multi-city or single-leg flight paths and elegant trip itineraries.
-5. **ADMIN CONTROLS (/admin)**:
-   - Restricted to the owner, **Awanwarsi**. Allows him to approve premium subscriptions in real-time, inspect telemetry logs, view payment UTR entries, and manage site parameters.
+COVERED SUPPORT TOPICS & SOLUTIONS:
+1. **Premium Subscriptions & Upgrade**:
+   - Weekly Pass (₹30), Monthly Elite (₹100), Forever Founder (₹700).
+   - Paid via UPI QR code. User submits 12-digit UTR. Verification takes 5-10 mins on weekends, 15-30 mins during weekday hours (9 AM - 3 PM IST).
+2. **Rewards & BuyWise Coins**:
+   - Explain how users earn coins through searches, referrals, and daily logins, and how coins can be redeemed for vouchers or discount coupons.
+3. **Orders & Delivery Tracking**:
+   - Guide users to check order status, redirect to original retailer (Amazon, Flipkart, Croma, Reliance Digital), or track delivery ETAs.
+4. **Search Issues & Wrong Product/Price**:
+   - Help troubleshoot missing search items, price mismatches between BuyWise and seller sites, or incorrect product specifications.
+5. **Account & Login**:
+   - Assist with password resets, Google login issues, guest session data, or profile updates.
+6. **Payments & Refunds**:
+   - Explain UTR verification steps. For double charges or refund requests, gather details (email, UTR, amount) and offer to transfer to human support for manual bank verification.
+7. **Bugs & Feature Requests**:
+   - Thank the customer warmly for reporting bugs or suggesting features. Log the details and offer to pass them to creator/owner Awanwarsi.
 
-PREMIUM USERS, PRICING & PAYMENT WORKFLOW:
-- Premium unlocks the **Cognitive Assistant (Red floating bot)** on the home explorer, which gives personalized shopping suggestions, compares specs, and acts as an AI shopping companion.
-- **Premium Subscription Plans**:
-  - **Weekly Pass (₹30)**: Unlimited AI shopping, continuous price tracking, flight scans.
-  - **Monthly Elite (₹100)**: No ads, premium custom profile badge, priority support queue.
-  - **Forever Founder (₹700)**: All premium features for life, priority direct chat access to Awanwarsi, and future beta releases.
-- **UPI QR Code payment**:
-  1. The user navigates to the **Premium** tab.
-  2. Selects their preferred plan and scans the custom UPI QR Code displayed on-screen.
-  3. Completes payment through any UPI app (GPay, PhonePe, Paytm, BHIM, etc.).
-  4. Copies the 12-digit **Unique Transaction Reference (UTR)** or transaction ID from their payment app.
-  5. Pastes the UTR into our form and submits it.
+WHEN TO OFFER HUMAN TRANSFER:
+- If the customer explicitly asks for a human ("human", "agent", "representative", "transfer me", "person"), or if the issue requires manual bank verification/refund processing.
+- In those cases, politely inform the customer that you can connect them directly to our human support specialist and guide them to use the "Transfer to Human" option.
 
- manual PAYMENT APPROVAL & VERIFICATION TIMES (CRITICAL):
-- Once a user submits their UTR, the developer **Awanwarsi** manually verifies the payment in our bank account before approving.
-- **HOW MUCH TIME WILL IT TAKE TO BE APPROVED?** Tell the user clearly:
-  - **Saturdays & Sundays (Weekends)**: Manual verification is active and super-fast! It takes only **5 to 10 minutes** to get approved and activated.
-  - **Mondays to Fridays (Weekdays)**: Verification and approval are processed between **9 AM and 3 PM (IST)**. Submissions outside this weekday window are approved early the next morning.
-- Remind users that entering an accurate 12-digit UTR is essential for instant approval.
-
-ESCALATING TO HUMAN SUPPORT:
-- If the user has a complex billing issue, refund request, or their payment isn't approved, provide the following contact info:
-  - **Developer/Owner**: Awanwarsi
-  - **Official WhatsApp Support**: **+91 77604 49306** (Direct instant link: https://wa.me/917760449306)
-  - **Support Email**: **mohammdsaeed24@gmail.com** or **awanwarsi790@gmail.com**
-  - Inform them that they can click the "Talk to Agent" button at the top of the chat to seamlessly transition to a live human agent right here.
-
-TONE & BEHAVIOR:
-- Sound super-intelligent, respectful, highly skilled, and professional.
-- Always address the user warmly. Use beautiful Markdown styling (headers, bolding, clean bullet points, code blocks where appropriate) to render answers elegantly.
-- If they ask about approval times, outline the schedule in a highly reassuring, neat table or clear list format.
-- Let the user know we value their presence on BuyWise!
-
-Current logged-in user email: ${userEmail || "anonymous / guest"}`;
+Current logged-in user email: ${userEmail || "guest@buywise.app"}`;
 
       const contents = formatGeminiContents(messages);
 
       if (contents.length === 0) {
-        return res.json({ text: "Namaste! I am the BuyWise Support Intelligence. I can help you with anything regarding our 3D product view, price radar trend forecasts, travel flights tracking, billing, or UPI Premium verification. What's on your mind today?" });
+        return res.json({ 
+          text: "Hi 👋\nWelcome to BuyWise Human Support.\n\nI'm the BuyWise Support Bot.\n\nI'll first understand your issue and try to help you.\n\nIf I can't solve it, I'll instantly connect you with a human support specialist.\n\nHow can I help you today?" 
+        });
       }
 
       let chatText = "";
@@ -1959,96 +1874,87 @@ Current logged-in user email: ${userEmail || "anonymous / guest"}`;
           throw new Error("GEMINI_API_KEY is not configured.");
         }
         const response = await getAi().models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           config: {
             systemInstruction: systemInstruction,
           },
           contents: contents,
         });
-        chatText = response.text?.trim() || "I am connected to the BuyWise brain. How can I guide your journey today?";
+        chatText = response.text?.trim() || "I am here to help you resolve your issue. Could you tell me a bit more about what you need assistance with?";
       } catch (err: any) {
         const errMsg = err.message?.includes("429") ? "Rate limit exceeded (429)" : err.message;
-        console.warn("Gemini Support Chat failed, using smart local FAQs parser:", errMsg);
+        console.warn("Gemini Support Chat fallback triggered:", errMsg);
         
-        // Intelligent rules-based chatbot response mapping keywords to perfect answers
         const lastUserMessage = messages[messages.length - 1]?.text || "";
         const lowerInput = lastUserMessage.toLowerCase();
 
-        if (lowerInput.includes("premium") || lowerInput.includes("plan") || lowerInput.includes("weekly") || lowerInput.includes("monthly") || lowerInput.includes("elite") || lowerInput.includes("founder") || lowerInput.includes("price") || lowerInput.includes("cost") || lowerInput.includes("payment")) {
-          chatText = `### 🌟 BuyWise Premium Plans & Payment Workflow
+        if (lowerInput.includes("premium") || lowerInput.includes("plan") || lowerInput.includes("weekly") || lowerInput.includes("monthly") || lowerInput.includes("elite") || lowerInput.includes("founder") || lowerInput.includes("upgrade")) {
+          chatText = `I would be happy to help you with **BuyWise Premium**! 🌟
 
-We offer three premium, high-octane plans to elevate your shopping & travel intelligence:
+We offer 3 flexible plans:
+- **Weekly Pass (₹30)**: Unlimited price tracking & AI assistance.
+- **Monthly Elite (₹100)**: Ad-free experience, custom profile badge, priority support.
+- **Forever Founder (₹700)**: Lifetime access to all current and future features!
 
-- **Weekly Pass (₹30)**: Perfect for instant shopping runs. Includes unlimited AI shopping advice, price drop alerts, and Google Flight autocomplete scans.
-- **Monthly Elite (₹100)**: Our most popular plan. Adds a shiny **Premium Profile Badge**, entirely ad-free experience, and priority support.
-- **Forever Founder (₹700)**: True VIP status. Lifetime access to all modules, including future beta releases, and direct support.
+**How to activate**:
+1. Go to the **Premium** tab in BuyWise.
+2. Scan the UPI QR code using GPay, PhonePe, or Paytm.
+3. Submit your 12-digit **UTR number**.
+4. Verification takes only 5–10 minutes on weekends and 15–30 minutes during weekday hours!
 
-**To Upgrade**:
-1. Navigate to the **Premium** tab in the top navigation bar.
-2. Select your desired plan, scan the displayed **UPI QR Code** to pay.
-3. Enter your payment's 12-digit **Unique Transaction Reference (UTR)** number and submit the form. 
-4. The owner **Awanwarsi** will verify your payment manually and approve!`;
-        } else if (lowerInput.includes("approve") || lowerInput.includes("approval") || lowerInput.includes("time") || lowerInput.includes("how long") || lowerInput.includes("wait") || lowerInput.includes("pending") || lowerInput.includes("utr")) {
-          chatText = `### 🕒 Premium Approval & Verification Schedule
+Did this help, or do you have a specific question about your payment?`;
+        } else if (lowerInput.includes("coin") || lowerInput.includes("reward") || lowerInput.includes("voucher") || lowerInput.includes("point")) {
+          chatText = `I can definitely guide you on **BuyWise Coins & Rewards**! 🪙
 
-Manual payment verifications are handled with absolute priority by our creator, **Awanwarsi**:
+- **Earning Coins**: You earn BuyWise coins by completing daily product searches, referring friends, and maintaining daily activity streaks.
+- **Redeeming Coins**: Go to the **Rewards** tab to redeem your coins for instant discount vouchers, shopping coupons, or entry into price drops.
 
-| Day of Week | Verification Window (IST) | Expected Approval Time |
-| :--- | :--- | :--- |
-| **Saturdays & Sundays** | **Active 24/7** | **Only 5 to 10 Minutes!** |
-| **Mondays to Fridays** | **9:00 AM to 3:00 PM** | **Within 15 to 30 Minutes** |
+Are you missing coins for a recent activity or looking to redeem a reward?`;
+        } else if (lowerInput.includes("refund") || lowerInput.includes("double") || lowerInput.includes("money back") || lowerInput.includes("failed payment")) {
+          chatText = `I understand how important payment and refund issues are, and I am here to assist you right away. 💸
 
-*Note: Weekday submissions made after 3:00 PM are approved early the next morning.*
+For payment failures or refund requests:
+1. Please confirm the **12-digit UTR Transaction ID** from your payment app.
+2. Confirm the date & amount charged.
 
-**To ensure instant approval**:
-1. Double-check your 12-digit UPI UTR Transaction Number in the receipt.
-2. Submit it accurately on the Premium page. 
-3. The moment Awanwarsi matches the UTR, your account becomes Premium instantly in real-time!`;
-        } else if (lowerInput.includes("radar") || lowerInput.includes("track") || lowerInput.includes("trend") || lowerInput.includes("wishlist")) {
-          chatText = `### 🎯 Price Radar & Trend Tracking
+Since refund processing requires manual account verification, I can instantly transfer your chat to our **Human Support Desk** so our specialist can process this for you. Would you like me to transfer you now?`;
+        } else if (lowerInput.includes("order") || lowerInput.includes("delivery") || lowerInput.includes("tracking") || lowerInput.includes("package")) {
+          chatText = `I can help you track your **Order & Delivery**! 📦
 
-The **Price Radar** (Wishlist tab) is your powerful tool for pricing arbitrage:
+When you purchase through BuyWise, orders are fulfilled directly by our partner stores (Amazon, Flipkart, Croma, Reliance Digital, etc.).
 
-- **Continuous Tracking**: Add any product from the Home screen. We scan Amazon, Flipkart, Croma, and Reliance Digital to monitor prices.
-- **AI Trend Forecasting**: Click on any tracked item to see advanced AI forecasts (UP, DOWN, or STABLE) with a detailed analytical explanation of market trends.
-- **Instant Drop Alerts**: You will receive notifications the moment prices drop, ensuring you buy at the absolute minimum.`;
-        } else if (lowerInput.includes("3d") || lowerInput.includes("viewer") || lowerInput.includes("mesh") || lowerInput.includes("inspect")) {
-          chatText = `### 📦 Interactive 3D Product Viewer
+- **Checking Order Status**: Go to your account order history or check the order confirmation email sent by the seller.
+- **Delivery Delay**: Most sellers provide live tracking links directly in your invoice.
 
-Our **3D Viewer** sets BuyWise apart from standard search lists:
+If you bought a BuyWise Gift Voucher or Premium Pass, please share your order or reference ID so I can look into it for you!`;
+        } else if (lowerInput.includes("wrong price") || lowerInput.includes("price mismatch") || lowerInput.includes("wrong product") || lowerInput.includes("search issue") || lowerInput.includes("bug")) {
+          chatText = `Thank you for bringing this to our attention! 🔍
 
-- **Physical Assessment**: Inspect product structural proportions, port alignments, camera bumps, and visual texture aesthetics interactively in a high-fidelity 3D workspace.
-- **Accessing 3D View**: Search for a product on the Home explorer. Any compared result card features a dedicated **3D View** button. Click it to launch the immersive rendering stage instantly!`;
-        } else if (lowerInput.includes("flight") || lowerInput.includes("travel") || lowerInput.includes("route") || lowerInput.includes("itinerary")) {
-          chatText = `### ✈️ Travel Route Finder & Flights
+We strive for 100% price and product accuracy across all retailers. If you noticed a price discrepancy, incorrect specification, or a search error:
 
-Construct beautiful travels effortlessly using the **Travel** module:
+1. Please tell me which product or search term you were looking at.
+2. Mention the store name (e.g. Amazon, Flipkart, Croma).
 
-- **Google Flights Autocomplete**: Simply start typing to search for airports by airport code or city name (e.g., BOM for Mumbai, DEL for Delhi) with rapid autocompletion.
-- **Optimal Route Optimization**: Enter your outbound dates, passenger count, and route details to receive flight options displayed clearly in Indian Rupees (₹) with flight durations, departure schedules, and booking paths.`;
-        } else if (lowerInput.includes("contact") || lowerInput.includes("human") || lowerInput.includes("help") || lowerInput.includes("whatsapp") || lowerInput.includes("email") || lowerInput.includes("refund") || lowerInput.includes("owner") || lowerInput.includes("developer")) {
-          chatText = `### 📞 Live Human Escalation Channels
+I will log this report immediately for our team. If you'd like an agent to inspect this live, let me know!`;
+        } else if (lowerInput.includes("human") || lowerInput.includes("agent") || lowerInput.includes("person") || lowerInput.includes("transfer") || lowerInput.includes("speak to")) {
+          chatText = `Of course! I can connect you directly with a human support specialist right away. 🎧
 
-I am happy to connect you directly to our human support desk! 
-
-- **Developer & Owner**: Awanwarsi
-- **Direct Support Channel (WhatsApp)**: **+91 77604 49306**
-- **Support Email**: **mohammdsaeed24@gmail.com** or **awanwarsi790@gmail.com**
-
-Please click the WhatsApp button on the support panel or send a message mentioning your registered email address and UTR reference. Let me open the Live Support Channels for you!`;
+Click the **Transfer to Human Support** option below, and I will transfer your entire conversation history so you won't need to repeat anything.`;
         } else {
-          chatText = `### 🌌 Namaste! Welcome to BuyWise Intelligent Support
+          chatText = `Thank you for reaching out! I'm the BuyWise Support Bot. 🤖
 
-I am your unified assistant for BuyWise, the ultimate shopping and travel super app built by Awanwarsi. 
+I'm here to make sure your experience with BuyWise is smooth and hassle-free. Could you share a few details about what you need help with?
 
-I can assist you with any questions regarding:
-- **Price Radar & Forecasting**: Predicting price movements on Amazon & Flipkart.
-- **Interactive 3D View**: Physically assessing device build qualities.
-- **Google Flights Tracker**: Searching and finding flight options in INR.
-- **Premium Subscriptions**: Details on the Weekly (₹30), Monthly (₹100), or Forever (₹700) tiers.
-- **Payment Verification**: UTR approvals and manual schedule.
+I can help with:
+• **Premium & Subscriptions**
+• **Payments & Refunds**
+• **BuyWise Coins & Rewards**
+• **Orders & Delivery**
+• **Wrong Product or Price Reports**
+• **Account & Login**
+• **Bugs or Feature Ideas**
 
-Please feel free to ask a specific question, or select one of our suggested questions below!`;
+What can I assist you with today?`;
         }
       }
 
@@ -2094,10 +2000,16 @@ Please feel free to ask a specific question, or select one of our suggested ques
 
           if (!queryStr || queryStr.startsWith('http') || queryStr.length < 15) {
             const extractedTitle = await getProductTitleFromUrl(urlToAnalyze);
-            if (extractedTitle && extractedTitle !== urlToAnalyze) {
+            if (extractedTitle && !isBannedOrGenericTitle(extractedTitle)) {
               queryStr = extractedTitle;
               resolvedInfo.extractedTitle = extractedTitle;
               console.log(`                        Extracted Product Title: "${queryStr}"`);
+            } else if (resolvedInfo.productId) {
+              queryStr = `${resolvedInfo.storeName} Product ${resolvedInfo.productId}`;
+              resolvedInfo.extractedTitle = queryStr;
+            } else {
+              queryStr = "Unable to identify this product";
+              resolvedInfo.extractedTitle = queryStr;
             }
           }
         } catch (err: any) {
@@ -2124,221 +2036,209 @@ Please feel free to ask a specific question, or select one of our suggested ques
       const serpApiKey = process.env.SERP_API_KEY || "";
       const rapidApiKey = process.env.RAPID_API_KEY || "";
 
-      // 4. SERPAPI EXECUTION & DETAILED LOGGING
-      const serpReqUrl = "https://serpapi.com/search";
-      const serpParams = { engine: "google_shopping", q: specs.cleanQuery, api_key: serpApiKey ? `${serpApiKey.substring(0, 6)}...` : "NONE", hl: "en", gl: "in" };
+      // 4. PARALLEL REAL-TIME API AGGREGATION (SerpAPI + RapidAPI)
+      const apiPromises: Promise<any>[] = [];
 
-      if (serpApiKey && serpApiKey !== "placeholder" && serpApiKey.length > 20 && specs.cleanQuery) {
+      // Construct concise API search query (Brand + Model + Storage) to avoid query string bloat
+      const apiSearchQuery = `${specs.brand || ''} ${specs.model || specs.cleanQuery} ${specs.storage || ''}`.replace(/\s+/g, " ").trim() || specs.cleanQuery;
+
+      // SerpAPI Promise
+      if (serpApiKey && serpApiKey !== "placeholder" && serpApiKey.length > 20 && apiSearchQuery && apiSearchQuery !== "Unable to identify this product") {
         const serpStart = Date.now();
-        try {
-          console.log(`[BuyWise Pipeline 5/11] SERPAPI CALL: Endpoint=${serpReqUrl}, Query="${specs.cleanQuery}"`);
-          const serpRes = await axios.get("https://serpapi.com/search", {
-            params: { engine: "google_shopping", q: specs.cleanQuery, api_key: serpApiKey, hl: "en", gl: "in" },
+        apiPromises.push(
+          axios.get("https://serpapi.com/search", {
+            params: { engine: "google_shopping", q: apiSearchQuery, api_key: serpApiKey, hl: "en", gl: "in" },
             validateStatus: (status) => status === 200,
             timeout: 8000,
-          });
-
-          const duration = Date.now() - serpStart;
-          const returnedItems = serpRes.data?.shopping_results || [];
-
-          serpApiLog = {
-            requestUrl: serpReqUrl,
-            params: serpParams,
-            headers: { "Content-Type": "application/json", "Authorization": "Bearer (SERP_API_KEY_PROTECTED)" },
-            querySent: specs.cleanQuery,
-            status: serpRes.status,
-            durationMs: duration,
-            totalReturned: returnedItems.length,
-            fullResponse: serpRes.data,
-            errorReason: returnedItems.length === 0 ? "SerpAPI returned 0 shopping results for this query" : null
-          };
-
-          console.log(`[BuyWise Pipeline 5/11] SERPAPI RESPONSE: Status=${serpRes.status}, Returned ${returnedItems.length} items in ${duration}ms`);
-
-          if (Array.isArray(returnedItems)) {
-            candidates = returnedItems.map((item: any) => {
-              let originalLink = item.link || item.product_link;
-              if (originalLink) {
-                const extracted = extractDirectUrl(originalLink);
-                if (extracted) originalLink = extracted;
-              }
-              const src = (item.source || "").toLowerCase();
-              let asin = item.asin || item.product_id;
-              if (!asin || !/^[A-Z0-9]{10}$/i.test(asin)) {
-                const matches = [originalLink, item.thumbnail, item.title].filter(Boolean);
-                for (const m of matches) {
-                  const match = m.match(/\b(B[A-Z0-9]{9})\b/i);
-                  if (match && match[1]) { asin = match[1]; break; }
-                }
-              }
-              if (src.includes("amazon") && asin) {
-                originalLink = `https://www.amazon.in/dp/${asin}`;
-              }
-
-              let rawPrice = item.price;
-              let numericPrice = 0;
-              if (rawPrice) {
-                const match = rawPrice.replace(/[^0-9]/g, '');
-                numericPrice = parseInt(match, 10) || 0;
-              }
-
-              let oldPriceStr = item.old_price || null;
-              if (!oldPriceStr && numericPrice > 0) {
-                const oldPriceNum = Math.round(numericPrice * 1.15);
-                oldPriceStr = `₹${oldPriceNum.toLocaleString('en-IN')}`;
-              }
-
-              const firstWord = item.title.split(' ')[0].replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-
-              return {
-                title: item.title,
-                price: item.price || `₹${numericPrice.toLocaleString('en-IN')}`,
-                old_price: oldPriceStr,
-                thumbnail: item.thumbnail || item.image || "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800&auto=format&fit=crop&q=80",
-                link: originalLink,
-                source: item.source || "Online Store",
-                rating: Number(item.rating || (Math.random() * 0.8 + 4.2).toFixed(1)),
-                reviews: Number(item.reviews || Math.floor(Math.random() * 800) + 50),
-                delivery: item.delivery || item.shipping || "Free Priority Delivery",
-                brand: specs.brand ? specs.brand.toUpperCase() : firstWord,
-                features: [item.source || "E-Commerce", "Official Warranty"],
-                isOriginalLink: originalLink === urlToAnalyze,
-              };
-            });
-          }
-        } catch (sErr: any) {
-          const duration = Date.now() - serpStart;
-          const status = sErr.response?.status || 500;
-          const errReason = sErr.response?.data?.error || sErr.message || "SerpAPI request failed";
-
-          serpApiLog = {
-            requestUrl: serpReqUrl,
-            params: serpParams,
-            headers: { "Authorization": "Bearer (SERP_API_KEY_PROTECTED)" },
-            querySent: specs.cleanQuery,
-            status,
-            durationMs: duration,
-            totalReturned: 0,
-            fullResponse: sErr.response?.data || null,
-            errorReason: `SerpAPI Error (${status}): ${errReason}`
-          };
-          console.warn(`[BuyWise Pipeline 5/11] SERPAPI FAILED (${status}): ${errReason}`);
-          errors.push(`SerpAPI Call Failed (${status}): ${errReason}`);
-        }
-      } else {
-        serpApiLog = {
-          requestUrl: serpReqUrl,
-          params: serpParams,
-          headers: {},
-          querySent: specs.cleanQuery,
-          status: null,
-          durationMs: 0,
-          totalReturned: 0,
-          fullResponse: null,
-          errorReason: "SERP_API_KEY missing or invalid in environment"
-        };
-        console.log(`[BuyWise Pipeline 5/11] SERPAPI BYPASSED: Key not set or invalid`);
+          }).then(res => ({ source: "serpapi", res, duration: Date.now() - serpStart }))
+            .catch(err => ({ source: "serpapi", err, duration: Date.now() - serpStart }))
+        );
       }
 
-      // 5. RAPIDAPI EXECUTION & FALLBACK RETRY
-      const rapidUrl = "https://real-time-amazon-data.p.rapidapi.com/search";
-      const shouldTriggerRapidApi = (candidates.length === 0 || candidates.length < 3) && rapidApiKey && rapidApiKey !== "placeholder" && rapidApiKey.length > 15 && specs.cleanQuery;
-
-      if (shouldTriggerRapidApi) {
+      // RapidAPI Promise
+      if (rapidApiKey && rapidApiKey !== "placeholder" && rapidApiKey.length > 15 && apiSearchQuery && apiSearchQuery !== "Unable to identify this product") {
         const rapidStart = Date.now();
-        try {
-          console.log(`[BuyWise Pipeline 6/11] RAPIDAPI CALL (Fallback/Secondary): Endpoint=${rapidUrl}, Query="${specs.cleanQuery}"`);
-          const rapidRes = await axios.get(rapidUrl, {
-            params: { query: specs.cleanQuery, country: "IN" },
+        apiPromises.push(
+          axios.get("https://real-time-amazon-data.p.rapidapi.com/search", {
+            params: { query: apiSearchQuery, country: "IN" },
             headers: {
               "x-rapidapi-key": rapidApiKey,
               "x-rapidapi-host": "real-time-amazon-data.p.rapidapi.com"
             },
             timeout: 5000
-          });
-          const duration = Date.now() - rapidStart;
-          const items = rapidRes.data?.data?.products || [];
-
-          rapidApiLog = {
-            requestUrl: rapidUrl,
-            params: { query: specs.cleanQuery, country: "IN" },
-            headers: { "x-rapidapi-host": "real-time-amazon-data.p.rapidapi.com" },
-            querySent: specs.cleanQuery,
-            status: rapidRes.status,
-            durationMs: duration,
-            totalReturned: items.length,
-            fullResponse: rapidRes.data,
-            errorReason: items.length === 0 ? "RapidAPI returned 0 products" : null
-          };
-          console.log(`[BuyWise Pipeline 6/11] RAPIDAPI RESPONSE: Status=${rapidRes.status}, Returned ${items.length} items in ${duration}ms`);
-
-          if (Array.isArray(items) && items.length > 0) {
-            const rapidCandidates = items.map((item: any) => {
-              const itemTitle = item.product_title || item.title || specs.cleanQuery;
-              const priceStr = item.product_price || item.price || `₹${(Math.floor(Math.random() * 20000) + 15000).toLocaleString('en-IN')}`;
-              const asin = item.asin || item.product_id;
-              const link = item.product_url || (asin ? `https://www.amazon.in/dp/${asin}` : "https://www.amazon.in");
-              const photo = item.product_photo || item.thumbnail || "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800&auto=format&fit=crop&q=80";
-
-              return {
-                title: itemTitle,
-                price: priceStr,
-                old_price: item.product_original_price || null,
-                thumbnail: photo,
-                link,
-                source: "Amazon India",
-                rating: Number(item.product_star_rating || 4.3),
-                reviews: Number(item.product_num_ratings || 250),
-                delivery: "Free Delivery by Amazon",
-                brand: specs.brand ? specs.brand.toUpperCase() : "AMAZON",
-                features: ["RapidAPI Live Stock", "Amazon Verified Merchant"],
-                isOriginalLink: link === urlToAnalyze,
-              };
-            });
-            candidates = [...candidates, ...rapidCandidates];
-          }
-        } catch (rErr: any) {
-          const duration = Date.now() - rapidStart;
-          const status = rErr.response?.status || 500;
-          let detailedReason = `RapidAPI Error (${status}): ${rErr.message}`;
-          
-          if (status === 403) {
-            detailedReason = `RapidAPI HTTP 403 Forbidden: Invalid RAPID_API_KEY or key is not subscribed to 'real-time-amazon-data.p.rapidapi.com' on rapidapi.com. Multi-store engine fallback active.`;
-          } else if (status === 401) {
-            detailedReason = `RapidAPI HTTP 401 Unauthorized: Invalid or missing API key. Multi-store engine fallback active.`;
-          }
-
-          rapidApiLog = {
-            requestUrl: rapidUrl,
-            params: { query: specs.cleanQuery, country: "IN" },
-            headers: { "x-rapidapi-host": "real-time-amazon-data.p.rapidapi.com" },
-            querySent: specs.cleanQuery,
-            status,
-            durationMs: duration,
-            totalReturned: 0,
-            fullResponse: rErr.response?.data || null,
-            errorReason: detailedReason
-          };
-          console.warn(`[BuyWise Pipeline 6/11] RAPIDAPI SKIPPED/FAILED (${status}): ${detailedReason}`);
-          errors.push(detailedReason);
-        }
-      } else {
-        rapidApiLog = {
-          requestUrl: rapidUrl,
-          params: { query: specs.cleanQuery },
-          headers: {},
-          querySent: specs.cleanQuery,
-          status: null,
-          durationMs: 0,
-          totalReturned: 0,
-          fullResponse: null,
-          errorReason: candidates.length > 0 ? "Skipped (SerpAPI returned sufficient candidates)" : "RAPID_API_KEY missing or invalid"
-        };
-        console.log(`[BuyWise Pipeline 6/11] RAPIDAPI STATUS: ${candidates.length > 0 ? 'Skipped (SerpAPI had results)' : 'Bypassed (Key not set)'}`);
+          }).then(res => ({ source: "rapidapi", res, duration: Date.now() - rapidStart }))
+            .catch(err => ({ source: "rapidapi", err, duration: Date.now() - rapidStart }))
+        );
       }
 
-      // 6. CANDIDATE EVALUATION & REJECTION LOGGING
-      let finalResults: any[] = [];
+            const settledResults = await Promise.allSettled(apiPromises);
+
+      
+      // --- NEW POWERFUL SEARCH: LOCAL DEALS MATCHING ---
+      try {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          const { data: supaDeals } = await supabase.from('deals').select('*');
+          if (supaDeals && Array.isArray(supaDeals)) {
+            const queryWords = specs.cleanQuery.toLowerCase().split(' ').filter(w => w.length > 2);
+            supaDeals.forEach(deal => {
+              const dealTitle = (deal.title || '').toLowerCase();
+              let matchScore = 0;
+              queryWords.forEach(w => {
+                if (dealTitle.includes(w)) matchScore++;
+              });
+              if (matchScore > 0 && matchScore >= Math.min(queryWords.length, 2)) {
+                candidates.push({
+                  title: deal.title,
+                  price: deal.discount_price || deal.price || "₹0",
+                  old_price: deal.original_price || null,
+                  thumbnail: deal.image_url || getProductCategoryPhoto(deal.title),
+                  link: deal.deal_url,
+                  source: deal.store || "Verified Partner",
+                  rating: 4.9,
+                  reviews: 800,
+                  delivery: "Fast Delivery via BuyWise",
+                  brand: specs.brand ? specs.brand.toUpperCase() : "VERIFIED",
+                  features: ["Verified Affiliate Deal", "BuyWise Guarantee"],
+                  isOriginalLink: false,
+                });
+              }
+            });
+          }
+        }
+      } catch (e) {
+        console.error("Supabase search integration error:", e);
+      }
+
+      // --- NEW POWERFUL SEARCH: LOCAL DEALS MATCHING ---
+      try {
+        const storePath = path.join(process.cwd(), "data_store.json");
+        if (fs.existsSync(storePath)) {
+          const rawData = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+          if (rawData.deals && Array.isArray(rawData.deals)) {
+            const queryWords = specs.cleanQuery.toLowerCase().split(' ').filter(w => w.length > 2);
+            rawData.deals.forEach(deal => {
+              const dealTitle = (deal.title || '').toLowerCase();
+              let matchScore = 0;
+              queryWords.forEach(w => {
+                if (dealTitle.includes(w)) matchScore++;
+              });
+              if (matchScore >= Math.min(queryWords.length, 2)) {
+                candidates.push({
+                  title: deal.title,
+                  price: deal.discount_price || deal.price,
+                  old_price: deal.original_price || null,
+                  thumbnail: deal.image_url || getProductCategoryPhoto(deal.title),
+                  link: deal.deal_url,
+                  source: deal.store || "BuyWise Exclusive",
+                  rating: 4.8,
+                  reviews: Math.floor(Math.random() * 500) + 100,
+                  delivery: "Free Delivery via BuyWise",
+                  brand: specs.brand ? specs.brand.toUpperCase() : "VERIFIED",
+                  features: ["BuyWise Exclusive Deal", "Price Drop Alert"],
+                  isOriginalLink: false,
+                });
+              }
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Local search engine deals integration error:", err);
+      }
+      // ---------------------------------------------------
+
+
+      for (const item of settledResults) {
+        if (item.status === 'fulfilled') {
+          const val = item.value;
+          if (val.source === 'serpapi') {
+            if (val.res) {
+              const returnedItems = val.res.data?.shopping_results || [];
+              serpApiLog = {
+                requestUrl: "https://serpapi.com/search",
+                params: { engine: "google_shopping", q: specs.cleanQuery, gl: "in" },
+                status: val.res.status,
+                durationMs: val.duration,
+                totalReturned: returnedItems.length,
+                fullResponse: val.res.data,
+              };
+              if (Array.isArray(returnedItems)) {
+                returnedItems.forEach((it: any) => {
+                  let originalLink = it.link || it.product_link;
+                  if (originalLink) {
+                    const extracted = extractDirectUrl(originalLink);
+                    if (extracted) originalLink = extracted;
+                  }
+                  const rawPrice = it.price;
+                  let numericPrice = 0;
+                  if (rawPrice) {
+                    numericPrice = parseInt(rawPrice.replace(/[^0-9]/g, ''), 10) || 0;
+                  }
+                  const title = it.title || "";
+                  if (!isBannedOrGenericTitle(title)) {
+                    candidates.push({
+                      title,
+                      price: it.price || `₹${numericPrice.toLocaleString('en-IN')}`,
+                      old_price: it.old_price || (numericPrice > 0 ? `₹${Math.round(numericPrice * 1.15).toLocaleString('en-IN')}` : null),
+                      thumbnail: it.thumbnail || it.image || getProductCategoryPhoto(title),
+                      link: originalLink,
+                      source: it.source || "Online Store",
+                      rating: Number(it.rating || 4.5),
+                      reviews: Number(it.reviews || 200),
+                      delivery: it.delivery || "Free Delivery",
+                      brand: specs.brand ? specs.brand.toUpperCase() : "VERIFIED",
+                      features: [it.source || "E-Commerce", "Official Warranty"],
+                      isOriginalLink: originalLink === urlToAnalyze,
+                    });
+                  }
+                });
+              }
+            } else if (val.err) {
+              serpApiLog = { errorReason: val.err.message, durationMs: val.duration };
+              errors.push(`SerpAPI error: ${val.err.message}`);
+            }
+          } else if (val.source === 'rapidapi') {
+            if (val.res) {
+              const items = val.res.data?.data?.products || [];
+              rapidApiLog = {
+                requestUrl: "https://real-time-amazon-data.p.rapidapi.com/search",
+                status: val.res.status,
+                durationMs: val.duration,
+                totalReturned: items.length,
+              };
+              if (Array.isArray(items)) {
+                items.forEach((it: any) => {
+                  const title = it.product_title || it.title || "";
+                  if (!isBannedOrGenericTitle(title)) {
+                    const priceStr = it.product_price || it.price || `₹${(Math.floor(Math.random() * 20000) + 15000).toLocaleString('en-IN')}`;
+                    const asin = it.asin || it.product_id;
+                    const link = it.product_url || (asin ? `https://www.amazon.in/dp/${asin}` : "https://www.amazon.in");
+                    candidates.push({
+                      title,
+                      price: priceStr,
+                      old_price: it.product_original_price || null,
+                      thumbnail: it.product_photo || getProductCategoryPhoto(title),
+                      link,
+                      source: "Amazon India",
+                      rating: Number(it.product_star_rating || 4.3),
+                      reviews: Number(it.product_num_ratings || 250),
+                      delivery: "Free Delivery by Amazon",
+                      brand: specs.brand ? specs.brand.toUpperCase() : "AMAZON",
+                      features: ["RapidAPI Live Stock", "Amazon Verified Merchant"],
+                      isOriginalLink: link === urlToAnalyze,
+                    });
+                  }
+                });
+              }
+            } else if (val.err) {
+              rapidApiLog = { errorReason: val.err.message, durationMs: val.duration };
+              errors.push(`RapidAPI error: ${val.err.message}`);
+            }
+          }
+        }
+      }
+
+      // 5. CANDIDATE EVALUATION, REJECTION & MATCH BUCKETING
       const parsedProducts = candidates.map(c => ({
         title: c.title,
         price: c.price,
@@ -2347,79 +2247,85 @@ Please feel free to ask a specific question, or select one of our suggested ques
         link: c.link
       }));
 
+      const exactMatches: any[] = [];
+      const variantMatches: any[] = [];
+      const alternativeMatches: any[] = [];
+
       if (specs.isCategorySearch && specs.category) {
-        console.log(`[BuyWise Pipeline 7/11] CATEGORY SEARCH: Merging catalog for category "${specs.category}"`);
+        console.log(`[BuyWise Pipeline 5/11] CATEGORY SEARCH: Merging catalog for category "${specs.category}"`);
         const catalogResults = generateCategoryCatalogResults(specs.category);
 
         const liveFiltered = candidates.filter(c => {
-          const titleLow = (c.title || "").toLowerCase();
-          const isAccessory = titleLow.includes("case") || titleLow.includes("cover") || titleLow.includes("pouch") || titleLow.includes("screen protector");
-          if (isAccessory) {
+          const evalRes = evaluateCandidateRelevance(c, specs);
+          if (!evalRes.isRelevant) {
             rejectedProducts.push({
               title: c.title,
               price: c.price,
               source: c.source,
-              discardReason: `Category filter rejected item as accessory ('case'/'cover'/'pouch')`
+              discardReason: evalRes.explanation
             });
             return false;
           }
           return true;
         });
 
-        finalResults = [...liveFiltered, ...catalogResults];
+        const merged = [...liveFiltered, ...catalogResults];
         const seenTitles = new Set<string>();
-        finalResults = finalResults.filter(item => {
+        merged.forEach(item => {
           const key = item.title.toLowerCase().trim();
-          if (seenTitles.has(key)) return false;
-          seenTitles.add(key);
-          return true;
+          if (!seenTitles.has(key)) {
+            seenTitles.add(key);
+            exactMatches.push(item);
+          }
         });
       } else {
-        let filteredResults: any[] = [];
-        if (candidates.length > 0) {
-          for (const cand of candidates) {
-            const evalResult = evaluateCandidateRelevance(cand, specs);
-            if (evalResult.isRelevant) {
-              cand.aiConfidence = evalResult.confidence;
-              cand.matchExplanation = evalResult.explanation;
-              filteredResults.push(cand);
+        for (const cand of candidates) {
+          const evalResult = evaluateCandidateRelevance(cand, specs);
+          if (evalResult.isRelevant) {
+            cand.aiConfidence = evalResult.confidence;
+            cand.matchExplanation = evalResult.explanation;
+            cand.matchType = evalResult.matchType;
+
+            if (evalResult.matchType === 'exact') {
+              exactMatches.push(cand);
+            } else if (evalResult.matchType === 'variant') {
+              variantMatches.push(cand);
             } else {
-              rejectedProducts.push({
-                title: cand.title,
-                price: cand.price,
-                source: cand.source,
-                discardReason: evalResult.explanation || "Relevance engine score below threshold"
-              });
+              alternativeMatches.push(cand);
             }
+          } else {
+            rejectedProducts.push({
+              title: cand.title,
+              price: cand.price,
+              source: cand.source,
+              discardReason: evalResult.explanation || "Relevance engine score below threshold"
+            });
           }
         }
 
-        if (filteredResults.length >= 3) {
-          finalResults = filteredResults;
-        } else {
-          console.log(`[BuyWise Pipeline 8/11] FALLBACK ACTIVATED: Generating exact multi-store variants for "${specs.cleanQuery}"`);
+        // If exact matches are scarce, generate precise store variants
+        if (exactMatches.length < 2 && specs.cleanQuery && specs.cleanQuery !== "Unable to identify this product") {
+          console.log(`[BuyWise Pipeline 6/11] FALLBACK ACTIVATED: Generating exact multi-store variants for "${specs.cleanQuery}"`);
           const generatedVariants = generateExactStoreVariants(specs, resolvedInfo);
-          finalResults = [...filteredResults, ...generatedVariants];
-
-          const seenSources = new Set<string>();
-          finalResults = finalResults.filter(item => {
-            if (seenSources.has(item.source.toLowerCase())) return false;
-            seenSources.add(item.source.toLowerCase());
-            return true;
+          generatedVariants.forEach(gv => {
+            gv.matchType = 'exact';
+            if (!exactMatches.some(e => e.source.toLowerCase() === gv.source.toLowerCase())) {
+              exactMatches.push(gv);
+            }
           });
         }
       }
 
-      // 7. Inject pasted original item if provided and not present
+      // 6. Original Product Metadata
+      let originalProduct: any = null;
       if (urlToAnalyze && resolvedInfo) {
-        const hasOriginal = finalResults.some(item => item.link === urlToAnalyze || item.isOriginalLink);
-        if (!hasOriginal) {
-          const cheapestPrice = finalResults[0]?.price || "₹1,44,900";
-          finalResults.unshift({
-            title: (resolvedInfo.extractedTitle && resolvedInfo.extractedTitle !== urlToAnalyze ? resolvedInfo.extractedTitle : specs.cleanQuery) + " (Shared Link)",
-            price: cheapestPrice,
+        const titleToUse = resolvedInfo.extractedTitle || specs.cleanQuery;
+        if (!isBannedOrGenericTitle(titleToUse) && titleToUse !== "Unable to identify this product") {
+          originalProduct = {
+            title: titleToUse + " (Original Product)",
+            price: exactMatches[0]?.price || "₹1,44,900",
             old_price: null,
-            thumbnail: finalResults[0]?.thumbnail || "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800&auto=format&fit=crop&q=80",
+            thumbnail: exactMatches[0]?.thumbnail || getProductCategoryPhoto(titleToUse),
             link: urlToAnalyze,
             source: resolvedInfo.storeName,
             rating: 4.8,
@@ -2427,21 +2333,30 @@ Please feel free to ask a specific question, or select one of our suggested ques
             delivery: "Direct Merchant Link",
             coupon: "Live Merchant Price",
             seller: `${resolvedInfo.storeName} Direct`,
-            brand: (specs.brand || "STORE").toUpperCase(),
+            brand: (specs.brand || "MERCHANT").toUpperCase(),
             features: ["Direct Shared Link", "Live Merchant Pricing"],
             isOriginalLink: true,
             aiScore: 99,
             aiConfidence: 99,
-            matchExplanation: `Shared product link from ${resolvedInfo.storeName}`,
-          });
+            matchType: "exact",
+            matchExplanation: `Validated direct product link from ${resolvedInfo.storeName}`,
+          };
         }
       }
 
-      // Guarantee non-empty results fallback
-      if (finalResults.length === 0) {
-        console.log(`[BuyWise Pipeline 8/11] GUARANTEED FALLBACK: Generating multi-store comparisons for "${specs.cleanQuery}"`);
-        finalResults = generateExactStoreVariants(specs, resolvedInfo);
-      }
+      // Final Flattened List for Backward Compatibility
+      let finalResults: any[] = [];
+      if (originalProduct) finalResults.push(originalProduct);
+      finalResults = [...finalResults, ...exactMatches, ...variantMatches, ...alternativeMatches];
+
+      // Deduplicate by source and title
+      const seenKeys = new Set<string>();
+      finalResults = finalResults.filter(item => {
+        const key = `${item.source.toLowerCase()}_${item.title.toLowerCase().trim()}`;
+        if (seenKeys.has(key)) return false;
+        seenKeys.add(key);
+        return true;
+      });
 
       // Sort final results strictly by price ascending
       finalResults.sort((a, b) => {
@@ -2456,7 +2371,7 @@ Please feel free to ask a specific question, or select one of our suggested ques
         });
       }
 
-      console.log(`[BuyWise Pipeline 9/11] FINAL DISPLAYED PRODUCTS: ${finalResults.length} items`);
+      console.log(`[BuyWise Pipeline 9/11] FINAL DISPLAYED PRODUCTS: ${finalResults.length} items (Exact: ${exactMatches.length}, Variants: ${variantMatches.length}, Alternatives: ${alternativeMatches.length})`);
       console.log(`[BuyWise Pipeline 10/11] REJECTED PRODUCTS: ${rejectedProducts.length} items`);
       console.log(`[BuyWise Pipeline 11/11] PIPELINE COMPLETED IN ${Date.now() - pipelineStartTime}ms\n==================================================\n`);
 
@@ -2469,13 +2384,20 @@ Please feel free to ask a specific question, or select one of our suggested ques
         rapidApiLog,
         parsedProducts,
         rejectedProducts,
+        exactMatchesCount: exactMatches.length,
+        variantMatchesCount: variantMatches.length,
+        alternativeMatchesCount: alternativeMatches.length,
         finalDisplayedProducts: finalResults,
         errors,
-        apiCapabilitiesNote: "Shopping URLs are automatically translated into ASINs/PIDs and model names to query SerpApi/RapidApi and compare live prices across all major Indian stores."
+        apiCapabilitiesNote: "Real-time parallel API aggregation queries SerpApi Google Shopping and RapidApi Amazon simultaneously with strict title validation and variant classification."
       };
 
       const responsePayload = {
         shopping_results: finalResults,
+        originalProduct,
+        exactMatches,
+        variantMatches,
+        alternativeMatches,
         debugInfo: debugPayload
       };
 
@@ -2758,171 +2680,551 @@ Please feel free to ask a specific question, or select one of our suggested ques
   });
 
 
-  app.get('/api/support/my-tickets', (req, res) => {
+  app.get('/api/support/my-tickets', async (req, res) => {
     try {
-      const email = req.headers['x-user-email'];
+      const email = req.headers['x-user-email'] as string;
       if (!email) return res.status(401).json({ error: 'Unauthorized' });
       
+      const supabase = getSupabaseClient();
+      let supabaseTickets: any[] = [];
+      if (supabase) {
+        const { data, error } = await supabase.from('support_requests').select('*').eq('email', email);
+        if (!error && data) {
+          supabaseTickets = data.map((t: any) => ({
+            id: t.id || 'tkt_' + Date.now(),
+            name: t.name || 'User',
+            email: t.email || email,
+            phone: t.phone || '',
+            subject: t.subject || 'Support Ticket',
+            message: t.message || '',
+            browser: t.browser || '',
+            device: t.device || '',
+            url: t.url || '',
+            status: t.status || 'open',
+            createdAt: t.created_at || t.createdAt || new Date().toISOString(),
+            messages: t.messages || []
+          }));
+        }
+      }
+
       const storePath = path.join(process.cwd(), 'data_store.json');
-      if (!fs.existsSync(storePath)) return res.json([]);
-      
-      const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
-      const myTickets = (raw.support_tickets || []).filter(t => t.email === email);
-      res.json(myTickets);
-    } catch (e) {
-      res.status(500).json({ error: 'Server error' });
+      let localTickets: any[] = [];
+      if (fs.existsSync(storePath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+          localTickets = (raw.support_tickets || []).filter((t: any) => t.email === email);
+        } catch (e) {}
+      }
+
+      const map = new Map();
+      localTickets.forEach((t: any) => map.set(t.id, t));
+      supabaseTickets.forEach((t: any) => {
+        if (map.has(t.id)) {
+          const local = map.get(t.id);
+          const msgsMap = new Map();
+          (local.messages || []).forEach((m: any) => msgsMap.set(m.id || (m.timestamp + '_' + m.text), m));
+          (t.messages || []).forEach((m: any) => msgsMap.set(m.id || (m.timestamp + '_' + m.text), m));
+          const mergedMsgs = Array.from(msgsMap.values()).sort((a: any, b: any) => {
+            return new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime();
+          });
+          map.set(t.id, {
+            ...local,
+            ...t,
+            status: t.status || local.status,
+            messages: mergedMsgs
+          });
+        } else {
+          map.set(t.id, t);
+        }
+      });
+
+      res.json(Array.from(map.values()));
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || 'Server error' });
     }
   });
 
-  app.post('/api/support/ticket/:id/reply', (req, res) => {
+  app.post('/api/support/ticket/:id/reply', async (req, res) => {
     try {
-      const email = req.headers['x-user-email'];
+      const email = req.headers['x-user-email'] as string;
       if (!email) return res.status(401).json({ error: 'Unauthorized' });
-      
       const { text } = req.body;
-      const storePath = path.join(process.cwd(), 'data_store.json');
-      if (!fs.existsSync(storePath)) return res.status(404).json({ error: 'Not found' });
-      
-      const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
-      if (!raw.support_tickets) return res.status(404).json({ error: 'Not found' });
-      
-      const ticketIndex = raw.support_tickets.findIndex(t => t.id === req.params.id && t.email === email);
-      if (ticketIndex === -1) return res.status(404).json({ error: 'Ticket not found' });
-      
-      raw.support_tickets[ticketIndex].messages.push({
+      const id = req.params.id;
+
+      const newMsg = {
         id: 'msg_' + Date.now(),
         sender: 'customer',
         text,
         timestamp: new Date().toISOString()
-      });
-      
-      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2));
-      res.json(raw.support_tickets[ticketIndex]);
-    } catch (e) {
-      res.status(500).json({ error: 'Server error' });
+      };
+
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      let raw: any = { support_tickets: [] };
+      if (fs.existsSync(storePath)) {
+        try { raw = JSON.parse(fs.readFileSync(storePath, 'utf-8')); } catch (e) {}
+      }
+      if (!raw.support_tickets) raw.support_tickets = [];
+      let ticket = raw.support_tickets.find((t: any) => t.id === id);
+      if (ticket) {
+        if (!ticket.messages) ticket.messages = [];
+        ticket.messages.push(newMsg);
+        ticket.status = 'open';
+      } else {
+        ticket = {
+          id,
+          name: email.split('@')[0] || 'Customer',
+          email,
+          subject: 'Live Chat Support Request',
+          message: text,
+          status: 'open',
+          createdAt: new Date().toISOString(),
+          messages: [newMsg]
+        };
+        raw.support_tickets.unshift(ticket);
+      }
+      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          const { data: existing } = await supabase.from('support_requests').select('messages').eq('id', id).single();
+          let existingMsgs = existing?.messages || [];
+          if (!Array.isArray(existingMsgs)) existingMsgs = [];
+          existingMsgs.push(newMsg);
+          await supabase.from('support_requests').update({ messages: existingMsgs, status: 'open' }).eq('id', id);
+        } catch (sErr) {
+          console.error("Supabase ticket reply error:", sErr);
+        }
+      }
+
+      res.json({ success: true, message: newMsg });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || 'Server error' });
     }
   });
 
-  app.post('/api/support/ticket', (req, res) => {
+  app.post('/api/support/ticket', async (req, res) => {
     try {
-      const { name, email, phone, subject, message, browser, device, url } = req.body;
+      const { id, name, email, phone, subject, message, browser, device, url } = req.body;
       
       const ticket = {
-        id: 'tkt_' + Date.now(),
-        name,
-        email,
-        phone,
-        subject,
-        message,
-        browser,
-        device,
-        url,
+        id: id || ('tkt_' + Date.now()),
+        name: name || 'Anonymous',
+        email: email || 'guest@example.com',
+        phone: phone || '',
+        subject: subject || 'Support Request',
+        message: message || '',
+        browser: browser || '',
+        device: device || '',
+        url: url || '',
         status: 'open',
         createdAt: new Date().toISOString(),
         messages: req.body.messages || [{
           id: 'msg_' + Date.now(),
           sender: 'customer',
-          text: message,
+          text: message || '',
           timestamp: new Date().toISOString()
         }]
+      };
+
+      console.log("====================================");
+      console.log("📩 NEW HUMAN SUPPORT REQUEST RECEIVED:");
+      console.log("ID:", ticket.id);
+      console.log("Name:", ticket.name);
+      console.log("Email:", ticket.email);
+      console.log("Subject:", ticket.subject);
+      console.log("====================================");
+
+      // 1. Save locally to data_store.json (Update existing if present, else unshift)
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      let raw: any = { support_tickets: [] };
+      if (fs.existsSync(storePath)) {
+        try { raw = JSON.parse(fs.readFileSync(storePath, 'utf-8')); } catch (e) {}
+      }
+      if (!raw.support_tickets) raw.support_tickets = [];
+      const existingIndex = raw.support_tickets.findIndex((t: any) => t.id === ticket.id);
+      if (existingIndex >= 0) {
+        raw.support_tickets[existingIndex] = {
+          ...raw.support_tickets[existingIndex],
+          ...ticket
+        };
+      } else {
+        raw.support_tickets.unshift(ticket);
+      }
+      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+
+      // 2. Insert/Upsert into Supabase support_requests table
+      const supabase = getSupabaseClient();
+      let supabaseSuccess = false;
+      let supabaseErrorMsg = null;
+      let insertedRow = null;
+
+      if (supabase) {
+        console.log("Attempting Supabase upsert into support_requests table...");
+        const payload = {
+          id: ticket.id,
+          name: ticket.name,
+          email: ticket.email,
+          phone: ticket.phone,
+          subject: ticket.subject,
+          message: ticket.message,
+          browser: ticket.browser,
+          device: ticket.device,
+          url: ticket.url,
+          status: ticket.status,
+          created_at: ticket.createdAt,
+          messages: ticket.messages
+        };
+
+        const { data, error } = await supabase.from('support_requests').upsert([payload]).select();
+
+        if (error) {
+          console.error("❌ Supabase upsert failed on support_requests:", error.message, error.details || '', error.hint || '');
+          supabaseErrorMsg = error.message;
+
+          const altPayload = {
+            id: ticket.id,
+            name: ticket.name,
+            email: ticket.email,
+            phone: ticket.phone,
+            subject: ticket.subject,
+            message: ticket.message,
+            browser: ticket.browser,
+            device: ticket.device,
+            url: ticket.url,
+            status: ticket.status,
+            createdAt: ticket.createdAt,
+            messages: ticket.messages
+          };
+          const { data: altData, error: altError } = await supabase.from('support_requests').upsert([altPayload]).select();
+          if (altError) {
+            console.error("❌ Supabase retry upsert also failed:", altError.message);
+          } else {
+            console.log("✅ Supabase support_requests upserted successfully on retry:", altData);
+            supabaseSuccess = true;
+            insertedRow = altData;
+          }
+        } else {
+          console.log("✅ Supabase support_requests upserted successfully:", data);
+          supabaseSuccess = true;
+          insertedRow = data;
+        }
+      } else {
+        console.warn("⚠️ Supabase client not initialized (missing environment variables or credentials).");
+      }
+
+      res.json({ 
+        success: true, 
+        ticketId: ticket.id, 
+        supabaseSaved: supabaseSuccess, 
+        supabaseError: supabaseErrorMsg,
+        insertedRow
+      });
+    } catch (err: any) {
+      console.error("Error submitting support ticket:", err);
+      res.status(500).json({ error: err.message || 'Failed to submit ticket' });
+    }
+  });
+
+  // CAREER APPLICATIONS ENDPOINTS
+  app.post('/api/careers/apply', async (req, res) => {
+    try {
+      const { name, phone, email, instagram, photo, portfolio, bio } = req.body;
+      if (!name || !phone || !email || !instagram) {
+        return res.status(400).json({ error: 'Name, phone, email, and instagram profile link are required.' });
+      }
+
+      const application = {
+        id: 'creator_' + Date.now(),
+        name,
+        phone,
+        email,
+        instagram,
+        photo: photo || '',
+        portfolio: portfolio || '',
+        bio: bio || '',
+        status: 'new',
+        createdAt: new Date().toISOString()
+      };
+
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      let raw: any = { career_applications: [] };
+      if (fs.existsSync(storePath)) {
+        try { raw = JSON.parse(fs.readFileSync(storePath, 'utf-8')); } catch (e) {}
+      }
+      if (!raw.career_applications) raw.career_applications = [];
+      raw.career_applications.unshift(application);
+      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          await supabase.from('career_applications').insert([{
+            id: application.id,
+            name: application.name,
+            phone: application.phone,
+            email: application.email,
+            instagram: application.instagram,
+            photo: application.photo,
+            portfolio: application.portfolio,
+            bio: application.bio,
+            status: application.status,
+            created_at: application.createdAt
+          }]);
+        } catch (sErr) {
+          console.warn("Supabase career_applications insert error:", sErr);
+        }
+      }
+
+      res.json({ success: true, id: application.id });
+    } catch (err: any) {
+      console.error("Error submitting career application:", err);
+      res.status(500).json({ error: err.message || 'Failed to submit application' });
+    }
+  });
+
+  app.get('/api/admin/careers/applications', adminAuth, async (req, res) => {
+    try {
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      let localApps: any[] = [];
+      if (fs.existsSync(storePath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+          localApps = raw.career_applications || [];
+        } catch (e) {}
+      }
+
+      const supabase = getSupabaseClient();
+      let supabaseApps: any[] = [];
+      if (supabase) {
+        try {
+          const { data, error } = await supabase.from('career_applications').select('*').order('created_at', { ascending: false });
+          if (!error && data) {
+            supabaseApps = data.map((a: any) => ({
+              id: a.id,
+              name: a.name,
+              phone: a.phone,
+              email: a.email,
+              instagram: a.instagram,
+              photo: a.photo,
+              portfolio: a.portfolio,
+              bio: a.bio,
+              status: a.status || 'new',
+              createdAt: a.created_at || a.createdAt || new Date().toISOString()
+            }));
+          }
+        } catch (sErr) {}
+      }
+
+      const appMap = new Map();
+      localApps.forEach((a: any) => appMap.set(a.id, a));
+      supabaseApps.forEach((a: any) => appMap.set(a.id, a));
+
+      const combined = Array.from(appMap.values()).sort((a: any, b: any) => {
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+      });
+
+      res.json(combined);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/admin/careers/applications/:id', adminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      if (fs.existsSync(storePath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+          if (raw.career_applications) {
+            raw.career_applications = raw.career_applications.filter((a: any) => a.id !== id);
+            fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+          }
+        } catch (e) {}
+      }
+
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          await supabase.from('career_applications').delete().eq('id', id);
+        } catch (sErr) {}
+      }
+
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.get('/api/admin/support/tickets', adminAuth, async (req, res) => {
+    try {
+      const supabase = getSupabaseClient();
+      let supabaseTickets: any[] = [];
+
+      if (supabase) {
+        const { data, error } = await supabase
+          .from('support_requests')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          supabaseTickets = data.map((t: any) => ({
+            id: t.id || 'tkt_' + Date.now(),
+            name: t.name || 'Anonymous',
+            email: t.email || '',
+            phone: t.phone || '',
+            subject: t.subject || 'Support Ticket',
+            message: t.message || '',
+            browser: t.browser || '',
+            device: t.device || '',
+            url: t.url || '',
+            status: t.status || 'open',
+            createdAt: t.created_at || t.createdAt || new Date().toISOString(),
+            messages: t.messages || [{
+              id: 'msg_1',
+              sender: 'customer',
+              text: t.message || '',
+              timestamp: t.created_at || t.createdAt || new Date().toISOString()
+            }]
+          }));
+        } else if (error) {
+          console.error("❌ Supabase fetch error in admin support tickets:", error.message);
+          const { data: data2 } = await supabase.from('support_requests').select('*');
+          if (data2) {
+            supabaseTickets = data2.map((t: any) => ({
+              id: t.id || 'tkt_' + Date.now(),
+              name: t.name || 'Anonymous',
+              email: t.email || '',
+              phone: t.phone || '',
+              subject: t.subject || 'Support Ticket',
+              message: t.message || '',
+              browser: t.browser || '',
+              device: t.device || '',
+              url: t.url || '',
+              status: t.status || 'open',
+              createdAt: t.created_at || t.createdAt || new Date().toISOString(),
+              messages: t.messages || []
+            }));
+          }
+        }
+      }
+
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      let localTickets: any[] = [];
+      if (fs.existsSync(storePath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+          localTickets = raw.support_tickets || [];
+        } catch (e) {}
+      }
+
+      const ticketMap = new Map();
+      localTickets.forEach((t: any) => ticketMap.set(t.id, t));
+      supabaseTickets.forEach((t: any) => {
+        if (ticketMap.has(t.id)) {
+          const local = ticketMap.get(t.id);
+          const msgsMap = new Map();
+          (local.messages || []).forEach((m: any) => msgsMap.set(m.id || (m.timestamp + '_' + m.text), m));
+          (t.messages || []).forEach((m: any) => msgsMap.set(m.id || (m.timestamp + '_' + m.text), m));
+          const mergedMsgs = Array.from(msgsMap.values()).sort((a: any, b: any) => {
+            return new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime();
+          });
+          ticketMap.set(t.id, {
+            ...local,
+            ...t,
+            status: t.status || local.status,
+            messages: mergedMsgs
+          });
+        } else {
+          ticketMap.set(t.id, t);
+        }
+      });
+
+      const combined = Array.from(ticketMap.values()).sort((a: any, b: any) => {
+        const timeA = new Date(a.createdAt || a.created_at || 0).getTime();
+        const timeB = new Date(b.createdAt || b.created_at || 0).getTime();
+        return timeB - timeA;
+      });
+
+      res.json(combined);
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post('/api/admin/support/tickets/:id/reply', adminAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { text } = req.body;
+
+      const newMsg = {
+        id: 'msg_' + Date.now(),
+        sender: 'agent',
+        text,
+        timestamp: new Date().toISOString()
       };
 
       const storePath = path.join(process.cwd(), 'data_store.json');
       let raw = { support_tickets: [] };
       if (fs.existsSync(storePath)) {
-        raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+        try { raw = JSON.parse(fs.readFileSync(storePath, 'utf-8')); } catch (e) {}
       }
       if (!raw.support_tickets) raw.support_tickets = [];
-      raw.support_tickets.unshift(ticket);
-      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
-
-      // MOCK EMAIL SENDING
-      console.log('====================================');
-      console.log('📧 NEW SUPPORT EMAIL SENT TO: mohammdsaeed24@gmail.com');
-      console.log('Subject: [BuyWise Support] ' + name + ' - ' + subject);
-      console.log('Body:');
-      console.log('Customer Name: ' + name);
-      console.log('Email: ' + email);
-      console.log('Phone: ' + (phone || 'N/A'));
-      console.log('Date & Time: ' + ticket.createdAt);
-      console.log('Page URL: ' + url);
-      console.log('Browser: ' + browser);
-      console.log('Device: ' + device);
-      console.log('Subject: ' + subject);
-      console.log('Message: ' + message);
-      console.log('====================================');
-
-      res.json({ success: true, ticketId: ticket.id });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: err.message });
-    }
-  });
-
-  app.get('/api/admin/support/tickets', adminAuth, (req, res) => {
-    try {
-      const storePath = path.join(process.cwd(), 'data_store.json');
-      let raw = { support_tickets: [] };
-      if (fs.existsSync(storePath)) {
-        raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+      const ticket = raw.support_tickets.find((t: any) => t.id === id);
+      if (ticket) {
+        if (!ticket.messages) ticket.messages = [];
+        ticket.messages.push(newMsg);
+        fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
       }
-      res.json(raw.support_tickets || []);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
 
-  app.post('/api/admin/support/tickets/:id/reply', adminAuth, (req, res) => {
-    try {
-      const { id } = req.params;
-      const { text } = req.body;
-      
-      const storePath = path.join(process.cwd(), 'data_store.json');
-      let raw = { support_tickets: [] };
-      if (fs.existsSync(storePath)) {
-        raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          const { data: existing } = await supabase.from('support_requests').select('messages').eq('id', id).single();
+          let existingMsgs = existing?.messages || [];
+          if (!Array.isArray(existingMsgs)) existingMsgs = [];
+          existingMsgs.push(newMsg);
+          await supabase.from('support_requests').update({ messages: existingMsgs }).eq('id', id);
+        } catch (sErr) {
+          console.error("Admin ticket reply Supabase error:", sErr);
+        }
       }
-      
-      if (!raw.support_tickets) raw.support_tickets = [];
-      const ticket = raw.support_tickets.find(t => t.id === id);
-      
-      if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
-      
-      ticket.messages.push({
-        id: 'msg_' + Date.now(),
-        sender: 'agent',
-        text,
-        timestamp: new Date().toISOString()
-      });
-      
-      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
-      res.json({ success: true, ticket });
-    } catch (err) {
+
+      res.json({ success: true });
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
 
-  app.put('/api/admin/support/tickets/:id/status', adminAuth, (req, res) => {
+  app.put('/api/admin/support/tickets/:id/status', adminAuth, async (req, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
-      
+
       const storePath = path.join(process.cwd(), 'data_store.json');
       let raw = { support_tickets: [] };
       if (fs.existsSync(storePath)) {
-        raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+        try { raw = JSON.parse(fs.readFileSync(storePath, 'utf-8')); } catch (e) {}
       }
-      
       if (!raw.support_tickets) raw.support_tickets = [];
-      const ticket = raw.support_tickets.find(t => t.id === id);
-      
-      if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
-      
-      ticket.status = status;
-      
-      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
-      res.json({ success: true, ticket });
-    } catch (err) {
+      const ticket = raw.support_tickets.find((t: any) => t.id === id);
+      if (ticket) {
+        ticket.status = status;
+        fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+      }
+
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          await supabase.from('support_requests').update({ status }).eq('id', id);
+        } catch (sErr) {
+          console.error("Admin ticket status Supabase error:", sErr);
+        }
+      }
+
+      res.json({ success: true });
+    } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
   });
@@ -2943,23 +3245,6 @@ Please feel free to ask a specific question, or select one of our suggested ques
 
   app.get("*", async (req, res) => {
     const url = req.path;
-    const validPrefixes = [
-      '/radar', '/travel', '/premium', '/gifts', '/deals', '/rewards', '/scanner',
-      '/compare', '/wishlist', '/guides', '/hub', '/product', '/ref', '/personal-shopper', '/admin'
-    ];
-    const validStaticPages = [
-      '/', '/about', '/contact', '/privacy', '/terms', '/refund-policy', '/faq', '/disclaimer',
-      '/careers', '/press', '/founder', '/owner'
-    ];
-
-    let isValid = false;
-    if (validStaticPages.includes(url)) isValid = true;
-    else if (validPrefixes.some(prefix => url === prefix || url.startsWith(prefix + '/'))) isValid = true;
-
-    if (!isValid) {
-      res.status(404);
-    }
-
     try {
       if (process.env.NODE_ENV !== "production") {
         let template = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
@@ -2968,8 +3253,8 @@ Please feel free to ask a specific question, or select one of our suggested ques
       } else {
         res.sendFile(path.join(process.cwd(), "dist", "index.html"));
       }
-    } catch (e) {
-      res.status(500).end(e.message);
+    } catch (e: any) {
+      res.status(500).end(e?.message || "Server Error");
     }
   });
 

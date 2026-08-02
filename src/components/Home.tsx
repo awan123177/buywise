@@ -151,14 +151,6 @@ export default function Home() {
       
       setSearchingStatus(`Deep Search: ${detected}`);
 
-      // Apply constraints from AI
-      if (detectedData.minPrice) setMinPrice(detectedData.minPrice);
-      if (detectedData.maxPrice) setMaxPrice(detectedData.maxPrice);
-      if (detectedData.brand) setSelectedBrands(prev => prev.includes(detectedData.brand) ? prev : [...prev, detectedData.brand]);
-      if (detectedData.minPrice || detectedData.maxPrice || detectedData.brand) {
-        setShowFilters(true);
-      }
-
       // Extract features dynamically in parallel
       const featuresPromise = extractProductFeatures(detected);
       const dataPromise = searchProducts(detected, activeQuery);
@@ -177,8 +169,14 @@ export default function Home() {
            if (!rating) rating = (Math.random() * 1.5 + 3.5).toFixed(1);
            if (!reviews) reviews = Math.floor(Math.random() * 500) + 10;
            
-           // Simple heuristic to guess brand from first word of title
-           const brand = item.title.split(' ')[0].replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+           // Derive brand accurately from item.brand or title
+           let itemBrand = item.brand ? String(item.brand).trim().toUpperCase() : "";
+           if (!itemBrand || itemBrand === "UNKNOWN" || itemBrand === "VERIFIED") {
+             const knownBrands = ["APPLE", "SAMSUNG", "SONY", "DELL", "HP", "LENOVO", "ONEPLUS", "GOOGLE", "XIAOMI", "REALME", "ASUS", "ACER", "MOTOROLA", "NOTHING", "NOKIA", "BOAT", "JBL", "NOISE"];
+             const titleUpper = (item.title || "").toUpperCase();
+             const matched = knownBrands.find(b => titleUpper.includes(b));
+             itemBrand = matched || (item.title || "").split(' ')[0].replace(/[^A-Za-z0-9]/g, '').toUpperCase() || 'UNKNOWN';
+           }
 
            return {
              title: item.title,
@@ -191,7 +189,7 @@ export default function Home() {
              delivery: item.delivery,
              old_price: item.old_price,
              features: features,
-             brand: brand || 'UNKNOWN',
+             brand: itemBrand,
              isOriginalLink: item.isOriginalLink || false
            };
          });
@@ -221,7 +219,7 @@ export default function Home() {
     }
   };
 
-  const uniqueBrands = useMemo(() => Array.from(new Set(results.map(r => r.brand))).slice(0, 10), [results]);
+  const uniqueBrands = useMemo(() => Array.from(new Set(results.map(r => r.brand))).filter(Boolean).slice(0, 10), [results]);
   const allSpecs = useMemo(() => {
      const specs = new Set<string>();
      results.forEach(r => r.features?.forEach((f: string) => specs.add(f)));
@@ -230,19 +228,29 @@ export default function Home() {
 
   const filteredResults = useMemo(() => {
      return results.filter(item => {
-        const pValue = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+        const pValue = parseInt((item.price || '').replace(/[^0-9]/g, ''), 10) || 0;
         if (minPrice !== '' && pValue < Number(minPrice)) return false;
         if (maxPrice !== '' && pValue > Number(maxPrice)) return false;
-        if (selectedBrands.length > 0 && !selectedBrands.includes(item.brand)) return false;
-        if (selectedRating > 0 && item.rating < selectedRating) return false;
-        
-        if (selectedSpecs.length > 0) {
-            // Check if product features contain all selected specs
-            // Wait, we can do AT LEAST ONE or ALL. Let's do AT LEAST ONE for broader results or ALL for strict. Let's do ALL.
-            const hasSpecs = selectedSpecs.every(spec => 
-                item.features?.includes(spec) || item.title.toLowerCase().includes(spec.toLowerCase())
+
+        if (selectedBrands.length > 0) {
+          const isBrandMatch = selectedBrands.some(sb => {
+            const sbUpper = sb.trim().toUpperCase();
+            return (
+              item.brand.toUpperCase() === sbUpper ||
+              item.title.toUpperCase().includes(sbUpper)
             );
-            if (!hasSpecs) return false;
+          });
+          if (!isBrandMatch) return false;
+        }
+
+        if (selectedRating > 0 && item.rating < selectedRating) return false;
+
+        if (selectedSpecs.length > 0) {
+          const hasSpecs = selectedSpecs.some(spec =>
+            item.features?.some((f: string) => f.toLowerCase().includes(spec.toLowerCase())) ||
+            item.title.toLowerCase().includes(spec.toLowerCase())
+          );
+          if (!hasSpecs) return false;
         }
         return true;
      });
@@ -489,15 +497,22 @@ export default function Home() {
                             <Filter size={12} /> Manufacturer Entity
                           </div>
                           <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto scrollbar-thin scrollbar-thumb-[#111111]">
-                            {uniqueBrands.map(brand => (
-                              <button
-                                key={brand}
-                                onClick={() => setSelectedBrands(prev => prev.includes(brand) ? prev.filter(b => b !== brand) : [...prev, brand])}
-                                className={`px-3 py-1.5 text-[10px] font-black tracking-widest rounded-lg border transition-colors ${selectedBrands.includes(brand) ? 'bg-[#FF3B30]/20 border-[#FF3B30] text-[#FF3B30]' : 'bg-transparent border-[rgba(255,255,255,0.1)] text-white/70 hover:border-[#FF3B30]/50'}`}
-                              >
-                                {brand}
-                              </button>
-                            ))}
+                            {uniqueBrands.map(brand => {
+                              const isSelected = selectedBrands.some(b => b.toUpperCase() === brand.toUpperCase());
+                              return (
+                                <button
+                                  key={brand}
+                                  onClick={() => setSelectedBrands(prev => 
+                                    prev.some(b => b.toUpperCase() === brand.toUpperCase())
+                                      ? prev.filter(b => b.toUpperCase() !== brand.toUpperCase())
+                                      : [...prev, brand]
+                                  )}
+                                  className={`px-3 py-1.5 text-[10px] font-black tracking-widest rounded-lg border transition-colors ${isSelected ? 'bg-[#FF3B30]/20 border-[#FF3B30] text-[#FF3B30]' : 'bg-transparent border-[rgba(255,255,255,0.1)] text-white/70 hover:border-[#FF3B30]/50'}`}
+                                >
+                                  {brand}
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
 
