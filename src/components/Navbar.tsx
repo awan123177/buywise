@@ -4,6 +4,7 @@ import { Diamond, Search, History, User, LayoutDashboard, LogOut, ShieldCheck, M
 import { Star } from 'lucide-react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import CurrencySelector from './CurrencySelector';
 import VisualSearch from './VisualSearch';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
@@ -13,6 +14,23 @@ import GooeyNav from './GooeyNav';
 import Dock from './Dock';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
 import toast from 'react-hot-toast';
+
+const GOOEY_NAV_ITEMS = [
+  { label: 'HOME', href: '/' },
+  { label: 'COMPARE', href: '/compare' },
+  { label: 'SHOPPER', href: '/personal-shopper' },
+  { label: 'DEALS', href: '/deals' },
+  { label: 'GUIDES', href: '/guides' },
+  { label: 'SCANNER', href: '/scanner' },
+  { label: 'RADAR', href: '/radar' },
+  { label: 'TRAVEL', href: '/travel' },
+  { label: 'GIFTS', href: '/gifts' },
+  { label: 'CLUB', href: '/rewards' },
+  { label: 'PREMIUM', href: '/premium' },
+  { label: 'SUPPORT', href: '/support' },
+  { label: 'FOUNDER', href: '/founder' },
+  { label: 'ADMIN', href: '/admin' },
+];
 
 export default function Navbar() {
   const location = useLocation();
@@ -25,6 +43,15 @@ export default function Navbar() {
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('theme');
@@ -102,41 +129,24 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-[100] h-20 md:h-24 px-4 md:px-16 flex items-center justify-between border-b border-white/5 bg-[#000000] transition-all">
+      <nav className={`fixed top-0 left-0 right-0 z-[100] px-4 md:px-16 flex items-center justify-between border-b border-white/5 transition-all duration-300 ${isScrolled ? 'h-16 md:h-20 bg-[#000000]/90 backdrop-blur-md shadow-lg shadow-black/20' : 'h-20 md:h-24 bg-[#000000]'}`}>
         <Link to="/" className="flex items-center gap-4 md:gap-6 group">
           <div className="relative hidden sm:block">
-            <div className="w-10 h-10 md:w-12 md:h-12 relative transition-all duration-500 group-hover:rotate-180">
-              <div className="absolute top-0 left-0 w-6 h-6 md:w-8 md:h-8 bg-[#FF3B30] border border-white/5 mix-blend-screen shadow-[0_0_20px_rgba(255,59,48,0.3)]"></div>
-              <div className="absolute bottom-0 right-0 w-6 h-6 md:w-8 md:h-8 bg-transparent border border-white/10 backdrop-blur-sm"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 md:w-3 md:h-3 bg-white z-10 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"></div>
+            <div className={`relative transition-all duration-500 group-hover:rotate-180 ${isScrolled ? 'w-8 h-8 md:w-10 md:h-10' : 'w-10 h-10 md:w-12 md:h-12'}`}>
+              <div className={`absolute top-0 left-0 bg-[#FF3B30] border border-white/5 mix-blend-screen shadow-[0_0_20px_rgba(255,59,48,0.3)] transition-all duration-300 ${isScrolled ? 'w-5 h-5 md:w-6 md:h-6' : 'w-6 h-6 md:w-8 md:h-8'}`}></div>
+              <div className={`absolute bottom-0 right-0 bg-transparent border border-white/10 backdrop-blur-sm transition-all duration-300 ${isScrolled ? 'w-5 h-5 md:w-6 md:h-6' : 'w-6 h-6 md:w-8 md:h-8'}`}></div>
+              <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white z-10 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)] transition-all duration-300 ${isScrolled ? 'w-1.5 h-1.5 md:w-2 md:h-2' : 'w-2 h-2 md:w-3 md:h-3'}`}></div>
             </div>
           </div>
           <div className="flex flex-col">
-            <h1 className="text-2xl md:text-3xl font-black tracking-tighter text-[#f5f5f5] uppercase leading-none">BUY<span className="text-[#FF3B30]">WISE</span></h1>
+            <h1 className={`font-black tracking-tighter text-[#f5f5f5] uppercase leading-none transition-all duration-300 ${isScrolled ? 'text-xl md:text-2xl' : 'text-2xl md:text-3xl'}`}>BUY<span className="text-[#FF3B30]">WISE</span></h1>
             <span className="hidden sm:inline-block text-[8px] md:text-[10px] uppercase tracking-[0.4em] font-black text-[#f5f5f5]/40 mt-1">Market Node: 001</span>
           </div>
         </Link>
 
         <div className="hidden xl:flex items-center space-x-0 border-l border-r border-white/5 h-full overflow-visible shrink overflow-x-auto no-scrollbar">
           <div className="h-full flex items-center">
-            <GooeyNav
-              items={[
-                { label: 'HOME', href: '/' },
-                { label: 'COMPARE', href: '/compare' },
-                { label: 'SHOPPER', href: '/personal-shopper' },
-                { label: 'DEALS', href: '/deals' },
-                { label: 'GUIDES', href: '/guides' },
-                { label: 'SCANNER', href: '/scanner' },
-                { label: 'RADAR', href: '/radar' },
-                { label: 'TRAVEL', href: '/travel' },
-                { label: 'GIFTS', href: '/gifts' },
-                { label: 'CLUB', href: '/rewards' },
-                { label: 'PREMIUM', href: '/premium' },
-                { label: 'SUPPORT', href: '/support' },
-                { label: 'FOUNDER', href: '/founder' },
-                { label: 'ADMIN', href: '/admin' },
-              ]}
-            />
+            <GooeyNav items={GOOEY_NAV_ITEMS} />
           </div>
         </div>
 
@@ -186,38 +196,39 @@ export default function Navbar() {
           </div>
           
           
+          <CurrencySelector />
           <VisualSearch variant="nav" />
           {user ? (
-            <div className="flex justify-center items-center gap-2 sm:gap-3">
-               <Link to="/rewards" className="flex items-center gap-1 sm:gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-yellow-500/40 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 text-yellow-400 text-[10px] sm:text-xs font-black font-mono shadow-[0_0_15px_rgba(250,204,21,0.15)] hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all cursor-pointer group">
-                 <div className="w-4 h-4 rounded-full border border-yellow-500 flex items-center justify-center bg-yellow-500/20 group-hover:rotate-180 transition-transform duration-500 mr-1">
-                   <span className="text-[9px] text-yellow-300">₹</span>
+            <div className="flex justify-center items-center gap-1 sm:gap-3">
+               <Link to="/rewards" className="flex items-center gap-1 sm:gap-1.5 px-1.5 py-1 sm:px-3 sm:py-1.5 rounded-lg border border-yellow-500/40 bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 text-yellow-400 text-[10px] sm:text-xs font-black font-mono shadow-[0_0_15px_rgba(250,204,21,0.15)] hover:shadow-[0_0_20px_rgba(250,204,21,0.3)] transition-all cursor-pointer group shrink-0">
+                 <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-yellow-500 flex items-center justify-center bg-yellow-500/20 group-hover:rotate-180 transition-transform duration-500 sm:mr-1">
+                   <span className="text-[8px] sm:text-[9px] text-yellow-300">₹</span>
                  </div>
                  {coins.toLocaleString()} <span className="text-[9px] font-bold text-yellow-500/70 hidden sm:inline tracking-wider">COINS</span>
                </Link>
                {activeBadge && (
-                  <div className="flex items-center justify-center px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[8px] sm:text-[9px] font-black uppercase tracking-wider font-mono shadow-[0_0_10px_rgba(59,130,246,0.1)] max-w-[80px] sm:max-w-none truncate">
+                  <div className="hidden sm:flex items-center justify-center px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[8px] sm:text-[9px] font-black uppercase tracking-wider font-mono shadow-[0_0_10px_rgba(59,130,246,0.1)] max-w-[80px] sm:max-w-none truncate shrink-0">
                      {activeBadge}
                   </div>
                )}
                {user.isPremium && (
-                  <div title="Premium Member" className="flex items-center justify-center px-1.5 py-1 sm:p-2 rounded-lg sm:rounded-full border border-[#FFD700]/50 bg-[#FFD700]/10 text-[#FFD700] gap-1">
+                  <div title="Premium Member" className="flex items-center justify-center px-1.5 py-1 sm:p-2 rounded-lg sm:rounded-full border border-[#FFD700]/50 bg-[#FFD700]/10 text-[#FFD700] gap-1 shrink-0">
                      <ShieldCheck size={12} className="sm:w-4 sm:h-4 text-[#FFD700]" />
                      <span className="hidden sm:hidden md:block text-[8px] font-black tracking-widest uppercase">Premium</span>
                   </div>
                )}
-               <div className="flex items-center gap-2">
-                                   <motion.button
+               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                  <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => setShowAvatarModal(true)}
                     title={`Change Avatar`}
-                    className="w-10 h-10 md:w-12 md:h-12 rounded-full p-[2px] group overflow-hidden relative cursor-pointer bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.5)] hover:shadow-[0_0_20px_rgba(236,72,153,0.8)] transition-all"
+                    className={`rounded-full p-[2px] group overflow-hidden relative cursor-pointer bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_15px_rgba(236,72,153,0.5)] hover:shadow-[0_0_20px_rgba(236,72,153,0.8)] transition-all shrink-0 ${isScrolled ? 'w-8 h-8 md:w-10 md:h-10' : 'w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12'}`}
                   >
                     <div className="w-full h-full rounded-full overflow-hidden relative bg-[#111]">
                       <img src={user.photoURL || undefined} alt="avatar" className="w-full h-full object-cover transition-all absolute inset-0 z-10" />
                       <div className="absolute inset-0 bg-[#FF3B30]/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-20">
-                        <span className="text-[10px] font-bold text-white tracking-widest uppercase">EDIT</span>
+                        <span className="text-[8px] sm:text-[10px] font-bold text-white tracking-widest uppercase">EDIT</span>
                       </div>
                     </div>
                   </motion.button>
@@ -226,9 +237,9 @@ export default function Navbar() {
                    whileTap={{ scale: 0.95 }}
                    onClick={logout}
                    title={`Logout`}
-                   className="w-10 h-10 md:w-12 md:h-12 border border-white/10 rounded-full flex items-center justify-center bg-white/5 hover:bg-[#FF3B30]/20 hover:text-[#FF3B30] hover:border-[#FF3B30]/50 transition-colors cursor-pointer"
+                   className={`border border-white/10 rounded-full flex items-center justify-center bg-white/5 hover:bg-[#FF3B30]/20 hover:text-[#FF3B30] hover:border-[#FF3B30]/50 transition-all cursor-pointer shrink-0 ${isScrolled ? 'w-8 h-8 md:w-10 md:h-10' : 'w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12'}`}
                  >
-                   <LogOut size={16} />
+                   <LogOut size={14} className="sm:w-4 sm:h-4" />
                  </motion.button>
                </div>
             </div>
@@ -237,7 +248,7 @@ export default function Navbar() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={openLogin}
-              className="h-10 md:h-12 px-4 md:px-6 border border-white/10 rounded-lg group overflow-hidden bg-white/5 cursor-pointer flex items-center gap-2 md:gap-3 transition-colors hover:bg-white hover:text-black hover:border-white shrink-0"
+              className={`px-4 md:px-6 border border-white/10 rounded-lg group overflow-hidden bg-white/5 cursor-pointer flex items-center gap-2 md:gap-3 transition-all hover:bg-white hover:text-black hover:border-white shrink-0 ${isScrolled ? 'h-8 md:h-10' : 'h-10 md:h-12'}`}
             >
               <User size={16} className="text-[#f5f5f5] group-hover:text-black transition-colors" />
               <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-black hidden sm:block">SIGN IN</span>
@@ -248,7 +259,7 @@ export default function Navbar() {
       </nav>
 
       {/* Bottom Mobile Tab Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-[100] pb-2 sm:pb-4 flex justify-center xl:hidden pointer-events-none">
+      <div className="fixed bottom-[env(safe-area-inset-bottom)] left-0 right-0 z-[100] pb-2 sm:pb-4 flex justify-center xl:hidden pointer-events-none">
         <div className="pointer-events-auto">
           <Dock
             items={[
@@ -258,9 +269,11 @@ export default function Navbar() {
               { label: 'DEALS', icon: <Flame size={18} />, onClick: () => navigate('/deals') },
               { label: 'MORE', icon: <Menu size={18} />, onClick: () => setIsMobileMenuOpen(true) },
             ]}
-            panelHeight={70}
-            baseItemSize={typeof window !== 'undefined' && window.innerWidth < 400 ? 28 : 36}
-            magnification={60}
+            panelHeight={68}
+            baseItemSize={36}
+            magnification={50}
+            distance={80}
+            dockHeight={70}
           />
         </div>
       </div>

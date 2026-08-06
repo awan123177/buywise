@@ -272,7 +272,6 @@ export default function Home() {
           blend={0.5}
           amplitude={1.2}
           speed={0.4}
-          paused={results.length > 0 || loading}
         />
       </div>
       <div className="pt-32 md:pt-44 pb-32 px-4 md:px-12 relative z-10 max-w-[1400px] mx-auto">
@@ -377,32 +376,32 @@ export default function Home() {
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className={`bg-[#111111] border border-transparent rounded-2xl flex flex-col md:flex-row items-stretch md:items-center p-0 overflow-hidden ${loading ? 'opacity-50' : ''}`}
+            className={`bg-[#111111] border border-transparent rounded-2xl flex flex-row items-stretch p-0 overflow-hidden ${loading ? 'opacity-50' : ''}`}
           >
-            <div className="flex-grow flex items-center h-20 md:h-24 px-6 md:px-8 bg-transparent">
-              <span className="mr-3 md:mr-4 text-white/30 font-black tracking-tighter text-2xl md:text-3xl">#</span>
+            <div className="flex-grow flex items-center h-16 md:h-24 px-4 md:px-8 bg-transparent min-w-0">
+              <span className="mr-2 md:mr-4 text-white/30 font-black tracking-tighter text-xl md:text-3xl shrink-0">#</span>
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                placeholder="INPUT MARKET QUERY OR URL"
-                className="bg-transparent border-none outline-none text-white w-full text-xl md:text-3xl font-black placeholder:text-white/30 uppercase tracking-tighter"
+                placeholder="INPUT QUERY OR URL"
+                className="bg-transparent border-none outline-none text-white w-full text-base md:text-3xl font-black placeholder:text-white/30 uppercase tracking-tighter truncate"
               />
             </div>
-            <div className="flex h-20 md:h-24">
+            <div className="flex h-16 md:h-24 shrink-0">
               <button 
                 onClick={startVoiceSearch}
-                className={`w-14 md:w-20 flex items-center justify-center border-l border-white/5 transition-all hover:bg-white/5 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/50'}`}
+                className={`w-12 md:w-20 flex items-center justify-center border-l border-white/5 transition-all hover:bg-white/5 hover:text-white ${isListening ? 'bg-[#FF3B30] text-white animate-pulse' : 'text-white/50'}`}
               >
-                <Mic size={24} className="w-5 h-5 md:w-6 md:h-6" />
+                <Mic size={20} className="md:w-6 md:h-6" />
               </button>
               <button
                 onClick={() => handleSearch()}
                 disabled={loading}
-                className="btn-brutalist !border-none !rounded-none min-w-[120px] md:min-w-[160px] flex-grow md:flex-grow-0 h-full flex items-center justify-center text-[10px] md:text-xs !bg-[#FF3B30] !text-white hover:!bg-red-600 transition-all"
+                className="btn-brutalist !border-none !rounded-none min-w-[80px] md:min-w-[160px] h-full flex items-center justify-center text-[10px] md:text-xs !bg-[#FF3B30] !text-white hover:!bg-red-600 transition-all"
               >
-                {loading ? <Loader2 className="animate-spin w-5 h-5 md:w-6 md:h-6" /> : 'RETRIEVE'}
+                {loading ? <Loader2 className="animate-spin w-4 h-4 md:w-6 md:h-6" /> : 'SEARCH'}
               </button>
             </div>
           </motion.div>

@@ -10,18 +10,20 @@ import ReactMarkdown from 'react-markdown';
 const TypingEffect = ({ text, onComplete }: { text: string, onComplete: () => void }) => {
   const [displayedText, setDisplayedText] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (currentIndex < text.length) {
       const timeout = setTimeout(() => {
         setDisplayedText(prev => prev + text[currentIndex]);
         setCurrentIndex(prev => prev + 1);
-      }, 15); // Adjust speed here
+      }, 15);
       return () => clearTimeout(timeout);
-    } else {
-      onComplete();
+    } else if (onCompleteRef.current) {
+      onCompleteRef.current();
     }
-  }, [currentIndex, text, onComplete]);
+  }, [currentIndex, text]);
 
   return <ReactMarkdown>{displayedText}</ReactMarkdown>;
 };

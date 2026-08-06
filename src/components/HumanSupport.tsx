@@ -113,10 +113,12 @@ export default function HumanSupport() {
   // Real-time synchronization with server when transferred to human
   useEffect(() => {
     if (isTransferredToHuman && ticketId) {
+      const emailToUse = user?.email || guestEmail;
       const fetchTicketUpdates = async () => {
         try {
+          if (!emailToUse) return;
           const res = await fetch('/api/support/my-tickets', {
-            headers: { 'x-user-email': getUserEmail() }
+            headers: { 'x-user-email': emailToUse }
           });
           if (res.ok) {
             const tickets = await res.json();
@@ -146,7 +148,7 @@ export default function HumanSupport() {
       const interval = setInterval(fetchTicketUpdates, 3000);
       return () => clearInterval(interval);
     }
-  }, [isTransferredToHuman, ticketId, getUserEmail]);
+  }, [isTransferredToHuman, ticketId, user?.email, guestEmail]);
 
   // Function to Transfer Conversation to Human Specialist
   const handleTransferToHuman = async () => {

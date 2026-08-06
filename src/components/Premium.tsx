@@ -258,6 +258,7 @@ export default function Premium() {
               <button 
                 onClick={(e) => {
                    e.stopPropagation();
+                   setSelectedPlan(plan.id as any);
                    setShowPayment(true);
                 }}
                 className={`w-full py-3.5 text-[10px] font-black uppercase tracking-[0.2em] transition-all rounded-xl relative z-10 overflow-hidden group ${
@@ -347,7 +348,7 @@ export default function Premium() {
           <div className="flex flex-col md:flex-row gap-8 items-center bg-white/5 p-6 rounded-xl border border-white/10 mb-8">
             <div className="w-48 h-48 bg-white p-2 rounded-xl flex items-center justify-center">
                <QRCode 
-                 value={`upi://pay?pa=7760449306@nyes&pn=BuyWise&am=${selectedPlan === 'monthly' ? '100' : selectedPlan === 'lifetime' ? '700' : selectedPlan === 'yearly' ? '500' : '30'}&cu=INR`} 
+                 value={`upi://pay?pa=7760449306@nyes&pn=BuyWise&am=${planPrices[selectedPlan]}&cu=INR`} 
                  size={160}
                  level="H" 
                  className="w-full h-full"
@@ -360,7 +361,7 @@ export default function Premium() {
                </div>
                <div>
                  <p className="text-xs text-white/50 uppercase tracking-widest">Amount to Pay</p>
-                 <p className="text-xl font-black">{selectedPlan === 'monthly' ? formatPrice(planPrices.monthly) : selectedPlan === 'lifetime' ? formatPrice(planPrices.lifetime) : selectedPlan === 'yearly' ? formatPrice(planPrices.yearly) : formatPrice(planPrices.weekly)}</p>
+                 <p className="text-xl font-black">{formatPrice(planPrices[selectedPlan])}</p>
                </div>
             </div>
           </div>

@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PremiumProductImage from './PremiumProductImage';
 
 interface Product {
   id: string;
@@ -258,9 +259,7 @@ export default function PersonalShopper() {
                         {product.discount}
                       </div>
                     )}
-                    <img src={product.imageUrl} alt={product.name} className="max-h-full object-contain group-hover:scale-110 transition-transform duration-500" onError={(e) => {
-                       (e.target as HTMLImageElement).src = `https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&q=80`;
-                    }}/>
+                    <PremiumProductImage src={product.imageUrl} alt={product.name} className="w-full h-full p-2" />
                   </div>
 
                   {/* Content Area */}

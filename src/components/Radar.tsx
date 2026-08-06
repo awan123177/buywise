@@ -7,6 +7,7 @@ import { Crosshair, Heart, BellRing, ExternalLink, ArrowRight, Settings2, Check,
 import toast from 'react-hot-toast';
 import { predictPriceTrend } from '../lib/gemini';
 import { searchProducts } from '../lib/api';
+import PremiumProductImage from './PremiumProductImage';
 
 function TrackedItemCard({ item, i }: { item: any, i: number }) {
   const [activeSettings, setActiveSettings] = useState<boolean>(false);
@@ -61,9 +62,9 @@ function TrackedItemCard({ item, i }: { item: any, i: number }) {
       {/* Scanning line effect on hover */}
       <div className="absolute inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-[#FF3B30] to-transparent top-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
 
-      <div className="w-24 h-24 bg-white/5 rounded-lg border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center">
+      <div className="w-24 h-24 bg-white/5 rounded-lg border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center p-1">
         {item.thumbnail ? (
-          <img src={item.thumbnail} alt="" className="w-full h-full object-contain p-1" referrerPolicy="no-referrer" />
+          <PremiumProductImage src={item.thumbnail} alt={item.productTitle || ""} className="w-full h-full" />
         ) : (
           <Crosshair className="text-white/20" size={32} />
         )}
@@ -443,9 +444,9 @@ export default function Radar() {
                 {/* Subtle glow on hover */}
                 <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
-                <div className="w-24 h-24 bg-white/5 rounded-lg border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center">
+                <div className="w-24 h-24 bg-white/5 rounded-lg border border-white/5 flex-shrink-0 overflow-hidden flex items-center justify-center p-1">
                   {item.thumbnail ? (
-                    <img src={item.thumbnail} alt="" className="w-full h-full object-contain p-1" referrerPolicy="no-referrer" />
+                    <PremiumProductImage src={item.thumbnail} alt={item.productTitle || ""} className="w-full h-full" />
                   ) : (
                     <Heart className="text-white/20" size={32} />
                   )}

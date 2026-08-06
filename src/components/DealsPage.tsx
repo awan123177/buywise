@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import { useAffiliate } from '../contexts/AffiliateContext';
 
 import { useCurrency } from '../contexts/CurrencyContext';
+import PremiumProductImage from './PremiumProductImage';
 
 export default function DealsPage() {
   const { user, openLogin } = useAuth();
@@ -351,12 +352,11 @@ export default function DealsPage() {
               </div>
 
               {/* Thumbnail */}
-              <div className="w-40 h-40 bg-white/5 rounded-xl flex items-center justify-center p-3 relative shrink-0 border border-white/10 group">
-                <img 
+              <div className="w-40 h-40 bg-white/5 rounded-xl flex items-center justify-center p-1 relative shrink-0 border border-white/10 group overflow-hidden">
+                <PremiumProductImage 
                   src={bestDeal.thumbnail} 
                   alt={bestDeal.title} 
-                  className="w-full h-full object-contain filter drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] transition-transform group-hover:scale-110 duration-300" 
-                  referrerPolicy="no-referrer"
+                  className="w-full h-full p-2" 
                 />
               </div>
 
@@ -494,8 +494,8 @@ export default function DealsPage() {
                           to={`/product/${deal.id}`}
                           className="flex gap-4 items-start flex-1 mb-4 cursor-pointer"
                         >
-                        <div className="w-20 h-20 bg-white rounded-lg p-1.5 shrink-0 flex items-center justify-center border border-white/10 overflow-hidden relative">
-                          <img src={deal.thumbnail} onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&auto=format&fit=crop&q=60"; }} alt={deal.title} className="w-full h-full object-contain filter group-hover:scale-105 transition-transform" referrerPolicy="no-referrer" />
+                        <div className="w-20 h-20 bg-white/5 rounded-lg p-1 shrink-0 flex items-center justify-center border border-white/10 overflow-hidden relative">
+                          <PremiumProductImage src={deal.thumbnail} alt={deal.title} className="w-full h-full p-1" />
                         </div>
                         <div className="space-y-1 flex-1">
                           <h4 className="text-xs font-bold text-white tracking-tight line-clamp-2 leading-snug group-hover:text-[#FF3B30] transition-colors">

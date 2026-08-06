@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import PremiumProductImage from './PremiumProductImage';
 
 // Interfaces for shopping guide data
 interface GuideProduct {
@@ -1340,13 +1341,12 @@ export default function ShoppingGuides() {
                   {/* Left Column: Image and Badges */}
                   <div className="flex flex-col gap-4">
                     <div className="aspect-square w-full rounded-2xl border border-white/10 overflow-hidden relative bg-[#111]">
-                      <img 
+                      <PremiumProductImage 
                         src={prod.image} 
                         alt={prod.name} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        referrerPolicy="no-referrer"
+                        className="w-full h-full p-2"
                       />
-                      <div className="absolute top-4 left-4 bg-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
+                      <div className="absolute top-4 left-4 z-10 bg-[#FF3B30] text-white text-[9px] font-black uppercase tracking-widest px-3 py-1 rounded-full shadow-lg">
                         {prod.badge}
                       </div>
                     </div>

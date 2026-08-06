@@ -56,7 +56,7 @@ export default function AdminPanel() {
   const [founderImage, setFounderImage] = useState<string | null>(null);
   const [isUploadingFounder, setIsUploadingFounder] = useState(false);
   const founderInputRef = React.useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'flights' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder' | 'support' | 'livechat' | 'careers' | 'debug'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'travel' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder' | 'support' | 'livechat' | 'careers' | 'debug'>('overview');
 
   // Careers Applications States
   const [careerApplications, setCareerApplications] = useState<any[]>([]);
@@ -334,7 +334,7 @@ export default function AdminPanel() {
     { id: 'users', label: 'Users', icon: Users, group: 'Management' },
     { id: 'products', label: 'Products', icon: Tag, group: 'Management' },
     { id: 'careers', label: 'Creator Applications', icon: UserCheck, group: 'Management' },
-    { id: 'flights', label: 'Flights & Travel', icon: Globe, group: 'Management' },
+    { id: 'travel', label: 'Travel Dashboard', icon: Globe, group: 'Management' },
     { id: 'coins', label: 'BuyWise Coins', icon: Award, group: 'Ecosystem' },
     { id: 'referrals', label: 'Referrals', icon: ExternalLink, group: 'Ecosystem' },
     { id: 'premium', label: 'Premium', icon: ShieldCheck, group: 'Ecosystem' },
@@ -1311,48 +1311,52 @@ export default function AdminPanel() {
       )}
 
       {/* Handle Flights Tab */}
-      {activeTab === 'flights' && (
+      {activeTab === 'travel' && (
         <div className="space-y-12 animate-fade-in">
-          {/* Flight Analytics Grid */}
+          {/* Analytics Grid */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
               <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Total Searches</h4>
-              <div className="text-4xl font-black text-white">4,289</div>
-              <div className="text-xs text-emerald-400 mt-2 font-bold">+12% this week</div>
+              <div className="text-4xl font-black text-white">12,450</div>
+              <div className="text-xs text-emerald-400 mt-2 font-bold flex justify-between">
+                <span>Flights: 5k</span>
+                <span>Hotels: 4k</span>
+                <span>Trains: 3k</span>
+              </div>
             </div>
             <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
-              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Total Bookings</h4>
-              <div className="text-4xl font-black text-[#FF3B30]">312</div>
-              <div className="text-xs text-emerald-400 mt-2 font-bold">+8% this week</div>
+              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Affiliate Clicks</h4>
+              <div className="text-4xl font-black text-[#FF3B30]">8,210</div>
+              <div className="text-xs text-emerald-400 mt-2 font-bold">+18% this week</div>
             </div>
             <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
-              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Est. Commission</h4>
-              <div className="text-4xl font-black text-emerald-400">₹45.2k</div>
-              <div className="text-xs text-emerald-400 mt-2 font-bold">+24% this week</div>
+              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Total Revenue</h4>
+              <div className="text-4xl font-black text-emerald-400">₹85.6k</div>
+              <div className="text-xs text-emerald-400 mt-2 font-bold">+14% this week</div>
             </div>
             <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
-              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Conversion Rate</h4>
-              <div className="text-4xl font-black text-white">7.2%</div>
-              <div className="text-xs text-[#FF3B30] mt-2 font-bold">-1% this week</div>
+              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Failed Searches</h4>
+              <div className="text-4xl font-black text-[#FFD700]">124</div>
+              <div className="text-xs text-[#FF3B30] mt-2 font-bold">API Timeouts / No Results</div>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
             <div className="terminal-card p-10 bg-black/40">
-               <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase mb-8">Top Searched Routes</h4>
+               <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase mb-8">Top Destinations</h4>
                <div className="space-y-4">
                  {[
-                   { route: 'BOM → DEL', searches: 1240, bookings: 142 },
-                   { route: 'BLR → DEL', searches: 980, bookings: 86 },
-                   { route: 'HYD → MAA', searches: 750, bookings: 54 },
-                   { route: 'BOM → GOI', searches: 620, bookings: 22 },
-                   { route: 'DEL → DXB', searches: 430, bookings: 8 },
-                 ].map((r, i) => (
+                   { name: 'Dubai, UAE', searches: 2400, clicks: 800 },
+                   { name: 'Goa, India', searches: 1950, clicks: 650 },
+                   { name: 'London, UK', searches: 1200, clicks: 420 },
+                   { name: 'Bali, Indonesia', searches: 980, clicks: 310 },
+                   { name: 'Singapore', searches: 850, clicks: 250 },
+                 ].map((d, i) => (
                    <div key={i} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-xl">
-                      <div className="font-black tracking-widest text-white">{r.route}</div>
+                      <div className="font-black tracking-widest text-white">{d.name}</div>
                       <div className="text-right">
-                        <div className="text-xs font-bold text-white/70">{r.searches} Searches</div>
-                        <div className="text-[10px] text-emerald-400 font-black tracking-widest mt-1">{r.bookings} Bookings</div>
+                        <div className="text-xs font-bold text-white/70">{d.searches} Searches</div>
+                        <div className="text-[10px] text-emerald-400 font-black tracking-widest mt-1">{d.clicks} Clicks</div>
                       </div>
                    </div>
                  ))}
@@ -1360,219 +1364,29 @@ export default function AdminPanel() {
             </div>
 
             <div className="terminal-card p-10 bg-black/40">
-               <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase mb-8">Revenue Dashboard</h4>
-               <div className="h-64 flex items-end justify-between gap-2 border-b border-white/10 pb-4 relative">
-                 <div className="absolute inset-0 bg-gradient-to-t from-[#FF3B30]/10 to-transparent pointer-events-none" />
-                 {[40, 60, 45, 80, 55, 90, 75].map((h, i) => (
-                   <div key={i} className="w-full bg-white/10 hover:bg-[#FF3B30] transition-colors relative group rounded-t-sm" style={{ height: `${h}%` }}>
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                        ₹{h * 120}
+               <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase mb-8">Most Searched Routes (Flights & Trains)</h4>
+               <div className="space-y-4">
+                 {[
+                   { route: 'BOM → DEL', searches: 3200, clicks: 950 },
+                   { route: 'BLR → DEL', searches: 2800, clicks: 840 },
+                   { route: 'NDLS → BCT (Train)', searches: 2100, clicks: 620 },
+                   { route: 'HYD → MAA', searches: 1500, clicks: 430 },
+                   { route: 'DEL → DXB', searches: 1100, clicks: 310 },
+                 ].map((r, i) => (
+                   <div key={i} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-xl">
+                      <div className="font-black tracking-widest text-white">{r.route}</div>
+                      <div className="text-right">
+                        <div className="text-xs font-bold text-white/70">{r.searches} Searches</div>
+                        <div className="text-[10px] text-emerald-400 font-black tracking-widest mt-1">{r.clicks} Clicks</div>
                       </div>
                    </div>
                  ))}
                </div>
-               <div className="flex justify-between mt-4 text-[10px] text-white/50 font-black tracking-widest uppercase">
-                 <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-               </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* Handle Revenue Tab */}
-      {activeTab === 'revenue' && (
-        <div className="space-y-8 animate-fade-in">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {[
-              { label: 'Amazon Revenue', value: '₹4.2M' },
-              { label: 'Flipkart Revenue', value: '₹3.1M' },
-              { label: 'Travel Revenue', value: '₹1.8M' },
-              { label: 'Premium Revenue', value: '₹850K' },
-              { label: 'Referral Revenue', value: '₹120K' },
-              { label: 'Ad Revenue', value: '₹450K' },
-              { label: 'Coin Revenue', value: '₹95K' },
-              { label: 'Wallet Revenue', value: '₹320K' },
-              { label: 'Monthly Revenue', value: '₹10.9M' },
-              { label: 'Yearly Revenue', value: '₹130M' },
-              { label: 'Projected Revenue', value: '₹150M' },
-              { label: 'Profit', value: '₹6.2M' },
-            ].map((stat, i) => (
-               <div key={i} className="p-4 bg-white/[0.02] border border-white/5 rounded-xl hover:border-white/20 transition-all">
-                 <div className="text-[9px] text-white/40 uppercase tracking-widest font-black mb-1">{stat.label}</div>
-                 <div className="text-xl font-black text-emerald-400 tracking-tighter">{stat.value}</div>
-               </div>
-            ))}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-                <h3 className="text-sm font-black text-white uppercase tracking-widest mb-6 border-b border-white/10 pb-4">Commission Analytics</h3>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/60">Pending Payments</span>
-                    <span className="font-bold text-yellow-500">₹450,200</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/60">Completed Payments</span>
-                    <span className="font-bold text-emerald-500">₹8,450,000</span>
-                  </div>
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="text-white/60">Failed Transactions</span>
-                    <span className="font-bold text-[#FF3B30]">₹12,400</span>
-                  </div>
-                </div>
-             </div>
-             <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-center min-h-[300px]">
-                <div className="text-center">
-                   <TrendingUp size={48} className="mx-auto text-white/20 mb-4" />
-                   <p className="text-xs text-white/40 font-black uppercase tracking-widest">Revenue Graph Placeholder</p>
-                </div>
-             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Handle Users Tab */}
-      {activeTab === 'users' && (
-        <div className="space-y-8 animate-fade-in">
-          <div className="flex justify-between items-center bg-white/[0.02] p-4 rounded-xl border border-white/5">
-            <div className="flex gap-4">
-              <button className="px-4 py-2 bg-white/10 text-white text-xs font-black uppercase tracking-widest rounded">All Users</button>
-              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Premium</button>
-              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Blocked</button>
-              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Admins</button>
-            </div>
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-              <input type="text" placeholder="SEARCH USERS..." className="pl-9 pr-4 py-2 bg-black/50 border border-white/10 rounded-lg text-xs text-white focus:outline-none focus:border-[#FF3B30] w-64 uppercase tracking-widest" />
-            </div>
-          </div>
-          
-          <div className="bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
-             <table className="w-full text-left text-xs">
-                <thead className="bg-white/5 text-white/50 uppercase tracking-widest font-black text-[10px]">
-                  <tr>
-                    <th className="p-4">User</th>
-                    <th className="p-4">Role</th>
-                    <th className="p-4">Status</th>
-                    <th className="p-4">Joined</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {[
-                    { name: 'Aman Warsi', email: 'aman@example.com', role: 'Admin', status: 'Active', date: '2023-01-15', premium: true },
-                    { name: 'Sarah Connor', email: 'sarah@example.com', role: 'User', status: 'Active', date: '2023-04-22', premium: false },
-                    { name: 'John Doe', email: 'john@example.com', role: 'Moderator', status: 'Active', date: '2023-05-11', premium: true },
-                    { name: 'Jane Smith', email: 'jane@example.com', role: 'User', status: 'Blocked', date: '2023-08-05', premium: false },
-                  ].map((user, i) => (
-                    <tr key={i} className="hover:bg-white/5 transition-colors">
-                      <td className="p-4">
-                        <div className="font-bold text-white flex items-center gap-2">
-                           {user.name}
-                           {user.premium && <ShieldCheck size={12} className="text-yellow-500" />}
-                        </div>
-                        <div className="text-[10px] text-white/40">{user.email}</div>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest ${user.role === 'Admin' ? 'bg-[#FF3B30]/20 text-[#FF3B30]' : user.role === 'Moderator' ? 'bg-blue-500/20 text-blue-400' : 'bg-white/10 text-white/60'}`}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td className="p-4">
-                        <span className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-widest ${user.status === 'Active' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {user.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-white/60 font-mono text-[10px]">{user.date}</td>
-                      <td className="p-4 text-right space-x-2">
-                         <button className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[9px] font-black uppercase tracking-widest transition-colors">Edit</button>
-                         {user.status !== 'Blocked' ? (
-                           <button className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded text-[9px] font-black uppercase tracking-widest transition-colors">Block</button>
-                         ) : (
-                           <button className="px-3 py-1 bg-green-500/10 hover:bg-green-500/20 text-green-500 rounded text-[9px] font-black uppercase tracking-widest transition-colors">Unblock</button>
-                         )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-             </table>
-          </div>
-        </div>
-      )}
-
-      {/* Handle Products Tab */}
-      {activeTab === 'products' && (
-        <div className="space-y-8 animate-fade-in">
-          <div className="flex justify-between items-center bg-white/[0.02] p-4 rounded-xl border border-white/5">
-            <div className="flex gap-4">
-              <button className="px-4 py-2 bg-white/10 text-white text-xs font-black uppercase tracking-widest rounded">All Products</button>
-              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Trending</button>
-              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">Coupons</button>
-              <button className="px-4 py-2 text-white/50 hover:text-white text-xs font-black uppercase tracking-widest rounded transition-colors">AI Ranked</button>
-            </div>
-            <div className="flex gap-2">
-              <button className="px-4 py-2 bg-[#FF3B30] text-white text-xs font-black uppercase tracking-widest rounded hover:bg-red-600 transition-colors flex items-center gap-2">
-                <Plus size={14} /> Add Product
-              </button>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="col-span-1 space-y-4">
-              <div className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl">
-                 <h3 className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-4">Categories</h3>
-                 <div className="space-y-2">
-                   {['Electronics', 'Fashion', 'Travel', 'Software', 'Home & Kitchen'].map(c => (
-                     <div key={c} className="flex justify-between items-center text-xs p-2 hover:bg-white/5 rounded cursor-pointer transition-colors">
-                        <span className="text-white font-bold">{c}</span>
-                        <span className="text-white/40">{Math.floor(Math.random() * 500)}</span>
-                     </div>
-                   ))}
-                 </div>
-              </div>
-            </div>
-            <div className="col-span-1 md:col-span-3">
-              <div className="bg-white/[0.02] border border-white/5 rounded-2xl overflow-hidden">
-                 <table className="w-full text-left text-xs">
-                    <thead className="bg-white/5 text-white/50 uppercase tracking-widest font-black text-[10px]">
-                      <tr>
-                        <th className="p-4">Product Name</th>
-                        <th className="p-4">Category</th>
-                        <th className="p-4">AI Score</th>
-                        <th className="p-4">Price / Link</th>
-                        <th className="p-4 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {[
-                        { name: 'Apple iPhone 15 Pro', cat: 'Electronics', score: 98, price: '₹134,900' },
-                        { name: 'Sony WH-1000XM5', cat: 'Electronics', score: 95, price: '₹24,990' },
-                        { name: 'Nike Air Max', cat: 'Fashion', score: 82, price: '₹11,495' },
-                        { name: 'MakeMyTrip Maldives Package', cat: 'Travel', score: 89, price: '₹89,999' },
-                      ].map((prod, i) => (
-                        <tr key={i} className="hover:bg-white/5 transition-colors">
-                          <td className="p-4 font-bold text-white">{prod.name}</td>
-                          <td className="p-4 text-white/60">{prod.cat}</td>
-                          <td className="p-4">
-                            <span className="px-2 py-1 bg-emerald-500/10 text-emerald-400 rounded font-black">{prod.score}</span>
-                          </td>
-                          <td className="p-4 text-white/60 font-mono">{prod.price}</td>
-                          <td className="p-4 text-right space-x-2">
-                             <button className="px-3 py-1 bg-white/10 hover:bg-white/20 text-white rounded text-[9px] font-black uppercase tracking-widest transition-colors">Edit</button>
-                             <button className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded text-[9px] font-black uppercase tracking-widest transition-colors">Hide</button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                 </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Handle Coins Tab */}
+      
       {activeTab === 'coins' && (
         <div className="space-y-8 animate-fade-in">
            {/* Gamification Admin Form is already partly present, but we can encapsulate it here or build a custom one */}
@@ -2403,7 +2217,7 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {activeTab !== 'overview' && activeTab !== 'flights' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'support' && activeTab !== 'livechat' && activeTab !== 'founder' && activeTab !== 'debug' && (
+      {activeTab !== 'overview' && activeTab !== 'travel' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'support' && activeTab !== 'livechat' && activeTab !== 'founder' && activeTab !== 'debug' && (
         <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-6">
            <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
               <ShieldCheck size={48} className="text-white/20" />

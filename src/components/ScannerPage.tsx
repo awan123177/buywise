@@ -9,6 +9,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { scanBarcode, fetchBarcodeHistory } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import toast from 'react-hot-toast';
+import PremiumProductImage from './PremiumProductImage';
 
 interface CompetitorDeal {
   source: string;
@@ -647,11 +648,7 @@ export default function ScannerPage() {
                   >
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-transparent group-hover:bg-[#FF3B30] transition-colors" />
                     <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/50 text-[10px] font-mono font-black uppercase overflow-hidden shrink-0">
-                      {hist.thumbnail ? (
-                        <img src={hist.thumbnail} alt={hist.productName} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity" />
-                      ) : (
-                        idx + 1
-                      )}
+                      <PremiumProductImage src={hist.thumbnail} alt={hist.productName} className="w-full h-full" />
                     </div>
                     <div className="flex-grow min-w-0">
                       <h4 className="text-white font-bold text-xs truncate group-hover:text-[#FF3B30] transition-colors">{hist.productName}</h4>
@@ -699,11 +696,10 @@ export default function ScannerPage() {
                 
                 <div>
                   <div className="aspect-square w-full max-w-[200px] mx-auto bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-6 flex items-center justify-center p-4 relative group">
-                    <img 
-                      src={scanResult.thumbnail || "https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=500"} 
+                    <PremiumProductImage 
+                      src={scanResult.thumbnail} 
                       alt={scanResult.productName}
-                      className="object-contain w-full h-full transform group-hover:scale-105 transition-all"
-                      referrerPolicy="no-referrer"
+                      className="w-full h-full"
                     />
                   </div>
 

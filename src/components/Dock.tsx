@@ -137,7 +137,7 @@ export default function Dock({
   const height = useSpring(heightRow, spring);
 
   return (
-    <motion.div style={{ height, scrollbarWidth: 'none' }} className={`dock-outer ${className}`}>
+    <motion.div style={{ scrollbarWidth: 'none' }} className={`dock-outer ${className}`}>
       <motion.div
         onMouseMove={({ pageX }) => {
           isHovered.set(1);
@@ -148,7 +148,6 @@ export default function Dock({
           mouseX.set(Infinity);
         }}
         className="dock-panel"
-        style={{ height: panelHeight }}
         role="toolbar"
         aria-label="Application dock"
       >

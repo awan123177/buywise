@@ -41,22 +41,22 @@ export default function App() {
       <AuthProvider>
         <CurrencyProvider>
           <AffiliateProvider>
-            <div className="min-h-screen bg-transparent text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-black">
-          <Navbar />
-          <LoginModal />
-          <Toaster 
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: '#111111',
-                color: '#f5f5f5',
-                border: '1px solid rgba(255,59,48,0.2)',
-                backdropFilter: 'blur(10px)',
-              },
-            }}
-          />
-          <main className="relative z-10 pb-32">
-            <Routes>
+            <div className="min-h-screen flex flex-col bg-transparent text-[#f5f5f5] selection:bg-[#FF3B30] selection:text-black">
+              <Navbar />
+              <LoginModal />
+              <Toaster 
+                position="bottom-right"
+                toastOptions={{
+                  style: {
+                    background: '#111111',
+                    color: '#f5f5f5',
+                    border: '1px solid rgba(255,59,48,0.2)',
+                    backdropFilter: 'blur(10px)',
+                  },
+                }}
+              />
+              <main className="relative z-10 flex-1 pt-20 md:pt-24 pb-[env(safe-area-inset-bottom,32px)] xl:pb-0">
+                <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<PremiumLogin />} />
               <Route path="/admin" element={<AdminPanel />} />

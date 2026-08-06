@@ -43,10 +43,10 @@ const GooeyNav = ({
 
   useEffect(() => {
     const newIndex = items.findIndex(item => item.href === location.pathname);
-    if (newIndex !== -1 && newIndex !== activeIndex) {
+    if (newIndex !== -1) {
       setActiveIndex(newIndex);
     }
-  }, [location.pathname, items, activeIndex]);
+  }, [location.pathname]);
 
   const noise = (n = 1) => n / 2 - Math.random() * n;
 

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useCurrency } from "../contexts/CurrencyContext";
 import { searchProducts } from "../lib/api";
+import PremiumProductImage from "./PremiumProductImage";
 import toast from "react-hot-toast";
 
 interface ProductSpec {
@@ -406,13 +407,11 @@ export default function CompareProducts() {
 
                 {/* Top Section: Photo, Title, Price */}
                 <div className="p-6 pt-10 flex flex-col items-center text-center border-b border-white/5">
-                  <div className="w-32 h-32 bg-white/5 rounded-2xl flex items-center justify-center p-4 mb-4 relative overflow-hidden group border border-white/5">
-                    <img 
-                      onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=500&auto=format&fit=crop&q=60"; }}
+                  <div className="w-32 h-32 bg-white/5 rounded-2xl flex items-center justify-center p-2 mb-4 relative overflow-hidden group border border-white/5">
+                    <PremiumProductImage 
                       src={product.thumbnail} 
                       alt={product.title} 
-                      className="w-full h-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] group-hover:scale-110 transition-transform duration-300" 
-                      referrerPolicy="no-referrer"
+                      className="w-full h-full p-2" 
                     />
                   </div>
 
@@ -607,8 +606,8 @@ export default function CompareProducts() {
                               onClick={() => addProductToComparison(item)}
                               className="w-full p-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl text-left flex gap-3 items-center transition-all group"
                             >
-                              <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center p-1 shrink-0">
-                                <img src={item.thumbnail} onError={(e) => { (e.target as any).src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500&auto=format&fit=crop&q=60"; }} alt="" className="w-full h-full object-contain p-0.5" referrerPolicy="no-referrer" />
+                              <div className="w-10 h-10 bg-white/5 rounded-lg flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                                <PremiumProductImage src={item.thumbnail} alt={item.title} className="w-full h-full p-0.5" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="text-xs font-bold text-white line-clamp-1 group-hover:text-[#FF3B30] transition-colors">{item.title}</div>

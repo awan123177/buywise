@@ -1,14 +1,64 @@
 export function getProductCategoryPhoto(titleOrQuery: string): string {
   const q = (titleOrQuery || "").toLowerCase();
 
-  // iPhones
-  if (q.includes("iphone")) {
+  // MacBooks & Apple Laptops
+  if (
+    q.includes("macbook") ||
+    q.includes("mac book") ||
+    q.includes("macbook pro") ||
+    q.includes("macbook air")
+  ) {
+    return "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80";
+  }
+
+  // Windows / Gaming / Ultrabook Laptops (Acer, Swift, Aspire, Dell, HP, Lenovo, Asus, MSI, ThinkPad, Surface, Intel Core, Ultra 5/7, Ryzen)
+  if (
+    q.includes("laptop") ||
+    q.includes("notebook") ||
+    q.includes("ultrabook") ||
+    q.includes("chromebook") ||
+    q.includes("acer") ||
+    q.includes("swift") ||
+    q.includes("aspire") ||
+    q.includes("predator") ||
+    q.includes("nitro") ||
+    q.includes("dell") ||
+    q.includes("thinkpad") ||
+    q.includes("ideapad") ||
+    q.includes("vivobook") ||
+    q.includes("zenbook") ||
+    q.includes("rog") ||
+    q.includes("zephyrus") ||
+    q.includes("pavilion") ||
+    q.includes("spectre") ||
+    q.includes("envy") ||
+    q.includes("alienware") ||
+    q.includes("legion") ||
+    q.includes("tuf gaming") ||
+    q.includes("victus") ||
+    q.includes("intel core") ||
+    q.includes("core ultra") ||
+    q.includes("ryzen") ||
+    q.includes("sfn14") ||
+    q.includes("sfn15") ||
+    q.includes("sfn16")
+  ) {
+    return "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=800&auto=format&fit=crop&q=80";
+  }
+
+  // iPhones & Specific Apple Devices
+  if (
+    q.includes("iphone") ||
+    q.includes("b0cx21c598") ||
+    (q.includes("apple") && (q.includes("phone") || q.includes("pro max") || q.includes("ios")))
+  ) {
     return "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&auto=format&fit=crop&q=80";
   }
 
-  // Samsung Phones
+  // Samsung Phones & Galaxy series
   if (
     q.includes("galaxy") ||
+    q.includes("samsung") ||
     q.includes("s25") ||
     q.includes("s24") ||
     q.includes("s23") ||
@@ -20,7 +70,7 @@ export function getProductCategoryPhoto(titleOrQuery: string): string {
   }
 
   // Google Pixel
-  if (q.includes("pixel")) {
+  if (q.includes("pixel") || q.includes("tensor")) {
     return "https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=800&auto=format&fit=crop&q=80";
   }
 
@@ -37,40 +87,15 @@ export function getProductCategoryPhoto(titleOrQuery: string): string {
     q.includes("nothing") ||
     q.includes("iqoo") ||
     q.includes("smartphone") ||
-    q.includes("mobile")
+    q.includes("mobile") ||
+    q.includes("cell")
   ) {
     return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&auto=format&fit=crop&q=80";
   }
 
-  // MacBooks & Apple Laptops
-  if (
-    q.includes("macbook") ||
-    q.includes("mac book") ||
-    q.includes("macbook pro") ||
-    q.includes("macbook air")
-  ) {
-    return "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=800&auto=format&fit=crop&q=80";
-  }
-
-  // Windows / Gaming Laptops (Dell, HP, Lenovo, Asus, Acer, MSI, ThinkPad, Surface)
-  if (
-    q.includes("laptop") ||
-    q.includes("dell") ||
-    q.includes("thinkpad") ||
-    q.includes("ideapad") ||
-    q.includes("vivobook") ||
-    q.includes("zenbook") ||
-    q.includes("rog") ||
-    q.includes("zephyrus") ||
-    q.includes("pavilion") ||
-    q.includes("spectre") ||
-    q.includes("envy") ||
-    q.includes("alienware") ||
-    q.includes("legion") ||
-    q.includes("swift") ||
-    q.includes("predator")
-  ) {
-    return "https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=800&auto=format&fit=crop&q=80";
+  // General Apple catch-all (if not laptop or specific phone above)
+  if (q.includes("apple")) {
+    return "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&auto=format&fit=crop&q=80";
   }
 
   // Tablets & iPads
@@ -187,15 +212,22 @@ export function getProductCategoryPhoto(titleOrQuery: string): string {
     return "https://images.unsplash.com/photo-1545454675-3531b543be5d?w=800&auto=format&fit=crop&q=80";
   }
 
-  // Default clean tech/electronics photo
-  return "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80";
+  // Default clean mobile / smartphone gadget photo if the query indicates a generic phone
+  if (q.includes("phone") || q.includes("mobile") || q.includes("smartphone")) {
+    return "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&auto=format&fit=crop&q=80";
+  }
+
+  // Fallback for every other product type (The 'World's most powerful engine' handles everything)
+  const shortName = q.split(" ").slice(0, 3).join(" ").toUpperCase() || "PRODUCT";
+  return `https://placehold.co/800x800/111111/FFFFFF?text=${encodeURIComponent(shortName)}`;
 }
 
 export function getFallbackPhotoList(titleOrQuery: string): string[] {
   const primary = getProductCategoryPhoto(titleOrQuery);
   return [
     primary,
-    "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&auto=format&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=800&auto=format&fit=crop&q=80",
     "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&auto=format&fit=crop&q=80"
   ];
 }

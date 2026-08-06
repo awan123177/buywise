@@ -1,5 +1,6 @@
 import axios from "axios";
 import { getProductCategoryPhoto } from "../lib/productImages.js";
+import { getExpectedMarketPrice, validateProductPrice } from "./priceValidationEngine.js";
 
 // ---------------------------------------------------------------------------
 // TYPES & INTERFACES
@@ -18,6 +19,10 @@ export interface ResolvedUrlInfo {
   storeName: string;
   productId: string | null;
   extractedTitle: string | null;
+  productImage?: string | null;
+  ogImage?: string | null;
+  jsonLdImage?: string | null;
+  validatedImage?: string | null;
 }
 
 export interface ParsedQuerySpecs {
@@ -312,6 +317,267 @@ export function sanitizeAndCleanUrl(urlStr: string): string {
   }
 }
 
+
+export function cleanImageUrl(rawUrl: string | null | undefined, baseUrl: string): string | null {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  let url = rawUrl.trim().replace(/&amp;/g, "&");
+  if (url.startsWith("//")) {
+    url = "https:" + url;
+  } else if (url.startsWith("/")) {
+    try {
+      url = new URL(url, baseUrl).toString();
+    } catch (_) {
+      return null;
+    }
+  }
+  if (!url.startsWith("http://") && !url.startsWith("https://")) return null;
+  return url;
+}
+
+export interface ExtractedProductMetadata {
+  extractedTitle: string | null;
+  productImage: string | null;
+  ogImage: string | null;
+  jsonLdImage: string | null;
+}
+
+export async function extractProductPageMetadata(urlStr: string): Promise<ExtractedProductMetadata> {
+  const meta: ExtractedProductMetadata = {
+    extractedTitle: null,
+    productImage: null,
+    ogImage: null,
+    jsonLdImage: null,
+  };
+
+  // 0. Store & ASIN Specific Pre-Check (Guarantees image even if scraper gets blocked)
+  if (urlStr.includes("amazon.") || urlStr.includes("amzn.")) {
+    const asinMatch = urlStr.match(/(?:dp|gp\/product|asin|o\/ASIN)\/(B[0-9A-Z]{9})/i) || urlStr.match(/\b(B[0-9A-Z]{9})\b/i);
+    if (asinMatch && asinMatch[1]) {
+      const asin = asinMatch[1];
+      const asinImg = `https://images-na.ssl-images-amazon.com/images/P/${asin}.01._SCLZZZZZZZ_.jpg`;
+      meta.productImage = asinImg;
+      meta.ogImage = asinImg;
+    }
+  }
+
+  try {
+    const response = await axios.get(urlStr, {
+      timeout: 5000,
+      maxRedirects: 5,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      }
+    });
+
+    const html = typeof response.data === "string" ? response.data : "";
+    if (html) {
+      // 1. Title Extraction
+      const ogTitleMatch = html.match(/<meta\s+(?:property|name)=["']og:title["']\s+content=["']([^"']+)["']/i) ||
+                           html.match(/<meta\s+content=["']([^"']+)["']\s+(?:property|name)=["']og:title["']/i);
+      if (ogTitleMatch && ogTitleMatch[1]) {
+        meta.extractedTitle = cleanProductTitle(ogTitleMatch[1]);
+      }
+      if (!meta.extractedTitle) {
+        const titleTagMatch = html.match(/<title>([^<]+)<\/title>/i);
+        if (titleTagMatch && titleTagMatch[1]) {
+          meta.extractedTitle = cleanProductTitle(titleTagMatch[1]);
+        }
+      }
+
+      // 2. OpenGraph & Twitter Image Extraction
+      const ogImgMatch = html.match(/<meta\s+(?:property|name)=["'](?:og:image|twitter:image|twitter:image:src)["']\s+content=["']([^"']+)["']/i) ||
+                         html.match(/<meta\s+content=["']([^"']+)["']\s+(?:property|name)=["'](?:og:image|twitter:image|twitter:image:src)["']/i);
+      if (ogImgMatch && ogImgMatch[1]) {
+        meta.ogImage = cleanImageUrl(ogImgMatch[1], urlStr);
+      }
+
+      // 3. JSON-LD Schema Extraction
+      const jsonLdRegex = /<script\s+type=["']application\/ld\+json["']>([\s\S]*?)<\/script>/gi;
+      let ldMatch;
+      while ((ldMatch = jsonLdRegex.exec(html)) !== null) {
+        try {
+          const parsed = JSON.parse(ldMatch[1]);
+          const items = Array.isArray(parsed) ? parsed : [parsed];
+          for (const item of items) {
+            if (item) {
+              const graphItems = item["@graph"] && Array.isArray(item["@graph"]) ? item["@graph"] : [item];
+              for (const gItem of graphItems) {
+                if (gItem && gItem.image) {
+                  let imgCandidate = "";
+                  if (typeof gItem.image === "string") {
+                    imgCandidate = gItem.image;
+                  } else if (Array.isArray(gItem.image) && gItem.image.length > 0) {
+                    imgCandidate = typeof gItem.image[0] === "string" ? gItem.image[0] : gItem.image[0]?.url || "";
+                  } else if (typeof gItem.image === "object" && gItem.image.url) {
+                    imgCandidate = gItem.image.url;
+                  }
+                  if (imgCandidate) {
+                    meta.jsonLdImage = cleanImageUrl(imgCandidate, urlStr);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 4. Store-Specific DOM Product Image Extraction
+      // Amazon
+      if (urlStr.includes("amazon.") || urlStr.includes("amzn.")) {
+        const amzMatch = html.match(/data-a-dynamic-image=["']([^"']+)["']/i) ||
+                         html.match(/"large":"(https:\/\/m\.media-amazon\.com\/images\/I\/[^"]+)"/i) ||
+                         html.match(/"hiRes":"(https:\/\/m\.media-amazon\.com\/images\/I\/[^"]+)"/i) ||
+                         html.match(/(https:\/\/m\.media-amazon\.com\/images\/I\/[A-Za-z0-9%_\-.]+\.jpg)/i);
+        if (amzMatch) {
+          if (amzMatch[1].startsWith("{")) {
+            try {
+              const parsedDyn = JSON.parse(amzMatch[1].replace(/&quot;/g, '"'));
+              const urls = Object.keys(parsedDyn);
+              if (urls.length > 0) meta.productImage = urls[0];
+            } catch (_) {}
+          } else {
+            meta.productImage = amzMatch[1];
+          }
+        }
+      }
+      // Flipkart
+      else if (urlStr.includes("flipkart.") || urlStr.includes("fkrt.")) {
+        const fkMatch = html.match(/(https:\/\/rukminim2\.flixcart\.com\/image\/[0-9]+\/[0-9]+\/[A-Za-z0-9%_\-./]+\.(?:jpeg|jpg|png|webp))/i) ||
+                        html.match(/(https:\/\/rukminim1\.flixcart\.com\/image\/[0-9]+\/[0-9]+\/[A-Za-z0-9%_\-./]+\.(?:jpeg|jpg|png|webp))/i);
+        if (fkMatch) {
+          meta.productImage = fkMatch[1];
+        }
+      }
+      // Meesho
+      else if (urlStr.includes("meesho.")) {
+        const meeshoMatch = html.match(/(https:\/\/images\.meesho\.com\/images\/products\/[A-Za-z0-9%_\-./]+\.(?:jpeg|jpg|png|webp))/i);
+        if (meeshoMatch) {
+          meta.productImage = meeshoMatch[1];
+        }
+      }
+      // Croma
+      else if (urlStr.includes("croma.")) {
+        const cromaMatch = html.match(/(https:\/\/media\.croma\.com\/image\/upload\/[A-Za-z0-9%_\-./]+\.(?:jpeg|jpg|png|webp))/i);
+        if (cromaMatch) {
+          meta.productImage = cromaMatch[1];
+        }
+      }
+      // Reliance Digital
+      else if (urlStr.includes("reliancedigital.")) {
+        const rdMatch = html.match(/(https:\/\/www\.reliancedigital\.in\/medias\/[A-Za-z0-9%_\-./]+\.(?:jpeg|jpg|png|webp))/i) ||
+                        html.match(/(\/medias\/[A-Za-z0-9%_\-./]+\.(?:jpeg|jpg|png|webp))/i);
+        if (rdMatch) {
+          meta.productImage = cleanImageUrl(rdMatch[1], "https://www.reliancedigital.in");
+        }
+      }
+      // JioMart
+      else if (urlStr.includes("jiomart.")) {
+        const jioMatch = html.match(/(https:\/\/www\.jiomart\.com\/images\/product\/[A-Za-z0-9%_\-./]+\.(?:jpeg|jpg|png|webp))/i);
+        if (jioMatch) {
+          meta.productImage = jioMatch[1];
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[BuyWise Metadata Extraction Warning]", urlStr, err.message);
+  }
+
+  console.log("[BuyWise Metadata Extracted]", {
+    url: urlStr,
+    extractedTitle: meta.extractedTitle,
+    productImage: meta.productImage,
+    ogImage: meta.ogImage,
+    jsonLdImage: meta.jsonLdImage
+  });
+
+  return meta;
+}
+
+export interface ImageCandidate {
+  url: string | null | undefined;
+  source: string;
+}
+
+const imageValidationCache = new Map<string, { valid: boolean; status: number; durationMs: number; errorReason?: string }>();
+
+export async function validateImageUrl(url: string, source: string): Promise<{ valid: boolean; status: number; durationMs: number; failureReason?: string }> {
+  if (!url || typeof url !== "string" || !url.trim() || (!url.startsWith("http://") && !url.startsWith("https://"))) {
+    const res = { valid: false, status: 400, durationMs: 0, failureReason: "Invalid URL or protocol" };
+    console.log("[BuyWise Network Log]", { imageUrl: url, httpStatus: res.status, loadingTimeMs: res.durationMs, failureReason: res.failureReason, imageSource: source });
+    return res;
+  }
+
+  const cleanUrl = url.trim();
+  if (imageValidationCache.has(cleanUrl)) {
+    const cached = imageValidationCache.get(cleanUrl);
+    console.log("[BuyWise Network Log (Cached)]", { imageUrl: cleanUrl, httpStatus: cached.status, loadingTimeMs: cached.durationMs, failureReason: cached.errorReason || "None", imageSource: source });
+    return { valid: cached.valid, status: cached.status, durationMs: cached.durationMs, failureReason: cached.errorReason };
+  }
+
+  const startTime = Date.now();
+  try {
+    const response = await axios.head(cleanUrl, {
+      timeout: 2500,
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8"
+      }
+    });
+    const durationMs = Date.now() - startTime;
+    const is200 = response.status >= 200 && response.status < 400;
+    const failureReason = is200 ? undefined : `HTTP Status ${response.status}`;
+    imageValidationCache.set(cleanUrl, { valid: is200, status: response.status, durationMs, errorReason: failureReason });
+    console.log("[BuyWise Network Log]", { imageUrl: cleanUrl, httpStatus: response.status, loadingTimeMs: durationMs, failureReason: failureReason || "None", imageSource: source });
+    return { valid: is200, status: response.status, durationMs, failureReason };
+  } catch (err) {
+    try {
+      const getRes = await axios.get(cleanUrl, {
+        timeout: 2500,
+        maxContentLength: 50000,
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+          "Range": "bytes=0-1024",
+          "Accept": "image/*"
+        }
+      });
+      const durationMs = Date.now() - startTime;
+      const is200 = getRes.status >= 200 && getRes.status < 400;
+      const failureReason = is200 ? undefined : `GET Status ${getRes.status}`;
+      imageValidationCache.set(cleanUrl, { valid: is200, status: getRes.status, durationMs, errorReason: failureReason });
+      console.log("[BuyWise Network Log]", { imageUrl: cleanUrl, httpStatus: getRes.status, loadingTimeMs: durationMs, failureReason: failureReason || "None", imageSource: source });
+      return { valid: is200, status: getRes.status, durationMs, failureReason };
+    } catch (getErr) {
+      const durationMs = Date.now() - startTime;
+      const status = getErr.response?.status || 0;
+      const failureReason = getErr.message || "Network error or timeout";
+      imageValidationCache.set(cleanUrl, { valid: false, status, durationMs, errorReason: failureReason });
+      console.log("[BuyWise Network Log]", { imageUrl: cleanUrl, httpStatus: status, loadingTimeMs: durationMs, failureReason, imageSource: source });
+      return { valid: false, status, durationMs, failureReason };
+    }
+  }
+}
+
+export async function selectValidatedBestImage(
+  candidates: ImageCandidate[],
+  titleForFallback: string
+): Promise<{ selectedUrl: string; selectedSource: string }> {
+  for (const cand of candidates) {
+    if (cand.url) {
+      const check = await validateImageUrl(cand.url, cand.source);
+      if (check.valid) {
+        return { selectedUrl: cand.url, selectedSource: cand.source };
+      }
+    }
+  }
+
+  const placeholderUrl = getProductCategoryPhoto(titleForFallback);
+  console.log("[BuyWise Network Log]", { imageUrl: placeholderUrl, httpStatus: 200, loadingTimeMs: 0, failureReason: "None (Category Placeholder)", imageSource: "Placeholder image" });
+  return { selectedUrl: placeholderUrl, selectedSource: "Placeholder image" };
+}
+
 export async function resolveAndExpandUrl(urlStr: string): Promise<ResolvedUrlInfo> {
   let currentUrl = urlStr;
 
@@ -378,13 +644,33 @@ export async function resolveAndExpandUrl(urlStr: string): Promise<ResolvedUrlIn
     }
   }
 
+  const meta = await extractProductPageMetadata(sanitizedUrl);
+
+  let asinImage: string | null = null;
+  if (productId && (storeName === "Amazon" || domain.includes("amazon") || domain.includes("amzn"))) {
+    asinImage = `https://images-na.ssl-images-amazon.com/images/P/${productId}.01._SCLZZZZZZZ_.jpg`;
+  }
+
+  const imageCandidates: ImageCandidate[] = [
+    { url: asinImage, source: "Amazon Direct ASIN CDN Image" },
+    { url: meta.productImage, source: "Original product page image" },
+    { url: meta.ogImage, source: "OpenGraph image" },
+    { url: meta.jsonLdImage, source: "JSON-LD image" },
+  ];
+
+  const selectedImageRes = await selectValidatedBestImage(imageCandidates, meta.extractedTitle || sanitizedUrl);
+
   return {
     originalUrl: urlStr,
     resolvedUrl: sanitizedUrl,
     domain,
     storeName,
     productId,
-    extractedTitle: null,
+    extractedTitle: meta.extractedTitle,
+    productImage: meta.productImage,
+    ogImage: meta.ogImage,
+    jsonLdImage: meta.jsonLdImage,
+    validatedImage: selectedImageRes.selectedUrl,
   };
 }
 
@@ -1308,30 +1594,37 @@ const CATEGORY_CATALOGS: Record<string, CatalogItem[]> = {
 };
 
 export function generateCategoryCatalogResults(categoryName: string): SearchResultItem[] {
-  const rawList = CATEGORY_CATALOGS[categoryName] || CATEGORY_CATALOGS["Smartphone"] || [];
-  
-  return rawList.map((item, idx) => ({
-    title: item.title,
-    price: item.price,
-    old_price: item.oldPrice,
-    thumbnail: item.image,
-    link: item.source.toLowerCase().includes("amazon") 
-      ? `https://www.amazon.in/s?k=${encodeURIComponent(item.title)}`
-      : item.source.toLowerCase().includes("flipkart")
-      ? `https://www.flipkart.com/search?q=${encodeURIComponent(item.title)}`
-      : `https://www.amazon.in/s?k=${encodeURIComponent(item.title)}`,
-    source: item.source,
-    rating: item.rating,
-    reviews: item.reviews,
-    delivery: item.delivery,
-    coupon: item.coupon,
-    brand: item.brand,
-    features: item.features,
-    isOriginalLink: false,
-    aiScore: 98 - idx,
-    aiConfidence: 96,
-    matchExplanation: `Verified top-tier ${categoryName} from ${item.brand}`,
-  }));
+  if (CATEGORY_CATALOGS[categoryName]) {
+    const rawList = CATEGORY_CATALOGS[categoryName];
+    return rawList.map((item, idx) => ({
+      title: item.title,
+      price: item.price,
+      old_price: item.oldPrice,
+      thumbnail: item.image,
+      link: item.source.toLowerCase().includes("amazon") 
+        ? `https://www.amazon.in/s?k=${encodeURIComponent(item.title)}`
+        : item.source.toLowerCase().includes("flipkart")
+        ? `https://www.flipkart.com/search?q=${encodeURIComponent(item.title)}`
+        : `https://www.amazon.in/s?k=${encodeURIComponent(item.title)}`,
+      source: item.source,
+      rating: item.rating,
+      reviews: item.reviews,
+      delivery: item.delivery,
+      coupon: item.coupon,
+      brand: item.brand,
+      features: item.features,
+      isOriginalLink: false,
+      aiScore: 98 - idx,
+      aiConfidence: 96,
+      matchExplanation: `Verified top-tier ${categoryName} from ${item.brand}`,
+    }));
+  }
+
+  // Fallback to dynamic generation so it works with ANY product
+  return generateExactStoreVariants({
+    cleanQuery: categoryName,
+    isAccessorySearch: false
+  } as any);
 }
 
 // ---------------------------------------------------------------------------
@@ -1670,16 +1963,64 @@ export function generateExactStoreVariants(
   specs: ParsedQuerySpecs,
   resolvedInfo?: ResolvedUrlInfo | null
 ): SearchResultItem[] {
-  const brand = specs.brand || "Apple";
-  const modelName = specs.cleanQuery || "iPhone 17 Pro Max";
+  const brand = specs.brand || "";
+  let modelName = resolvedInfo?.extractedTitle || specs.cleanQuery || "Product";
+
+  // Clean raw URLs out of modelName if necessary
+  if (modelName.startsWith("http://") || modelName.startsWith("https://")) {
+    modelName = resolvedInfo?.extractedTitle || "Search Product";
+  }
 
   let baseTitle = modelName;
-  if (!baseTitle.toLowerCase().includes(brand.toLowerCase())) {
+  if (brand && !baseTitle.toLowerCase().includes(brand.toLowerCase())) {
     baseTitle = `${brand} ${baseTitle}`;
   }
 
-  const storages = specs.storage ? [specs.storage] : ["256GB", "512GB", "1TB"];
-  const colors = specs.color ? [specs.color] : ["Black Titanium", "White Titanium", "Desert Titanium", "Natural Titanium"];
+  const lowerTitle = baseTitle.toLowerCase();
+  const isLaptopDevice = lowerTitle.includes("laptop") ||
+                         lowerTitle.includes("macbook") ||
+                         lowerTitle.includes("notebook") ||
+                         lowerTitle.includes("acer") ||
+                         lowerTitle.includes("swift") ||
+                         lowerTitle.includes("asus") ||
+                         lowerTitle.includes("dell") ||
+                         lowerTitle.includes("hp") ||
+                         lowerTitle.includes("lenovo") ||
+                         lowerTitle.includes("thinkpad") ||
+                         lowerTitle.includes("intel core") ||
+                         lowerTitle.includes("ryzen");
+
+  const isPhoneDevice = !isLaptopDevice && (
+    lowerTitle.includes("phone") ||
+    lowerTitle.includes("iphone") ||
+    lowerTitle.includes("galaxy") ||
+    lowerTitle.includes("pixel") ||
+    lowerTitle.includes("smartphone") ||
+    lowerTitle.includes("mobile")
+  );
+
+  const isFootwear = lowerTitle.includes("shoe") || lowerTitle.includes("sneaker") || lowerTitle.includes("jordan") || lowerTitle.includes("yeezy");
+
+  let storages: string[] = ["Standard"];
+  let colors: string[] = ["Original"];
+
+  if (specs.storage) {
+    storages = [specs.storage];
+  } else if (isLaptopDevice) {
+    storages = ["512GB SSD", "1TB SSD", "256GB SSD"];
+  } else if (isPhoneDevice) {
+    storages = ["128GB", "256GB", "512GB"];
+  }
+
+  if (specs.color) {
+    colors = [specs.color];
+  } else if (isLaptopDevice) {
+    colors = ["Steel Gray", "Silver", "Charcoal Black"];
+  } else if (isPhoneDevice) {
+    colors = ["Midnight Black", "Starlight Silver", "Deep Blue"];
+  } else if (isFootwear) {
+    colors = ["UK 8", "UK 9", "UK 10"];
+  }
 
   const storeConfigs = [
     { source: "Amazon", delivery: "Free Priority Delivery (Tomorrow by 9 PM)", coupon: "₹5,000 Instant Discount with HDFC Credit Cards", seller: "Appario Retail Private Ltd" },
@@ -1691,20 +2032,16 @@ export function generateExactStoreVariants(
     { source: "Vijay Sales", delivery: "Free Store Delivery", coupon: "₹2,500 Instant Bank Off", seller: "Vijay Sales Official" },
   ];
 
-  let basePriceNum = 144900;
-  if (baseTitle.toLowerCase().includes("pro max") || baseTitle.toLowerCase().includes("ultra")) {
-    basePriceNum = 144900;
-  } else if (baseTitle.toLowerCase().includes("pro") || baseTitle.toLowerCase().includes("plus")) {
-    basePriceNum = 119900;
-  } else if (baseTitle.toLowerCase().includes("macbook")) {
-    basePriceNum = 134900;
-  } else if (baseTitle.toLowerCase().includes("s25") || baseTitle.toLowerCase().includes("s24")) {
-    basePriceNum = 129999;
-  } else {
-    
-    const charSum = baseTitle.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    basePriceNum = 1000 + (charSum % 40) * 1500;
-
+  let basePriceNum = getExpectedMarketPrice(baseTitle, brand);
+  if (basePriceNum <= 0) {
+    if (lowerTitle.includes("phone") || lowerTitle.includes("mobile") || lowerTitle.includes("smartphone")) basePriceNum = 24999;
+    else if (lowerTitle.includes("headphone") || lowerTitle.includes("earbud") || lowerTitle.includes("audio")) basePriceNum = 4999;
+    else if (lowerTitle.includes("laptop") || lowerTitle.includes("computer") || lowerTitle.includes("macbook")) basePriceNum = 64990;
+    else if (lowerTitle.includes("tv") || lowerTitle.includes("television")) basePriceNum = 32990;
+    else if (lowerTitle.includes("shoe") || lowerTitle.includes("sneaker")) basePriceNum = 4499;
+    else if (lowerTitle.includes("watch")) basePriceNum = 5999;
+    else if (lowerTitle.includes("camera") || lowerTitle.includes("dslr")) basePriceNum = 58900;
+    else basePriceNum = 3999;
   }
 
   const results: SearchResultItem[] = [];
@@ -1714,14 +2051,22 @@ export function generateExactStoreVariants(
     const selectedColor = colors[idx % colors.length];
 
     let storageMultiplier = 1;
-    if (selectedStorage === "512GB") storageMultiplier = 1.15;
-    if (selectedStorage === "1TB") storageMultiplier = 1.35;
+    if (selectedStorage === "512GB") storageMultiplier = 1.12;
+    if (selectedStorage === "1TB") storageMultiplier = 1.25;
 
-    const storePriceVariation = (idx * 1200) - 2000;
-    const finalPriceNum = Math.round((basePriceNum * storageMultiplier) + storePriceVariation);
-    const oldPriceNum = Math.round(finalPriceNum * 1.14);
+    // Small competitive price variations between stores (±1-3%)
+    const storePriceVariation = (idx * 250) - 500;
+    const finalPriceNum = Math.max(1499, Math.round((basePriceNum * storageMultiplier) + storePriceVariation));
+    const oldPriceNum = Math.round(finalPriceNum * 1.12);
 
-    const fullProductTitle = `${baseTitle} ${selectedStorage} ${selectedColor}`.trim();
+    let fullProductTitle = baseTitle;
+    if ((isLaptopDevice || isPhoneDevice) && selectedStorage !== "Standard" && !baseTitle.toLowerCase().includes(selectedStorage.toLowerCase())) {
+      fullProductTitle += ` ${selectedStorage}`;
+    }
+    if (selectedColor !== "Original" && !baseTitle.toLowerCase().includes(selectedColor.toLowerCase())) {
+      fullProductTitle += ` (${selectedColor})`;
+    }
+
     const cleanSearchSlug = encodeURIComponent(fullProductTitle);
 
     let productLink = "";
@@ -1768,7 +2113,13 @@ export function generateExactStoreVariants(
       productLink = `https://www.amazon.in/s?k=${cleanSearchSlug}`;
     }
 
-    const imgUrl = getProductCategoryPhoto(fullProductTitle);
+    let imgUrl = resolvedInfo?.validatedImage || resolvedInfo?.productImage || null;
+    if (!imgUrl && resolvedInfo?.productId && resolvedInfo?.storeName?.toLowerCase().includes("amazon")) {
+      imgUrl = `https://images-na.ssl-images-amazon.com/images/P/${resolvedInfo.productId}.01._SCLZZZZZZZ_.jpg`;
+    }
+    if (!imgUrl) {
+      imgUrl = getProductCategoryPhoto(fullProductTitle);
+    }
 
     results.push({
       title: fullProductTitle,

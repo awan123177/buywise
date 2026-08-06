@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useCurrency } from "../contexts/CurrencyContext";
 import SEO from "./SEO";
+import PremiumProductImage from "./PremiumProductImage";
 import toast from "react-hot-toast";
 
 interface FAQ {
@@ -291,8 +292,8 @@ export default function HubPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {data.deals.map((deal, idx) => (
                   <div key={idx} className="bg-[#111111] border border-white/5 p-4 rounded-2xl flex gap-4 hover:border-white/15 transition-all">
-                    <div className="w-20 h-20 bg-white/5 rounded-xl flex items-center justify-center p-2 shrink-0">
-                      <img src={deal.thumbnail} alt="" className="w-full h-full object-contain filter drop-shadow-md" referrerPolicy="no-referrer" />
+                    <div className="w-20 h-20 bg-white/5 rounded-xl flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                      <PremiumProductImage src={deal.thumbnail} alt={deal.title} className="w-full h-full p-1" />
                     </div>
                     <div className="flex-1 min-w-0 flex flex-col justify-between">
                       <div>

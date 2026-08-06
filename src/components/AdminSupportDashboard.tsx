@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Search, MessageSquare, CheckCircle2, Clock, Trash2, Send, Archive, User, AlertCircle, RefreshCw, X, MoreVertical, Paperclip, ChevronDown, CheckCheck, Star, ShieldCheck, Download, History, Tag, Keyboard } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -112,32 +112,34 @@ export default function AdminSupportDashboard({ email, passcode, defaultFilter =
     }
   };
 
-  const filteredTickets = tickets.filter(t => {
-    const matchesSearch = (t.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (t.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (t.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          (t.id || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    let matchesFilter = false;
-    switch(filter) {
-      case 'all': matchesFilter = true; break;
-      case 'open': matchesFilter = t.status === 'open'; break;
-      case 'pending': matchesFilter = t.status === 'pending'; break;
-      case 'resolved': matchesFilter = t.status === 'resolved'; break;
-      case 'high_priority': matchesFilter = t.priority === 'high' || (t.subject || '').toLowerCase().includes('urgent'); break;
-      case 'premium_users': matchesFilter = t.isPremiumUser; break;
-      case 'livechat': 
-        matchesFilter = (t.id || '').startsWith('TK-') || 
-                        (t.subject || '').toLowerCase().includes('support request') || 
-                        (t.subject || '').toLowerCase().includes('live chat') ||
-                        (t.messages && t.messages.length >= 1) ||
-                        t.status === 'open'; 
-        break;
-      default: matchesFilter = true;
-    }
-    
-    return matchesSearch && matchesFilter;
-  });
+  const filteredTickets = useMemo(() => {
+    return tickets.filter(t => {
+      const matchesSearch = (t.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            (t.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (t.subject || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (t.id || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      let matchesFilter = false;
+      switch(filter) {
+        case 'all': matchesFilter = true; break;
+        case 'open': matchesFilter = t.status === 'open'; break;
+        case 'pending': matchesFilter = t.status === 'pending'; break;
+        case 'resolved': matchesFilter = t.status === 'resolved'; break;
+        case 'high_priority': matchesFilter = t.priority === 'high' || (t.subject || '').toLowerCase().includes('urgent'); break;
+        case 'premium_users': matchesFilter = t.isPremiumUser; break;
+        case 'livechat': 
+          matchesFilter = (t.id || '').startsWith('TK-') || 
+                          (t.subject || '').toLowerCase().includes('support request') || 
+                          (t.subject || '').toLowerCase().includes('live chat') ||
+                          (t.messages && t.messages.length >= 1) ||
+                          t.status === 'open'; 
+          break;
+        default: matchesFilter = true;
+      }
+      
+      return matchesSearch && matchesFilter;
+    });
+  }, [tickets, searchTerm, filter]);
 
   // Auto select first ticket if none selected or if selected ticket no longer visible
   useEffect(() => {
