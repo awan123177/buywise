@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Hotel, Calendar, Users, Search, MapPin, Star, AlertCircle, Shield, Wifi, Coffee } from 'lucide-react';
-import { useCurrency } from '../../contexts/CurrencyContext';
+import { Hotel, Calendar, Users, Search, MapPin, Star, AlertCircle, Wifi, Coffee } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+import { generateHotelBookingUrl } from './bookingUtils';
 
 export default function HotelSearch() {
   const [city, setCity] = useState('');
+  
   const [checkIn, setCheckIn] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() + 1);
@@ -21,74 +23,70 @@ export default function HotelSearch() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [hotels, setHotels] = useState<any[]>([]);
-  const [sortBy, setSortBy] = useState<'lowest_price' | 'highest_rated' | 'luxury' | 'budget'>('lowest_price');
+  
+  const [sortBy, setSortBy] = useState<'rating' | 'reviews'>('rating');
   const [minRating, setMinRating] = useState(0);
+  const [hotelType, setHotelType] = useState<'any' | 'budget' | 'luxury' | 'business' | 'family'>('any');
   const [mustHaveBreakfast, setMustHaveBreakfast] = useState(false);
   const [mustHaveCancellation, setMustHaveCancellation] = useState(false);
-  const { formatPrice, currency } = useCurrency();
+  const [apiError, setApiError] = useState(false);
 
-    const handleSearch = async () => {
+  const handleSearch = async () => {
     if (!city) {
       toast.error('Please enter a destination city');
       return;
     }
-    setLoading(true);
     setSearched(true);
-    
+    setLoading(true);
+    setApiError(false);
+
     try {
-      const userCountry = 'IN';
-      const userLang = navigator.language || 'en-US';
-      const res = await fetch(`/api/travel/hotels?city=${encodeURIComponent(city)}&checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}&rooms=${rooms}&currency=${currency}&country=${userCountry}&language=${userLang}`);
-      if (res.ok) {
-        const data = await res.json();
-        setHotels(data.hotels || []);
-      } else {
-        toast.error('Failed to fetch hotels');
+      const params = new URLSearchParams({
+        city,
+        checkIn,
+        checkOut,
+        guests: guests.toString(),
+        rooms: rooms.toString()
+      });
+
+      const response = await fetch(`/api/travel/hotels?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch hotels');
       }
-    } catch (e) {
-      toast.error('Search failed. Check your connection.');
+      
+      const data = await response.json();
+      setHotels(data.hotels || []);
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to search hotels. Please try again later.');
+      setApiError(true);
     } finally {
       setLoading(false);
     }
   };
 
-    const handleBook = (hotelName: string, bookingLink?: string) => {
+  const handleBook = (hotelName: string) => {
     toast.success('Redirecting to booking partner...', { duration: 3000 });
-    
-    // Direct Klook Search for the specific hotel
-    let targetUrl = `https://www.klook.com/en-IN/hotels/search/?query=${encodeURIComponent(hotelName || city)}`;
-    if (checkIn && checkOut) {
-       targetUrl += `&check_in=${checkIn}&check_out=${checkOut}`;
-    }
-    targetUrl += `&adults=${guests}&rooms=${rooms}`;
-    
-    const encodedTarget = encodeURIComponent(targetUrl);
-    const affiliateUrl = `https://tp.media/r?campaign_id=137&marker=744135&p=4110&trs=543965&u=${encodedTarget}`;
-
+    const affiliateUrl = generateHotelBookingUrl({
+      hotelName,
+      city,
+      checkIn,
+      checkOut,
+      guests,
+      rooms
+    });
     setTimeout(() => {
       window.open(affiliateUrl, '_blank', 'noopener,noreferrer');
     }, 1500);
   };
 
-  
-
-  const sortedHotels = [...hotels]
-  .filter(h => h.rating >= minRating)
-  .filter(h => mustHaveBreakfast ? h.breakfast_included : true)
-  .filter(h => mustHaveCancellation ? h.free_cancellation : true)
-  .sort((a, b) => {
-    switch (sortBy) {
-      case 'lowest_price':
-      case 'budget':
-        return a.price - b.price;
-      case 'highest_rated':
-        return b.rating - a.rating;
-      case 'luxury':
-        return b.price - a.price;
-      default:
-        return 0;
-    }
-  });
+  const filteredHotels = hotels
+    .filter(h => (h.rating || 0) >= minRating)
+    .sort((a, b) => {
+      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+      if (sortBy === 'reviews') return (b.reviews || 0) - (a.reviews || 0);
+      return 0;
+    });
 
   return (
     <div className="space-y-8">
@@ -121,9 +119,10 @@ export default function HotelSearch() {
             <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
             <input 
               type="text" 
-              placeholder="City or Hotel Name" 
+              placeholder="City or Destination (e.g. London)" 
               value={city}
               onChange={(e) => setCity(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="w-full bg-[#111] border border-white/10 rounded-xl pl-12 pr-4 py-4 text-white font-bold outline-none focus:border-[#FF3B30] transition-colors"
             />
           </div>
@@ -147,41 +146,41 @@ export default function HotelSearch() {
           </div>
         </div>
 
-          <div className="flex items-center gap-2 bg-[#111] rounded-lg p-1 px-4 border border-white/10 h-[40px] overflow-x-auto whitespace-nowrap">
-             <div className="flex gap-2">
-               {(['lowest_price', 'highest_rated', 'luxury', 'budget'] as const).map(sort => (
-                 <button 
-                   key={sort}
-                   onClick={() => setSortBy(sort)}
-                   className={`text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full border transition-colors ${
-                     sortBy === sort 
-                       ? 'border-[#FF3B30] bg-[#FF3B30]/10 text-[#FF3B30] shadow-[0_0_10px_rgba(255,59,48,0.2)]' 
-                       : 'border-white/10 bg-[#111] hover:bg-white/5 text-white/70'
-                   }`}
-                 >
-                   {sort.replace('_', ' ')}
-                 </button>
-               ))}
-             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 bg-[#111] rounded-lg p-2 border border-white/10 w-full mt-2 text-[10px] font-bold uppercase tracking-widest text-white/70">
-             <span className="mr-2">Filters:</span>
+        <div className="flex flex-wrap items-center gap-2 bg-[#111] rounded-lg p-2 border border-white/10 w-full mt-4 text-[10px] font-bold uppercase tracking-widest text-white/70">
+           <span className="mr-2">Sort & Filter:</span>
+           <button onClick={() => setSortBy('rating')} className={`px-3 py-1.5 rounded border transition-colors ${sortBy === 'rating' ? 'border-[#FF3B30] text-[#FF3B30]' : 'border-white/10 hover:border-white/30'}`}>Top Rated</button>
+           <button onClick={() => setSortBy('reviews')} className={`px-3 py-1.5 rounded border transition-colors ${sortBy === 'reviews' ? 'border-[#FF3B30] text-[#FF3B30]' : 'border-white/10 hover:border-white/30'}`}>Most Reviewed</button>
+           <div className="ml-4 flex items-center gap-2">
+              Min Stars:
+              <select value={minRating} onChange={e => setMinRating(Number(e.target.value))} className="bg-transparent text-white outline-none cursor-pointer border-b border-white/20 pb-0.5">
+                 <option value="0" className="bg-[#111]">Any</option>
+                 <option value="3" className="bg-[#111]">3.0+</option>
+                 <option value="4" className="bg-[#111]">4.0+</option>
+                 <option value="4.5" className="bg-[#111]">4.5+</option>
+              </select>
+           </div>
+           <div className="ml-4 flex items-center gap-2">
+              Type:
+              <select value={hotelType} onChange={e => setHotelType(e.target.value as any)} className="bg-transparent text-white outline-none cursor-pointer border-b border-white/20 pb-0.5">
+                 <option value="any" className="bg-[#111]">Any</option>
+                 <option value="budget" className="bg-[#111]">Budget</option>
+                 <option value="luxury" className="bg-[#111]">Luxury</option>
+                 <option value="business" className="bg-[#111]">Business</option>
+                 <option value="family" className="bg-[#111]">Family Friendly</option>
+              </select>
+           </div>
+           <div className="ml-4 flex items-center gap-4">
              <label className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
-               <input type="checkbox" checked={mustHaveBreakfast} onChange={e => setMustHaveBreakfast(e.target.checked)} className="accent-[#FF3B30]" /> Breakfast
+               <input type="checkbox" checked={mustHaveBreakfast} onChange={e => setMustHaveBreakfast(e.target.checked)} className="accent-[#FF3B30]" />
+               Breakfast Included
              </label>
-             <label className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors ml-4">
-               <input type="checkbox" checked={mustHaveCancellation} onChange={e => setMustHaveCancellation(e.target.checked)} className="accent-[#FF3B30]" /> Free Cancel
+             <label className="flex items-center gap-1 cursor-pointer hover:text-white transition-colors">
+               <input type="checkbox" checked={mustHaveCancellation} onChange={e => setMustHaveCancellation(e.target.checked)} className="accent-[#FF3B30]" />
+               Free Cancellation
              </label>
-             <div className="ml-4 flex items-center gap-2">
-                Min Stars:
-                <select value={minRating} onChange={e => setMinRating(Number(e.target.value))} className="bg-transparent text-white outline-none cursor-pointer border-b border-white/20 pb-0.5">
-                   <option value="0" className="bg-[#111]">Any</option>
-                   <option value="3" className="bg-[#111]">3+ Stars</option>
-                   <option value="4" className="bg-[#111]">4+ Stars</option>
-                   <option value="4.5" className="bg-[#111]">4.5+ Stars</option>
-                </select>
-             </div>
-          </div>
+           </div>
+        </div>
+
         <button 
           onClick={handleSearch}
           disabled={loading}
@@ -191,85 +190,84 @@ export default function HotelSearch() {
         </button>
       </div>
 
-      {searched && (
-        <div className="space-y-4">
-          <div className="text-sm font-bold uppercase tracking-widest text-[#FF3B30] mb-4">
-             {loading ? 'Searching...' : (hotels.length > 0 ? `Top Properties Found in ${city}` : 'No hotels found for the selected destination.')}
+      {apiError && (
+        <div className="glass-card p-6 border-[#FF3B30]/50 flex items-center gap-4 text-[#FF3B30]">
+          <AlertCircle size={24} />
+          <div>
+            <h3 className="font-bold">Search Failed</h3>
+            <p className="text-sm opacity-80">We couldn't fetch hotels at this time. Please check your SERP API Key configuration.</p>
           </div>
-          {loading ? (
-             <div className="space-y-4">
-               {[1, 2, 3, 4].map(i => (
-                 <div key={i} className="glass-card overflow-hidden flex flex-col md:flex-row animate-pulse">
-                   <div className="w-full md:w-64 h-48 bg-white/5" />
-                   <div className="flex-1 p-6 flex flex-col justify-between">
-                     <div>
-                       <div className="h-6 w-3/4 bg-white/5 rounded mb-4" />
-                       <div className="flex gap-2 mb-4">
-                         <div className="h-4 w-16 bg-white/5 rounded" />
-                         <div className="h-4 w-16 bg-white/5 rounded" />
-                       </div>
-                     </div>
-                     <div className="flex justify-between items-end mt-4">
-                       <div>
-                         <div className="h-3 w-20 bg-white/5 rounded mb-2" />
-                         <div className="h-6 w-24 bg-white/5 rounded" />
-                       </div>
-                       <div className="h-10 w-32 bg-white/5 rounded-xl" />
-                     </div>
-                   </div>
-                 </div>
-               ))}
-             </div>
-          ) : sortedHotels.map((hotel, idx) => (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              key={hotel.id}
-              className="glass-card overflow-hidden hover:border-[#FF3B30]/50 transition-all group flex flex-col md:flex-row"
-            >
-              <div className="w-full md:w-64 h-48 md:h-auto relative">
-                <img 
-  src={hotel.image} 
-  alt={hotel.name} 
-  className="w-full h-full object-cover"
-  onError={(e) => {
-    const target = e.target as HTMLImageElement;
-    if (!target.dataset.retried) {
-       target.dataset.retried = 'true';
-       // Try an unsplash backup based on location or generic
-       target.src = `https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80&hash=${hotel.id}`;
-    }
-  }}
-  loading="lazy"
-/>
-                <div className="absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 text-[#FFD700]">
-                  <Star size={12} className="fill-[#FFD700]" /> {hotel.rating} <span className="text-white/50 font-normal">({hotel.reviews})</span>
-                </div>
-              </div>
-              <div className="flex-1 p-6 flex flex-col justify-between">
-                <div>
-                  <h3 className="text-xl font-black font-display mb-2">{hotel.name}</h3>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {hotel.amenities.map((amenity: string) => (
-                      <span key={amenity} className="text-[10px] font-bold uppercase tracking-widest bg-white/5 px-2 py-1 rounded text-white/70">
-                        {amenity}
-                      </span>
-                    ))}
+        </div>
+      )}
+
+      {searched && !apiError && (
+        <div className="space-y-4">
+          <div className="text-sm font-bold uppercase tracking-widest text-[#FF3B30] py-2">
+             {loading ? 'Searching Hotels...' : (filteredHotels.length > 0 ? `Properties Found in ${city}` : 'No hotels found for the selected destination.')}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {!loading && filteredHotels.map((place, idx) => (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                key={place.id || place.name}
+                className="glass-card overflow-hidden hover:border-[#FF3B30]/50 transition-all group flex flex-col"
+              >
+                <div className="w-full h-48 relative">
+                  {place.image ? (
+                      <img 
+                        src={place.image} 
+                        alt={place.name || 'Hotel'} 
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                  ) : (
+                      <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                         <Hotel size={32} className="text-white/20" />
+                      </div>
+                  )}
+                  <div className="absolute top-2 left-2 bg-black/80 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 text-[#FFD700]">
+                    <Star size={12} className="fill-[#FFD700]" /> {place.rating || 'N/A'} <span className="text-white/50 font-normal">({place.reviews || 0})</span>
                   </div>
                 </div>
-                <div className="flex items-end justify-between mt-4 md:mt-0 pt-4 border-t border-white/5">
+                <div className="flex-1 p-4 flex flex-col justify-between">
                   <div>
-                    <div className="text-[10px] text-white/50 uppercase tracking-widest font-bold">Price per night</div>
-                    <div className="text-2xl font-black text-[#FF3B30] font-mono">{formatPrice(hotel.price)}</div>
+                    <h3 className="text-lg font-black font-display mb-1">{place.name}</h3>
+                    <p className="text-xs text-white/50 mb-3">{place.location || place.distance || 'Location info unavailable'}</p>
+                    
+                    {place.amenities && place.amenities.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {place.amenities.slice(0, 3).map((amenity: string, i: number) => (
+                          <span key={i} className="text-[9px] uppercase tracking-wider bg-white/10 px-2 py-1 rounded text-white/70">
+                            {amenity}
+                          </span>
+                        ))}
+                        {place.amenities.length > 3 && (
+                          <span className="text-[9px] uppercase tracking-wider bg-white/5 px-2 py-1 rounded text-white/50">
+                            +{place.amenities.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <button onClick={() => handleBook(hotel.name, hotel.booking_link)} className="bg-[#FF3B30] text-black px-8 py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:bg-white transition-all shadow-[0_0_15px_rgba(255,59,48,0.3)]">
-                    Book Now
-                  </button>
+                  
+                  <div className="flex items-end justify-between mt-2 pt-3 border-t border-white/5">
+                    <div>
+                      <div className="text-[10px] text-white/50 uppercase tracking-widest font-bold">Price per night</div>
+                      <div className="text-lg font-bold text-white/90">
+                        {place.price ? `₹${place.price.toLocaleString()}` : (place.rate_per_night?.lowest || 'Price unavailable')}
+                      </div>
+                    </div>
+                    <button onClick={() => handleBook(place.name || '')} className="bg-[#FF3B30] text-black px-4 py-2 rounded-lg font-black uppercase tracking-widest text-[10px] hover:bg-white transition-all">
+                      Check Prices
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          ))}
+              </motion.div>
+            ))}
+          </div>
         </div>
       )}
     </div>

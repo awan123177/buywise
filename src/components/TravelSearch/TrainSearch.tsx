@@ -5,6 +5,36 @@ import { useCurrency } from '../../contexts/CurrencyContext';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
+import { generateTrainBookingUrl } from './bookingUtils';
+
+
+const POPULAR_STATIONS = [
+  { code: 'NDLS', name: 'New Delhi' },
+  { code: 'DLI', name: 'Old Delhi' },
+  { code: 'NZM', name: 'Nizamuddin (Delhi)' },
+  { code: 'BCT', name: 'Mumbai Central' },
+  { code: 'CSMT', name: 'Mumbai CSMT' },
+  { code: 'LTT', name: 'Lokmanya Tilak Terminus' },
+  { code: 'HWH', name: 'Howrah (Kolkata)' },
+  { code: 'SDAH', name: 'Sealdah (Kolkata)' },
+  { code: 'MAS', name: 'Chennai Central' },
+  { code: 'MS', name: 'Chennai Egmore' },
+  { code: 'SBC', name: 'Bengaluru (KSR)' },
+  { code: 'YPR', name: 'Yesvantpur (Bengaluru)' },
+  { code: 'PUNE', name: 'Pune Jn' },
+  { code: 'ADI', name: 'Ahmedabad Jn' },
+  { code: 'CNB', name: 'Kanpur Central' },
+  { code: 'LKO', name: 'Lucknow Charbagh' },
+  { code: 'PNBE', name: 'Patna Jn' },
+  { code: 'BSB', name: 'Varanasi Jn' },
+  { code: 'BBS', name: 'Bhubaneswar' },
+  { code: 'SC', name: 'Secunderabad Jn' },
+  { code: 'HYB', name: 'Hyderabad Deccan' },
+  { code: 'BPL', name: 'Bhopal Jn' },
+  { code: 'INDB', name: 'Indore Jn' },
+  { code: 'JP', name: 'Jaipur Jn' }
+];
+
 export default function TrainSearch() {
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
@@ -45,19 +75,10 @@ export default function TrainSearch() {
   };
 
     const handleBook = (bookingLink: string) => {
-    toast.success('Redirecting to official booking partner...', { duration: 3000 });
+    toast.success('Redirecting to Google Search...', { duration: 3000 });
     
-    let targetUrl = `https://www.klook.com/en-IN/trains/search/?from=${encodeURIComponent(origin || '')}&to=${encodeURIComponent(destination || '')}`;
-    if (departDate) {
-       targetUrl += `&date=${departDate}`;
-    }
-    targetUrl += `&adults=${adults}`;
-
-    const encodedTarget = encodeURIComponent(targetUrl);
-    const affiliateUrl = `https://tp.media/r?campaign_id=137&marker=744135&p=4110&trs=543965&u=${encodedTarget}`;
-
     setTimeout(() => {
-      window.open(affiliateUrl, '_blank', 'noopener,noreferrer');
+      window.open(bookingLink || `https://www.google.com/search?q=book+train+from+${origin}+to+${destination}`, '_blank', 'noopener,noreferrer');
     }, 1500);
   };
 
@@ -93,7 +114,14 @@ export default function TrainSearch() {
   return (
     <div className="space-y-8">
       {/* Search Form */}
+      
       <div className="glass-card p-6 md:p-8">
+        <datalist id="stations-list">
+          {POPULAR_STATIONS.map(s => (
+            <option key={s.code} value={s.code}>{s.name}</option>
+          ))}
+        </datalist>
+
         <div className="flex flex-wrap items-center gap-4 mb-6">
           <div className="flex items-center gap-2 bg-[#111] rounded-lg p-1 px-4 border border-white/10 h-[40px]">
              <Users size={14} className="text-white/50" />
@@ -139,16 +167,17 @@ export default function TrainSearch() {
         <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr_1fr] gap-4 items-center">
           {/* Origin */}
           <div className="relative">
-            <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
+            <Train size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
             <input 
               type="text" 
-              placeholder="Origin Station (e.g. NDLS)" 
+              placeholder="Origin Station (e.g. NDLS or New Delhi)" 
               value={origin}
               onChange={(e) => setOrigin(e.target.value.toUpperCase())}
+              list="stations-list"
               className="w-full bg-[#111] border border-white/10 rounded-xl pl-12 pr-4 py-4 text-white font-bold outline-none focus:border-[#FF3B30] transition-colors uppercase placeholder:normal-case placeholder:font-normal"
             />
           </div>
-          
+
           <div className="hidden md:flex items-center justify-center w-10 h-10 rounded-full bg-[#111] border border-white/10 text-white/50 hover:text-white hover:border-[#FF3B30] cursor-pointer transition-colors" onClick={() => {
             const temp = origin;
             setOrigin(destination);
@@ -156,18 +185,20 @@ export default function TrainSearch() {
           }}>
             <ArrowRightLeft size={16} />
           </div>
-
-          {/* Destination */}
+          
+          
           <div className="relative">
-            <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
+            <Train size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" />
             <input 
               type="text" 
-              placeholder="Destination Station (e.g. BCT)" 
+              placeholder="Destination Station (e.g. BCT or Mumbai)" 
               value={destination}
               onChange={(e) => setDestination(e.target.value.toUpperCase())}
+              list="stations-list"
               className="w-full bg-[#111] border border-white/10 rounded-xl pl-12 pr-4 py-4 text-white font-bold outline-none focus:border-[#FF3B30] transition-colors uppercase placeholder:normal-case placeholder:font-normal"
             />
           </div>
+
 
           {/* Date */}
           <div className="relative">

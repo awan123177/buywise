@@ -42,6 +42,9 @@ export default defineConfig(({ mode }) => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    define: {
+      'process.env.GOOGLE_MAPS_PLATFORM_KEY': JSON.stringify(env.GOOGLE_MAPS_PLATFORM_KEY || '')
+    },
     build: { outDir: 'dist' },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
