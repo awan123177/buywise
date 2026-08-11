@@ -9,6 +9,7 @@ import VisualSearch from './VisualSearch';
 import { collection, query, where, onSnapshot, doc, setDoc } from '../lib/firebase';
 import { db } from '../lib/firebase';
 import { fetchGamificationProfile, deleteAccountAndData } from '../lib/api';
+import CouponRewardModal from './CouponRewardModal';
 import { useCurrency } from '../contexts/CurrencyContext';
 import GooeyNav from './GooeyNav';
 import Dock from './Dock';
@@ -40,6 +41,7 @@ export default function Navbar() {
   const [onlineCount, setOnlineCount] = useState<number>(1);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [coins, setCoins] = useState<number>(0);
+  const [showCouponModal, setShowCouponModal] = useState(false);
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showAvatarModal, setShowAvatarModal] = useState(false);
@@ -87,6 +89,10 @@ export default function Navbar() {
       fetchGamificationProfile()
         .then(profile => {
           setCoins(profile.coins);
+          if (profile.hasReceived1000PointCoupon && !localStorage.getItem('1000_point_coupon_seen')) {
+             setShowCouponModal(true);
+             localStorage.setItem('1000_point_coupon_seen', 'true');
+          }
           setActiveBadge(profile.activeBadge || null);
         })
         .catch(() => {});
@@ -256,7 +262,8 @@ export default function Navbar() {
             </motion.button>
           )}
         </div>
-      </nav>
+        {showCouponModal && <CouponRewardModal isOpen={showCouponModal} onClose={() => setShowCouponModal(false)} />}
+    </nav>
 
       {/* Bottom Mobile Tab Bar */}
       <div className="fixed bottom-[env(safe-area-inset-bottom)] left-0 right-0 z-[100] pb-2 sm:pb-4 flex justify-center xl:hidden pointer-events-none">

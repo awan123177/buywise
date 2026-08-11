@@ -158,15 +158,15 @@
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
       "email": "mohammdsaeed24@gmail.com",
       "name": "test",
-      "coins": 692,
+      "coins": 481,
       "referralCode": "TEST256",
       "referredBy": null,
-      "searchesCount": 24,
-      "totalSaved": 6549,
-      "lastSearchDate": "2026-08-05",
-      "lastLoginDate": "2026-08-07",
-      "streakCount": 3,
-      "lastStreakCheckDate": "2026-08-07",
+      "searchesCount": 25,
+      "totalSaved": 6854,
+      "lastSearchDate": "2026-08-11",
+      "lastLoginDate": "2026-08-11",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-08-11",
       "achievements": [
         "streak_3",
         "first_search",
@@ -273,6 +273,41 @@
     }
   },
   "transactions": [
+    {
+      "id": "txn_1786441306752_120",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": -200,
+      "reason": "Redeemed reward: mystery",
+      "timestamp": "2026-08-11T09:41:46.752Z"
+    },
+    {
+      "id": "txn_1786435033259_364",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 2,
+      "reason": "First search of the day bonus",
+      "timestamp": "2026-08-11T07:57:13.259Z"
+    },
+    {
+      "id": "txn_1786431835013_884",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": -50,
+      "reason": "Redeemed reward: deal",
+      "timestamp": "2026-08-11T07:03:55.013Z"
+    },
+    {
+      "id": "txn_1786431827971_310",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": -200,
+      "reason": "Redeemed reward: mystery",
+      "timestamp": "2026-08-11T07:03:47.971Z"
+    },
+    {
+      "id": "txn_1786430945312_671",
+      "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
+      "amount": 5,
+      "reason": "Daily login reward (Streak reset)",
+      "timestamp": "2026-08-11T06:49:05.312Z"
+    },
     {
       "id": "txn_1786072423175_628",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -799,13 +834,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 25686,
-    "totalUsers": 1447,
-    "productsCompared": 52158,
-    "priceAlertsTriggered": 1404,
+    "totalSearches": 25803,
+    "totalUsers": 1448,
+    "productsCompared": 52512,
+    "priceAlertsTriggered": 1419,
     "dealsFoundToday": 240,
     "activePremiumUsers": 125,
-    "totalSavedAmount": 1869278
+    "totalSavedAmount": 1871444
   },
   "bannedUsers": [],
   "reviews": [

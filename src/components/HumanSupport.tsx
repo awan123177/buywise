@@ -275,7 +275,7 @@ export default function HumanSupport() {
               text: botReplyText,
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               status: 'seen',
-              showTransferOption: lower.includes('refund') || lower.includes('utr') || lower.includes('not solved') || lower.includes('human') || lower.includes('transfer') || botReplyText.toLowerCase().includes('transfer') || botReplyText.toLowerCase().includes('human')
+              showTransferOption: lower.includes('refund')  || lower.includes('not solved') || lower.includes('human') || lower.includes('transfer') || botReplyText.toLowerCase().includes('transfer') || botReplyText.toLowerCase().includes('human')
             }
           ]);
         }, 600);

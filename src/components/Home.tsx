@@ -646,7 +646,7 @@ export default function Home() {
         <div className="bg-[#111111]/80 backdrop-blur-md p-10 flex flex-col md:flex-row items-center gap-12 rounded-3xl border border-white/10 relative overflow-hidden">
            <div className="absolute top-0 right-0 w-64 h-64 bg-[#FF3B30]/5 blur-[80px] rounded-full pointer-events-none" />
            <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
-              <img src="/founder.jpg?v=10" alt="Awan Warsi" className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
+              <img src="/api/founder-image" alt="Awan Warsi" className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />
               <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
            </div>
            <div>

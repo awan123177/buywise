@@ -3468,6 +3468,172 @@ What can I assist you with today?`;
     }
   });
 
+
+  app.post('/api/verify-play-purchase', async (req, res) => {
+    try {
+      const { packageName, productId, token, userId } = req.body;
+      
+      if (!packageName || !productId || !token || !userId) {
+        return res.status(400).json({ success: false, error: 'Missing required fields' });
+      }
+      
+      // We must not put credentials in the client; server expects them via env
+      const GOOGLE_PLAY_EMAIL = process.env.GOOGLE_PLAY_CLIENT_EMAIL;
+      const GOOGLE_PLAY_KEY = process.env.GOOGLE_PLAY_PRIVATE_KEY?.replace(/\\n/g, '\n');
+      
+      if (!GOOGLE_PLAY_EMAIL || !GOOGLE_PLAY_KEY) {
+        throw new Error("Google Play credentials are not configured on the server");
+      }
+
+      const { google } = await import('googleapis');
+      
+      const authClient = new google.auth.JWT({
+        email: GOOGLE_PLAY_EMAIL,
+        key: GOOGLE_PLAY_KEY,
+        scopes: ['https://www.googleapis.com/auth/androidpublisher']
+      });
+      
+      const playDeveloper = google.androidpublisher({
+        version: 'v3',
+        auth: authClient
+      });
+
+      let entitlementVerified = false;
+      let expiryTimeMillis = null;
+      let acknowledgmentState = null;
+
+      if (productId === 'buywise_founder_forever') {
+        // Verify One-Time Purchase
+        const response = await playDeveloper.purchases.products.get({
+          packageName,
+          productId,
+          token
+        });
+        
+        const purchase = response.data;
+        if (purchase.purchaseState === 0) { // 0 = PURCHASED
+          entitlementVerified = true;
+          acknowledgmentState = purchase.acknowledgementState;
+          
+          if (acknowledgmentState === 0) {
+            // Acknowledge the purchase if not already
+            await playDeveloper.purchases.products.acknowledge({
+              packageName,
+              productId,
+              token
+            });
+          }
+        }
+      } else {
+        // Verify Subscription using subscriptionsv2
+        // @ts-ignore
+        const response = await playDeveloper.purchases.subscriptionsv2.get({
+          packageName,
+          token
+        });
+        
+        const sub = response.data;
+        const now = Date.now();
+        
+        if (sub.subscriptionState === 'SUBSCRIPTION_STATE_PENDING') {
+          return res.status(200).json({ success: true, verified: false, pending: true, message: "Purchase is pending" });
+        }
+        
+        let maxExpiry = 0;
+        let isAcknowledged = true;
+        
+        if (sub.lineItems && sub.lineItems.length > 0) {
+            for (const item of sub.lineItems) {
+                if (item.expiryTime) {
+                    const itemExpiry = new Date(item.expiryTime).getTime();
+                    if (itemExpiry > maxExpiry) {
+                        maxExpiry = itemExpiry;
+                    }
+                }
+                if (item.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {
+                    isAcknowledged = false;
+                }
+            }
+        }
+        
+        if (maxExpiry > now || sub.subscriptionState === 'SUBSCRIPTION_STATE_ACTIVE') {
+          entitlementVerified = true;
+          expiryTimeMillis = maxExpiry > now ? maxExpiry : null;
+          
+          if (!isAcknowledged) {
+             await playDeveloper.purchases.subscriptions.acknowledge({
+                packageName,
+                subscriptionId: productId,
+                token
+             });
+          }
+        } else {
+          return res.status(200).json({ success: true, verified: false, message: "Subscription expired" });
+        }
+      }
+
+      if (entitlementVerified) {
+        // Activate Premium logic
+        const planMap: Record<string, number> = {
+          'buywise_premium_daily': 1,
+          'buywise_premium_weekly': 7,
+          'buywise_premium_monthly': 30,
+          'buywise_premium_yearly': 365,
+          'buywise_founder_forever': 36500, // 100 years
+        };
+        
+        let subDays = planMap[productId] || 0;
+        
+        // Calculate the actual expiry date based on Google Play expiry time if available, otherwise fallback
+        const expirationDate = expiryTimeMillis 
+            ? new Date(expiryTimeMillis) 
+            : new Date(Date.now() + subDays * 24 * 60 * 60 * 1000);
+
+        try {
+          // Use standard firebase SDK for admin mock
+          const { db } = await import('./src/lib/firebase.js');
+          const { doc, updateDoc } = await import('firebase/firestore');
+          // @ts-ignore
+          await updateDoc(doc(db, 'users', userId), {
+          
+            premiumStatus: 'active',
+            premiumPlan: productId,
+            premiumSince: new Date().toISOString(),
+            premiumExpiration: expirationDate.toISOString(),
+            playPurchaseToken: token
+          });
+        } catch (e) {
+           console.error("Firebase update failed, trying fallback:", e);
+        }
+
+        return res.json({ 
+          success: true, 
+          verified: true, 
+          expirationDate: expirationDate.toISOString() 
+        });
+      } else {
+        return res.json({ success: false, verified: false, message: "Purchase could not be verified" });
+      }
+    } catch (err: any) {
+      console.error('Play verification error:', err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  
+  app.get('/api/founder-image', (req, res) => {
+     const distPath = path.join(process.cwd(), 'dist', 'founder.jpg');
+     const publicPath = path.join(process.cwd(), 'public', 'founder.jpg');
+     
+     if (fs.existsSync(distPath)) {
+        res.sendFile(distPath);
+     } else if (fs.existsSync(publicPath)) {
+        res.sendFile(publicPath);
+     } else {
+        res.status(404).send('Image not found');
+     }
+  });
+
   // Vite middleware for development
   let vite;
   if (process.env.NODE_ENV !== "production") {
@@ -3570,10 +3736,77 @@ What can I assist you with today?`;
   }
 
   
+
+  // --- COUPON SYSTEM ---
+  
+  app.get("/api/gamification/coupons", getUserContext, (req: any, res: any) => {
+    try {
+      const db = require('./src/server/gamificationDb.ts');
+      const coupons = db.getUserCoupons(req.user.uid);
+      res.json({ success: true, coupons });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/gamification/coupons/validate", getUserContext, (req: any, res: any) => {
+    try {
+      const { code, planId } = req.body;
+      const db = require('./src/server/gamificationDb.ts');
+      const result = db.validateCoupon(req.user.uid, code, planId);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ valid: false, error: e.message });
+    }
+  });
+
+  app.post("/api/gamification/coupons/redeem", getUserContext, (req: any, res: any) => {
+    try {
+      const { code, planId } = req.body;
+      const db = require('./src/server/gamificationDb.ts');
+      const result = db.redeemCoupon(req.user.uid, code, planId);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.get("/api/gamification/admin/coupons", adminAuth, (req: any, res: any) => {
+    try {
+      const db = require('./src/server/gamificationDb.ts');
+      res.json({ success: true, coupons: db.getAllCoupons() });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/gamification/admin/coupons/update", adminAuth, (req: any, res: any) => {
+    try {
+      const { couponId, updates } = req.body;
+      const db = require('./src/server/gamificationDb.ts');
+      const result = db.updateCouponSettings(couponId, updates);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/gamification/admin/coupons/generate", adminAuth, (req: any, res: any) => {
+    try {
+      const { userId, discountPercent } = req.body;
+      const db = require('./src/server/gamificationDb.ts');
+      const coupon = db.generateCouponForUser(userId, discountPercent || 10);
+      res.json({ success: true, coupon });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   // --- HUMAN SUPPORT SYSTEM ---
   
   
-app.listen(PORT, "0.0.0.0", () => {
+
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`PriceVerse AI Server running at http://0.0.0.0:${PORT}`);
     startTelegramPolling();
   });

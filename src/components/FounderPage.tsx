@@ -8,7 +8,7 @@ const FOUNDER_INFO = {
   name: "Awan Warsi",
   title: "Owner & Chairman of BuyWise",
   description: "A digital exhibition of the BuyWise story.",
-  image: "/founder.jpg",
+  image: "/api/founder-image",
   social: {
     website: "https://awan.pro",
     instagram: "https://instagram.com/awanwarsi",

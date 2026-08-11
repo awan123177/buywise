@@ -5,10 +5,9 @@ import {
   ChevronRight, Copy, CheckCircle, Search, HelpCircle, 
   ArrowUpRight, AlertTriangle, RefreshCw, BadgePercent,
   Sparkles, Star, Target, ShieldAlert, Coins
-} from 'lucide-react';
+, Ticket } from "lucide-react";
 import { useAuth } from '../contexts/AuthContext';
-import { 
-  fetchGamificationProfile, triggerDailyCheckIn,
+import { fetchUserCoupons, fetchGamificationProfile, triggerDailyCheckIn,
   fetchCoinTransactions, fetchAchievements, 
   submitReferral, fetchReferralsDashboard, 
   fetchLeaderboard, redeemCoinReward, logSocialShare, logReviewAction,
@@ -21,6 +20,8 @@ export default function RewardsHub() {
   const { user, openLogin } = useAuth();
   const { formatPrice } = useCurrency();
   const [profile, setProfile] = useState<any>(null);
+  const [coins, setCoins] = useState<number>(0);
+  const [coupons, setCoupons] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [achievements, setAchievements] = useState<any[]>([]);
   const [referralStats, setReferralStats] = useState<any>(null);
@@ -36,6 +37,39 @@ export default function RewardsHub() {
   const [claiming, setClaiming] = useState<string | null>(null);
   const [tippingUserId, setTippingUserId] = useState<string | null>(null);
   const [tipAmount, setTipAmount] = useState<string>('50');
+
+  
+  const handleRedeemCoupon = async () => {
+    if (coins < 1000) {
+      toast.error("You need 1000 coins to generate a coupon.");
+      return;
+    }
+    const toastId = toast.loading("Generating coupon...");
+    try {
+      const res = await api.post("/gamification/redeem-coupon", {});
+      if (res.success && res.coupon) {
+         toast.success("Coupon generated successfully!");
+         refreshProfileAndCoupons();
+      } else {
+         toast.error(res.error || "Failed to generate coupon");
+      }
+    } catch(e) {
+      toast.error("Failed to generate coupon");
+    } finally {
+      toast.dismiss(toastId);
+    }
+  };
+
+  const refreshProfileAndCoupons = async () => {
+    try {
+      const p = await fetchGamificationProfile();
+      setProfile(p);
+      setCoins(p.coins);
+      const cRes = await fetchUserCoupons();
+      if (cRes.success && cRes.coupons) setCoupons(cRes.coupons);
+    } catch(e) {}
+  };
+
   const [isSpinning, setIsSpinning] = useState<boolean>(false);
   const [spinResult, setSpinResult] = useState<{ reward: string, coinsAwarded: number, message: string } | null>(null);
 
@@ -276,8 +310,8 @@ export default function RewardsHub() {
     if (!user) return;
     setLoading(true);
     try {
-      const [profData, txnData, achData, refData, lBoardData, reviewsData] = await Promise.all([
-        fetchGamificationProfile(),
+      const [profData, couponsData, txnData, achData, refData, lBoardData, reviewsData] = await Promise.all([
+        fetchGamificationProfile(), fetchUserCoupons(),
         fetchCoinTransactions(),
         fetchAchievements(),
         fetchReferralsDashboard(),
@@ -285,6 +319,9 @@ export default function RewardsHub() {
         fetchReviews()
       ]);
       setProfile(profData);
+      if (couponsData && couponsData.success) {
+        setCoupons(couponsData.coupons || []);
+      }
       setTransactions(txnData);
       setAchievements(achData);
       setReferralStats(refData);
@@ -428,6 +465,7 @@ export default function RewardsHub() {
     if (!user) return openLogin();
     try {
       const result = await submitMission(missionId);
+      refreshProfileAndCoupons();
       if (result.success) {
         toast.success(result.message);
         triggerCoinAnimation();
@@ -823,6 +861,43 @@ export default function RewardsHub() {
             {/* 1. WALLET DETAILS TAB */}
             {activeTab === 'wallet' && (
               <div className="space-y-6">
+
+                {/* Generated Coupons */}
+                <div className="bg-[#1C1917]/85 backdrop-blur-xl p-8 rounded-3xl border border-[#EF4444]/15 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-black text-white uppercase tracking-tight">Your Coupons</h3>
+                      <p className="text-xs text-white/50">Redeem coins for Premium discount codes</p>
+                    </div>
+                    <button 
+                      onClick={handleRedeemCoupon}
+                      className="px-4 py-2 bg-yellow-500/10 text-yellow-500 hover:bg-yellow-500/20 rounded-lg text-[10px] font-black uppercase tracking-wider transition-colors border border-yellow-500/20 flex items-center gap-2"
+                    >
+                      <Ticket size={14} />
+                      Redeem 1000 Coins
+                    </button>
+                  </div>
+                  
+                  {coupons.length === 0 ? (
+                    <div className="text-center py-8 text-white/30 text-xs uppercase tracking-widest font-bold">
+                      No coupons generated yet.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {coupons.map((coupon, idx) => (
+                        <div key={idx} className="bg-stone-900 border border-stone-800 rounded-xl p-4 flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-bold text-white font-mono">{coupon.code}</div>
+                            <div className="text-[10px] text-white/40 uppercase tracking-wider mt-1">Generated: {new Date(coupon.createdAt).toLocaleDateString()}</div>
+                          </div>
+                          <div className="bg-red-500/10 text-red-500 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider">
+                            Valid
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 
                 {/* Spin to Win Section (AAA-Quality Gamified Upgrade) */}
                 <div className="bg-[#1C1917]/85 backdrop-blur-xl p-8 rounded-3xl border border-[#EF4444]/25 space-y-6 text-center relative overflow-hidden shadow-[0_0_40px_rgba(239,68,68,0.15)] group">
