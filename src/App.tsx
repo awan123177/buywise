@@ -20,6 +20,8 @@ import ShoppingGuides from './components/ShoppingGuides';
 import CompareProducts from './components/CompareProducts';
 import HubPage from './components/HubPage';
 import HumanSupport from './components/HumanSupport';
+import DownloadPage from './components/DownloadPage';
+import { Receipt } from './components/Receipt';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { AffiliateProvider } from './contexts/AffiliateContext';
@@ -76,6 +78,8 @@ export default function App() {
               <Route path="/guides/:slug" element={<ShoppingGuides />} />
               <Route path="/hub/:slug" element={<HubPage />} />
               <Route path="/support" element={<HumanSupport />} />
+              <Route path="/download" element={<DownloadPage />} />
+              <Route path="/receipt/:receiptId" element={<Receipt />} />
               <Route path="/:pageId" element={<StaticPage />} />
             </Routes>
           </main>

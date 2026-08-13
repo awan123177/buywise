@@ -60,12 +60,12 @@ export default function TrainSearch() {
     setSearched(true);
     try {
       const res = await fetch(`/api/travel/trains?origin=${origin}&destination=${destination}&date=${departDate}&adults=${adults}&class=${trainClass}&quota=${quota}`);
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
         setTrains(data.trains || []);
       } else {
-        const err = await res.json();
-        toast.error(err.error || 'Failed to fetch trains.');
+        toast.error('Failed to fetch trains.');
       }
     } catch (e) {
       toast.error('Search failed. Please check connection.');

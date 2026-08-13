@@ -37,14 +37,14 @@ export default function FlightSearch() {
     setSearched(true);
     try {
       const res = await fetch(`/api/travel/search?origin=${searchOrigin}&destination=${searchDest}&depart_date=${departDate}&return_date=${returnDate || ''}&adults=${adults}&cabin_class=${cabinClass}&type=${tripType}`);
-            if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
         setFlights(data.flights || []);
         setAlternative(data.alternative || null);
         setLimitedFlights(data.limited_flights || false);
       } else {
-        const err = await res.json();
-        toast.error(err.error || 'Failed to fetch flights.');
+        toast.error('Failed to fetch flights.');
       }
     } catch (e) {
       toast.error('Search failed. Please check connection.');

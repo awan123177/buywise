@@ -11,7 +11,7 @@ import { fetchUserCoupons, fetchGamificationProfile, triggerDailyCheckIn,
   fetchCoinTransactions, fetchAchievements, 
   submitReferral, fetchReferralsDashboard, 
   fetchLeaderboard, redeemCoinReward, logSocialShare, logReviewAction,
-  fetchReviews, submitUserReview, transferCoins, spinWheelDaily, submitMission
+  fetchReviews, submitUserReview, transferCoins, spinWheelDaily, submitMission, api
 } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -47,11 +47,11 @@ export default function RewardsHub() {
     const toastId = toast.loading("Generating coupon...");
     try {
       const res = await api.post("/gamification/redeem-coupon", {});
-      if (res.success && res.coupon) {
+      if (res.data?.success && res.data?.coupon) {
          toast.success("Coupon generated successfully!");
          refreshProfileAndCoupons();
       } else {
-         toast.error(res.error || "Failed to generate coupon");
+         toast.error(res.data?.error || "Failed to generate coupon");
       }
     } catch(e) {
       toast.error("Failed to generate coupon");

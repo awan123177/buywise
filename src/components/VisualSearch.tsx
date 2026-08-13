@@ -156,7 +156,14 @@ export default function VisualSearch({ variant = 'default' }: { variant?: 'defau
       });
 
       clearTimeout(stageTimer);
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = {};
+      if (contentType.includes('application/json')) {
+        data = await res.json();
+      } else {
+        const text = await res.text();
+        data = { success: false, error: `Server returned HTTP ${res.status}` };
+      }
 
       if (!res.ok || !data.success) {
         const detailMsg = data.error || data.details || 'Unable to recognize product in this photo.';

@@ -1,11 +1,12 @@
 import AdminSupportDashboard from "./AdminSupportDashboard";
+import AdminApkManager from "./AdminApkManager";
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
   Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X,
   Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode, Download,
-  Settings, Upload, MessageSquare, UserCheck, RefreshCw, Phone, Mail, Camera
+  Settings, Upload, MessageSquare, UserCheck, RefreshCw, Phone, Mail, Camera, Smartphone
 } from 'lucide-react';
 import { fetchAdminStats, runAdminGamificationAction, api } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -54,7 +55,7 @@ export default function AdminPanel() {
   const [founderImage, setFounderImage] = useState<string | null>(null);
   const [isUploadingFounder, setIsUploadingFounder] = useState(false);
   const founderInputRef = React.useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'travel' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder' | 'support' | 'livechat' | 'careers' | 'debug' | 'coupons'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'travel' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder' | 'support' | 'livechat' | 'careers' | 'debug' | 'coupons' | 'apk'>('overview');
   
   // Coupons State
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -124,8 +125,11 @@ export default function AdminPanel() {
         }
       });
       if (res.ok) {
-        const data = await res.json();
-        setCareerApplications(data);
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json();
+          setCareerApplications(data);
+        }
       }
     } catch (err) {
       console.error("Error fetching career applications:", err);
@@ -381,11 +385,13 @@ export default function AdminPanel() {
 
   const adminTabsList = [
     { id: 'overview', label: 'Overview', icon: BarChart3, group: 'Core' },
+    { id: 'apk', label: '📱 Android APK Manager', icon: Download, group: 'Core' },
     { id: 'revenue', label: 'Revenue', icon: TrendingUp, group: 'Core' },
     { id: 'users', label: 'Users', icon: Users, group: 'Management' },
     { id: 'products', label: 'Products', icon: Tag, group: 'Management' },
     { id: 'careers', label: 'Creator Applications', icon: UserCheck, group: 'Management' },
     { id: 'travel', label: 'Travel Dashboard', icon: Globe, group: 'Management' },
+    { id: 'founder', label: 'Owner Photo', icon: Upload, group: 'Management' },
     { id: 'coins', label: 'BuyWise Coins', icon: Award, group: 'Ecosystem' },
     { id: 'referrals', label: 'Referrals', icon: ExternalLink, group: 'Ecosystem' },
     { id: 'premium', label: 'Premium', icon: ShieldCheck, group: 'Ecosystem' },
@@ -397,7 +403,6 @@ export default function AdminPanel() {
     { id: 'analytics', label: 'Analytics', icon: Search, group: 'Advanced' },
     { id: 'debug', label: 'Admin Debug Page', icon: AlertTriangle, group: 'Advanced' },
     { id: 'settings', label: 'System Settings', icon: Settings, group: 'Advanced' },
-    { id: 'founder', label: 'Owner Photo', icon: Upload, group: 'Management' },
   ];
 
   return (
@@ -405,7 +410,7 @@ export default function AdminPanel() {
       {/* Premium Glass Sidebar */}
       <aside className="w-64 border-r border-white/5 bg-black/50 backdrop-blur-2xl flex flex-col fixed h-[calc(100vh-80px)] overflow-y-auto hidden md:flex z-40">
         <div className="p-6">
-          <h2 className="text-[10px] font-black uppercase tracking-widest text-white/40 mb-4">Admin Console</h2>
+          <h2 className="text-[10px] font-black uppercase tracking-widest text-[#FF3B30] mb-4">Admin Console Navigation</h2>
           <div className="space-y-1">
             {adminTabsList.map((tab) => (
               <button
@@ -447,7 +452,13 @@ export default function AdminPanel() {
             </h1>
             <p className="text-xs text-white/40 mt-1 uppercase tracking-widest">Operational Node: INDIA_001</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={() => setActiveTab('apk')}
+              className="px-4 py-2 bg-[#FF3B30] hover:bg-[#FF3B30]/90 text-white rounded-lg text-[10px] font-black tracking-widest uppercase transition-all flex items-center gap-2 shadow-lg shadow-[#FF3B30]/20 cursor-pointer"
+            >
+              <Smartphone size={14} /> Android APK Manager
+            </button>
             <button 
               onClick={clearHistory}
               disabled={isClearing}
@@ -468,6 +479,25 @@ export default function AdminPanel() {
           >
             {activeTab === 'overview' && (
               <div className="space-y-10">
+                {/* Highlighted Android APK Banner */}
+                <div className="bg-gradient-to-r from-[#FF3B30]/20 via-black/80 to-black/90 border border-[#FF3B30]/30 rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-[#FF3B30]/20 border border-[#FF3B30]/40 rounded-xl flex items-center justify-center text-[#FF3B30] shrink-0">
+                      <Smartphone size={24} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-black uppercase text-[#FF3B30] tracking-widest block">Android Mobile App Releases</span>
+                      <h3 className="text-xl font-black uppercase text-white tracking-tight">Android APK Manager</h3>
+                      <p className="text-xs text-white/50">Upload, validate, publish, and rollback BuyWise Android APK builds.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('apk')}
+                    className="px-6 py-3 bg-[#FF3B30] hover:bg-[#FF3B30]/90 text-white font-black text-xs uppercase tracking-wider rounded-xl flex items-center gap-2 shadow-lg shadow-[#FF3B30]/20 cursor-pointer shrink-0"
+                  >
+                    <Upload size={16} /> Open APK Uploader & Manager
+                  </button>
+                </div>
                 {/* Premium Admin Stats Grid */}
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 mb-10">
                   {[
@@ -2142,6 +2172,10 @@ export default function AdminPanel() {
                   toast.loading("Testing direct store search...", { id: "debug-test" });
                   try {
                     const res = await fetch(`/api/search?q=${encodeURIComponent(input)}`);
+                    const contentType = res.headers.get('content-type') || '';
+                    if (!res.ok || !contentType.includes('application/json')) {
+                      throw new Error(`Server returned status ${res.status}`);
+                    }
                     const data = await res.json();
                     toast.success(`Search OK! Received ${data.results?.length || 0} direct store results.`, { id: "debug-test" });
                   } catch (err: any) {
@@ -2202,7 +2236,11 @@ export default function AdminPanel() {
         </div>
       )}
 
-      {activeTab !== 'overview' && activeTab !== 'travel' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'support' && activeTab !== 'livechat' && activeTab !== 'founder' && activeTab !== 'debug' && (
+      {activeTab === 'apk' && (
+        <AdminApkManager email={email} passcode={passcode} />
+      )}
+
+      {activeTab !== 'overview' && activeTab !== 'travel' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'support' && activeTab !== 'livechat' && activeTab !== 'founder' && activeTab !== 'debug' && activeTab !== 'apk' && (
         <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-6">
            <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
               <ShieldCheck size={48} className="text-white/20" />

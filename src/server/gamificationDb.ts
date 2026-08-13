@@ -146,6 +146,35 @@ export interface TelegramConfig {
   enabled: boolean;
 }
 
+export interface ApkRelease {
+  id: string;
+  filename: string;
+  originalFilename: string;
+  versionName: string;
+  versionCode: string;
+  packageName: string;
+  fileSize: number;
+  fileSizeFormatted: string;
+  storagePath: string;
+  publicUrl: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  status: "ACTIVE" | "ARCHIVED";
+  downloadCount: number;
+  isManualMeta?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApkDownloadLog {
+  id: string;
+  apkId: string;
+  versionName: string;
+  timestamp: string;
+  ip?: string;
+  userAgent?: string;
+}
+
 export interface DatabaseSchema {
   profiles: { [userId: string]: UserProfile };
   transactions: CoinTransaction[];
@@ -159,6 +188,8 @@ export interface DatabaseSchema {
   telegramConfig?: TelegramConfig;
   coupons?: Coupon[];
   founderImage?: string;
+  apkReleases?: ApkRelease[];
+  apkDownloadsLog?: ApkDownloadLog[];
 }
 
 // High-quality real product images from Unsplash to display beautiful photos of the products
@@ -1434,3 +1465,185 @@ export function redeemCoupon(userId: string, code: string, planId: string): { su
   saveDatabase();
   return { success: true };
 }
+
+// ---------------------- APK MANAGER FUNCTIONS ----------------------
+
+export function getActiveApkRelease(): ApkRelease {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  
+  let active = dbData.apkReleases.find((a) => a.status === "ACTIVE");
+  
+  if (!active) {
+    // Initialize with a default active release record if none exists
+    active = {
+      id: "apk_v1_0_0_initial",
+      filename: "buywise.apk",
+      originalFilename: "buywise.apk",
+      versionName: "1.0.0",
+      versionCode: "100",
+      packageName: "store.buywise.app",
+      fileSize: 48234500,
+      fileSizeFormatted: "46.0 MB",
+      storagePath: "uploads/apks/buywise.apk",
+      publicUrl: "https://buywiser.store/downloads/buywise.apk",
+      uploadedBy: "Admin",
+      uploadedAt: new Date().toISOString(),
+      status: "ACTIVE",
+      downloadCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    dbData.apkReleases.push(active);
+    saveDatabase();
+  }
+  
+  return active;
+}
+
+export function getAllApkReleases(): ApkRelease[] {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  // Ensure we have at least 1 active release
+  getActiveApkRelease();
+  return [...dbData.apkReleases].sort(
+    (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+  );
+}
+
+export function getApkStats() {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  if (!dbData.apkDownloadsLog) dbData.apkDownloadsLog = [];
+  
+  const activeApk = getActiveApkRelease();
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1000;
+  
+  const logs = dbData.apkDownloadsLog;
+  
+  const totalDownloads = dbData.apkReleases.reduce((acc, r) => acc + (r.downloadCount || 0), 0);
+  const currentVersionDownloads = activeApk.downloadCount || 0;
+  
+  const last24Hours = logs.filter((l) => now - new Date(l.timestamp).getTime() <= dayMs).length;
+  const last7Days = logs.filter((l) => now - new Date(l.timestamp).getTime() <= 7 * dayMs).length;
+  const last30Days = logs.filter((l) => now - new Date(l.timestamp).getTime() <= 30 * dayMs).length;
+  const allTime = logs.length > 0 ? logs.length : totalDownloads;
+
+  return {
+    totalDownloads,
+    currentVersionDownloads,
+    last24Hours,
+    last7Days,
+    last30Days,
+    allTime,
+  };
+}
+
+export function createNewApkRelease(releaseData: {
+  filename: string;
+  originalFilename: string;
+  versionName: string;
+  versionCode: string;
+  packageName: string;
+  fileSize: number;
+  fileSizeFormatted: string;
+  storagePath: string;
+  uploadedBy: string;
+  isManualMeta?: boolean;
+}): ApkRelease {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+
+  // Archive all existing releases transactionally
+  dbData.apkReleases.forEach((r) => {
+    r.status = "ARCHIVED";
+    r.updatedAt = new Date().toISOString();
+  });
+
+  const nowIso = new Date().toISOString();
+  const newRelease: ApkRelease = {
+    id: "apk_rel_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+    filename: releaseData.filename,
+    originalFilename: releaseData.originalFilename,
+    versionName: releaseData.versionName,
+    versionCode: releaseData.versionCode,
+    packageName: releaseData.packageName,
+    fileSize: releaseData.fileSize,
+    fileSizeFormatted: releaseData.fileSizeFormatted,
+    storagePath: releaseData.storagePath,
+    publicUrl: "https://buywiser.store/downloads/buywise.apk",
+    uploadedBy: releaseData.uploadedBy || "Admin",
+    uploadedAt: nowIso,
+    status: "ACTIVE",
+    downloadCount: 0,
+    isManualMeta: !!releaseData.isManualMeta,
+    createdAt: nowIso,
+    updatedAt: nowIso,
+  };
+
+  dbData.apkReleases.unshift(newRelease);
+  saveDatabase();
+
+  return newRelease;
+}
+
+export function recordApkDownload(apkId: string, ip?: string, userAgent?: string) {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  if (!dbData.apkDownloadsLog) dbData.apkDownloadsLog = [];
+
+  const release = dbData.apkReleases.find((r) => r.id === apkId || r.status === "ACTIVE");
+  if (release) {
+    release.downloadCount = (release.downloadCount || 0) + 1;
+    release.updatedAt = new Date().toISOString();
+
+    dbData.apkDownloadsLog.push({
+      id: "dl_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+      apkId: release.id,
+      versionName: release.versionName,
+      timestamp: new Date().toISOString(),
+      ip,
+      userAgent,
+    });
+
+    saveDatabase();
+  }
+}
+
+export function activateApkRelease(releaseId: string): ApkRelease {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+
+  const target = dbData.apkReleases.find((r) => r.id === releaseId);
+  if (!target) {
+    throw new Error("APK release record not found.");
+  }
+
+  // Atomically archive all releases, then activate target
+  dbData.apkReleases.forEach((r) => {
+    r.status = "ARCHIVED";
+    r.updatedAt = new Date().toISOString();
+  });
+
+  target.status = "ACTIVE";
+  target.updatedAt = new Date().toISOString();
+
+  saveDatabase();
+
+  return target;
+}
+
+export function deleteApkRelease(releaseId: string): ApkRelease {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+
+  const index = dbData.apkReleases.findIndex((r) => r.id === releaseId);
+  if (index === -1) {
+    throw new Error("APK release record not found.");
+  }
+
+  const release = dbData.apkReleases[index];
+  if (release.status === "ACTIVE") {
+    throw new Error("Cannot delete the currently active APK. Please set another APK active first.");
+  }
+
+  dbData.apkReleases.splice(index, 1);
+  saveDatabase();
+
+  return release;
+}
+

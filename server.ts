@@ -8,6 +8,8 @@ import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import helmet from "helmet";
 import { createClient } from "@supabase/supabase-js";
+import multer from "multer";
+import { parseAndValidateApk, formatFileSize } from "./src/server/apkParser.ts";
 import {
   getOrCreateProfile,
   awardCoins,
@@ -37,7 +39,14 @@ import {
   spinWheel,
   completeMission,
   deleteUserProfile,
-  setFounderImage
+  setFounderImage,
+  getActiveApkRelease,
+  getAllApkReleases,
+  getApkStats,
+  createNewApkRelease,
+  recordApkDownload,
+  activateApkRelease,
+  deleteApkRelease
 } from "./src/server/gamificationDb.ts";
 import { getProductCategoryPhoto } from "./src/lib/productImages.js";
 import {
@@ -321,6 +330,12 @@ async function startServer() {
   }
 
   const app = express();
+
+  // Health check route
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
   const PORT = 3000;
 
   // 2. SECURITY HEADERS (HELMET) WITH IFRAME COMPATIBILITY FOR GOOGLE AI STUDIO
@@ -1439,6 +1454,272 @@ Telegram Message:
       res.json(raw.referrals);
     } catch (e: any) {
       res.json([]);
+    }
+  });
+
+  // ----------------------------------------------------
+  // APK DOWNLOAD MANAGEMENT SYSTEM ROUTES
+  // ----------------------------------------------------
+  
+  const MAX_APK_SIZE_MB = parseInt(process.env.MAX_APK_SIZE_MB || "200", 10);
+  const apkUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: MAX_APK_SIZE_MB * 1024 * 1024 },
+  });
+
+  // Direct APK binary download route (matches permanent URL https://buywiser.store/downloads/buywise.apk)
+  app.get(["/downloads/buywise.apk", "/downloads/:filename", "/api/apk/download"], async (req: any, res: any) => {
+    try {
+      const activeApk = getActiveApkRelease();
+
+      // Record download event
+      const clientIp = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
+      const userAgent = req.headers["user-agent"] || "";
+      recordApkDownload(activeApk.id, String(clientIp), String(userAgent));
+
+      const uploadsDir = path.join(process.cwd(), "uploads", "apks");
+      const publicDownloadsDir = path.join(process.cwd(), "public", "downloads");
+
+      let targetPath = "";
+      if (activeApk.storagePath && fs.existsSync(path.join(process.cwd(), activeApk.storagePath))) {
+        targetPath = path.join(process.cwd(), activeApk.storagePath);
+      } else if (fs.existsSync(path.join(uploadsDir, "active_buywise.apk"))) {
+        targetPath = path.join(uploadsDir, "active_buywise.apk");
+      } else if (fs.existsSync(path.join(publicDownloadsDir, "buywise.apk"))) {
+        targetPath = path.join(publicDownloadsDir, "buywise.apk");
+      } else {
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+        targetPath = path.join(uploadsDir, "buywise.apk");
+        if (!fs.existsSync(targetPath)) {
+          const AdmZipModule = (await import("adm-zip")).default;
+          const initialZip = new AdmZipModule();
+          initialZip.addFile("AndroidManifest.xml", Buffer.from("store.buywise.app"));
+          fs.writeFileSync(targetPath, initialZip.toBuffer());
+        }
+      }
+
+      res.setHeader("Content-Type", "application/vnd.android.package-archive");
+      res.setHeader("Content-Disposition", 'attachment; filename="buywise.apk"');
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+
+      return res.sendFile(path.resolve(targetPath));
+    } catch (err: any) {
+      console.error("Error serving APK download:", err);
+      return res.status(500).json({ error: "Failed to serve APK file." });
+    }
+  });
+
+  // Public Endpoint to Get Current Active APK Info
+  app.get("/api/apk/current", (req: any, res: any) => {
+    try {
+      const activeApk = getActiveApkRelease();
+      return res.json({
+        success: true,
+        activeApk: {
+          versionName: activeApk.versionName,
+          versionCode: activeApk.versionCode,
+          packageName: activeApk.packageName,
+          fileSizeFormatted: activeApk.fileSizeFormatted,
+          fileSize: activeApk.fileSize,
+          uploadedAt: activeApk.uploadedAt,
+          publicUrl: "https://buywiser.store/downloads/buywise.apk",
+          downloadCount: activeApk.downloadCount,
+        },
+      });
+    } catch (e: any) {
+      return res.status(500).json({ error: "Failed to retrieve current APK info." });
+    }
+  });
+
+  // Admin Endpoint to Validate an APK file before publishing
+  app.post("/api/admin/apk/validate", adminAuth, (req: any, res: any) => {
+    apkUpload.single("apkFile")(req, res, (err: any) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ error: `APK file is too large. Maximum size allowed is ${MAX_APK_SIZE_MB} MB.` });
+        }
+        return res.status(400).json({ error: err.message || "Failed to process APK upload." });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "Please select a valid APK file." });
+      }
+
+      if (!req.file.originalname.toLowerCase().endsWith(".apk")) {
+        return res.status(400).json({ error: "Please select a valid APK file. Only .apk files are allowed." });
+      }
+
+      const validation = parseAndValidateApk(req.file.buffer, req.file.originalname);
+      if (!validation.isValid) {
+        return res.status(400).json({ error: validation.error || "Please select a valid APK file." });
+      }
+
+      return res.json({
+        success: true,
+        filename: req.file.originalname,
+        packageName: validation.packageName,
+        versionName: validation.versionName,
+        versionCode: validation.versionCode,
+        fileSize: validation.fileSize,
+        fileSizeFormatted: validation.fileSizeFormatted,
+        isManualMeta: validation.isManualMeta,
+      });
+    });
+  });
+
+  // Admin Endpoint to Upload & Publish New APK
+  app.post("/api/admin/apk/publish", adminAuth, (req: any, res: any) => {
+    apkUpload.single("apkFile")(req, res, (err: any) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ error: `APK file is too large. Maximum size allowed is ${MAX_APK_SIZE_MB} MB.` });
+        }
+        return res.status(400).json({ error: err.message || "Failed to upload APK file." });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "Please select an APK file to publish." });
+      }
+
+      if (!req.file.originalname.toLowerCase().endsWith(".apk")) {
+        return res.status(400).json({ error: "Please select a valid APK file. Only .apk files are allowed." });
+      }
+
+      const validation = parseAndValidateApk(req.file.buffer, req.file.originalname);
+      if (!validation.isValid) {
+        return res.status(400).json({ error: validation.error || "Invalid APK file." });
+      }
+
+      const manualVersionName = req.body?.versionName;
+      const manualVersionCode = req.body?.versionCode;
+
+      const finalVersionName = manualVersionName || validation.versionName || "1.0.0";
+      const finalVersionCode = manualVersionCode || validation.versionCode || "100";
+      const finalPackageName = validation.packageName || "store.buywise.app";
+
+      if (finalPackageName !== "store.buywise.app") {
+        return res.status(400).json({
+          error: `Invalid BuyWise APK. Expected package: store.buywise.app (found: ${finalPackageName})`,
+        });
+      }
+
+      try {
+        const uploadsDir = path.join(process.cwd(), "uploads", "apks");
+        const publicDir = path.join(process.cwd(), "public", "downloads");
+        const distDir = path.join(process.cwd(), "dist", "downloads");
+
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+        if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+        if (fs.existsSync(path.join(process.cwd(), "dist")) && !fs.existsSync(distDir)) {
+          fs.mkdirSync(distDir, { recursive: true });
+        }
+
+        const timeTag = Date.now();
+        const sanitizedVer = finalVersionName.replace(/[^a-zA-Z0-9_\.]/g, "_");
+        const targetFilename = `buywise_v${sanitizedVer}_${timeTag}.apk`;
+        const relativeStoragePath = `uploads/apks/${targetFilename}`;
+        const fullStoragePath = path.join(uploadsDir, targetFilename);
+
+        fs.writeFileSync(fullStoragePath, req.file.buffer);
+
+        fs.writeFileSync(path.join(uploadsDir, "active_buywise.apk"), req.file.buffer);
+        fs.writeFileSync(path.join(publicDir, "buywise.apk"), req.file.buffer);
+        if (fs.existsSync(distDir)) {
+          fs.writeFileSync(path.join(distDir, "buywise.apk"), req.file.buffer);
+        }
+
+        const adminUser = (req.headers["x-user-email"] as string) || "Admin";
+
+        const release = createNewApkRelease({
+          filename: targetFilename,
+          originalFilename: req.file.originalname,
+          versionName: finalVersionName,
+          versionCode: finalVersionCode,
+          packageName: finalPackageName,
+          fileSize: req.file.size,
+          fileSizeFormatted: validation.fileSizeFormatted,
+          storagePath: relativeStoragePath,
+          uploadedBy: adminUser,
+          isManualMeta: validation.isManualMeta,
+        });
+
+        return res.json({
+          success: true,
+          message: "APK published successfully.",
+          release,
+          publicUrl: "https://buywiser.store/downloads/buywise.apk",
+        });
+      } catch (e: any) {
+        console.error("Error publishing APK:", e);
+        return res.status(500).json({ error: `Failed to save and publish APK: ${e.message}` });
+      }
+    });
+  });
+
+  // Admin Endpoint to List All Releases and Stats
+  app.get("/api/admin/apk/releases", adminAuth, (req: any, res: any) => {
+    try {
+      const releases = getAllApkReleases();
+      const stats = getApkStats();
+      const activeApk = getActiveApkRelease();
+      return res.json({ success: true, releases, stats, activeApk });
+    } catch (e: any) {
+      return res.status(500).json({ error: "Failed to fetch APK releases." });
+    }
+  });
+
+  // Admin Endpoint to Rollback / Activate Archived APK
+  app.post("/api/admin/apk/:id/activate", adminAuth, (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const activeApk = activateApkRelease(id);
+
+      if (activeApk.storagePath && fs.existsSync(path.join(process.cwd(), activeApk.storagePath))) {
+        const sourceBuf = fs.readFileSync(path.join(process.cwd(), activeApk.storagePath));
+        const uploadsDir = path.join(process.cwd(), "uploads", "apks");
+        const publicDir = path.join(process.cwd(), "public", "downloads");
+        const distDir = path.join(process.cwd(), "dist", "downloads");
+
+        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+        if (!fs.existsSync(publicDir)) fs.mkdirSync(publicDir, { recursive: true });
+
+        fs.writeFileSync(path.join(uploadsDir, "active_buywise.apk"), sourceBuf);
+        fs.writeFileSync(path.join(publicDir, "buywise.apk"), sourceBuf);
+        if (fs.existsSync(path.join(process.cwd(), "dist"))) {
+          if (!fs.existsSync(distDir)) fs.mkdirSync(distDir, { recursive: true });
+          fs.writeFileSync(path.join(distDir, "buywise.apk"), sourceBuf);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: `APK release ${activeApk.versionName} activated successfully.`,
+        activeApk,
+      });
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message || "Failed to activate release." });
+    }
+  });
+
+  // Admin Endpoint to Delete Archived APK
+  app.delete("/api/admin/apk/:id", adminAuth, (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const deleted = deleteApkRelease(id);
+
+      if (deleted.storagePath) {
+        const fullPath = path.join(process.cwd(), deleted.storagePath);
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: `Archived APK release ${deleted.versionName} deleted.`,
+      });
+    } catch (e: any) {
+      return res.status(400).json({ error: e.message || "Failed to delete release." });
     }
   });
 
@@ -3550,7 +3831,7 @@ What can I assist you with today?`;
                         maxExpiry = itemExpiry;
                     }
                 }
-                if (item.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {
+                if (sub.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_PENDING') {
                     isAcknowledged = false;
                 }
             }

@@ -3986,6 +3986,9 @@ async function startServer() {
     console.warn("WARNING: TELEGRAM_BOT_TOKEN is not configured. Telegram channel features and updates polling will be disabled.");
   }
   const app = (0, import_express.default)();
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
+  });
   const PORT = 3e3;
   app.use(
     (0, import_helmet.default)({
@@ -6830,7 +6833,7 @@ ${xmlUrls}
                 maxExpiry = itemExpiry;
               }
             }
-            if (item.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
+            if (sub.acknowledgementState === "ACKNOWLEDGEMENT_STATE_PENDING") {
               isAcknowledged = false;
             }
           }

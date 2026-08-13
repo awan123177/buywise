@@ -29,7 +29,13 @@ export default function Premium() {
           })
         });
         
-        const data = await res.json();
+        const contentType = res.headers.get('content-type') || '';
+        let data: any = {};
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          data = { success: false, message: `Server error (${res.status})` };
+        }
         toast.dismiss(loadingToast);
         
         if (data.success && data.verified) {
