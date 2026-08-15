@@ -13,7 +13,8 @@ export default defineConfig(({ mode }) => {
       VitePWA({
         registerType: 'autoUpdate',
         workbox: {
-          maximumFileSizeToCacheInBytes: 5000000
+          maximumFileSizeToCacheInBytes: 5000000,
+          navigateFallbackDenylist: [/^\/downloads\/.*/, /^\/api\/.*/]
         },
         manifest: {
           name: 'BuyWise Super App',

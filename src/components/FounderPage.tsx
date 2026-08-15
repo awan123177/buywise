@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { motion, useScroll, useTransform, useSpring, AnimatePresence } from 'motion/react';
 import { ExternalLink, Instagram, Linkedin, Github, Mail, ArrowRight, Smartphone, Sparkles, Target, Zap, Bot, ShieldCheck, Tag, Box } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
@@ -29,13 +29,10 @@ const FOCUS_AREAS = [
 ];
 
 export default function FounderPage() {
-  const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   
-  const { scrollYProgress } = useScroll({ 
-    target: containerRef,
-    offset: ["start start", "end end"] 
-  });
+  // Track page scroll progress for progress bar and chapter transitions
+  const { scrollYProgress } = useScroll();
   
   const smoothProgress = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -52,16 +49,8 @@ export default function FounderPage() {
   const clarityOpacity = useTransform(smoothProgress, [0.35, 0.45, 0.55], [0, 1, 0]);
   const clarityScale = useTransform(smoothProgress, [0.35, 0.45], [0.8, 1]);
 
-  // Horizontal Scroll Animation
-  const focusRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress: focusScroll } = useScroll({
-    target: focusRef,
-    offset: ["start end", "end start"]
-  });
-  const xTransform = useTransform(focusScroll, [0, 1], ["0%", "-50%"]);
-
   return (
-    <div className="bg-[#050505] text-[#F8F8F8] font-sans overflow-x-hidden selection:bg-[#4F7FFF] selection:text-white" ref={containerRef}>
+    <div className="bg-[#050505] text-[#F8F8F8] font-sans overflow-x-hidden selection:bg-[#4F7FFF] selection:text-white">
       <Helmet>
         <title>The Story of BuyWise | Awan Warsi</title>
         <meta name="description" content={FOUNDER_INFO.description} />

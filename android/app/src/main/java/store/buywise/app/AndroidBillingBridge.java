@@ -14,6 +14,7 @@ import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.ProductDetails;
 import com.android.billingclient.api.QueryProductDetailsParams;
+import com.android.billingclient.api.ProductDetailsResponseListener;
 import com.android.billingclient.api.QueryPurchasesParams;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.PendingPurchasesParams;

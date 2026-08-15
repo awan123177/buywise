@@ -161,6 +161,7 @@ export interface ApkRelease {
   uploadedAt: string;
   status: "ACTIVE" | "ARCHIVED";
   downloadCount: number;
+  base64Data?: string;
   isManualMeta?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -1546,6 +1547,7 @@ export function createNewApkRelease(releaseData: {
   fileSize: number;
   fileSizeFormatted: string;
   storagePath: string;
+  base64Data?: string;
   uploadedBy: string;
   isManualMeta?: boolean;
 }): ApkRelease {
@@ -1568,6 +1570,7 @@ export function createNewApkRelease(releaseData: {
     fileSize: releaseData.fileSize,
     fileSizeFormatted: releaseData.fileSizeFormatted,
     storagePath: releaseData.storagePath,
+    base64Data: releaseData.base64Data,
     publicUrl: "https://buywiser.store/downloads/buywise.apk",
     uploadedBy: releaseData.uploadedBy || "Admin",
     uploadedAt: nowIso,

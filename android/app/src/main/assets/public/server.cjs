@@ -32,54 +32,351 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
   mod
 ));
-var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// src/lib/firebase.ts
+var firebase_exports = {};
+__export(firebase_exports, {
+  auth: () => auth,
+  collection: () => collection,
+  db: () => db,
+  deleteDoc: () => deleteDoc,
+  doc: () => doc,
+  getAuth: () => getAuth,
+  getDocs: () => getDocs,
+  getFirestore: () => getFirestore,
+  initializeApp: () => initializeApp,
+  limit: () => limit,
+  onSnapshot: () => onSnapshot,
+  orderBy: () => orderBy,
+  query: () => query,
+  setDoc: () => setDoc,
+  updateDoc: () => updateDoc,
+  where: () => where
+});
+var db, auth, getCol, setCol, doc, collection, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, limit, onSnapshot, getFirestore, getAuth, initializeApp;
+var init_firebase = __esm({
+  "src/lib/firebase.ts"() {
+    db = {};
+    auth = {};
+    getCol = (colName) => {
+      try {
+        return JSON.parse(localStorage.getItem(`buywise_db_${colName}`) || "[]");
+      } catch {
+        return [];
+      }
+    };
+    setCol = (colName, data) => {
+      localStorage.setItem(`buywise_db_${colName}`, JSON.stringify(data));
+      window.dispatchEvent(new Event("local-db-update"));
+    };
+    doc = (dbMock, colName, id) => ({ colName, id });
+    collection = (dbMock, colName) => ({ colName });
+    getDocs = async (colRef) => {
+      const data = getCol(colRef.colName);
+      return {
+        docs: data.map((d) => ({ id: d.id, data: () => d, ...d })),
+        forEach: (cb) => data.forEach((d) => cb({ id: d.id, data: () => d, ...d }))
+      };
+    };
+    setDoc = async (docRef, data, ...opts) => {
+      const all = getCol(docRef.colName);
+      const idx = all.findIndex((x) => x.id === docRef.id);
+      if (idx >= 0) all[idx] = { ...all[idx], ...data };
+      else all.push({ id: docRef.id, ...data });
+      setCol(docRef.colName, all);
+    };
+    deleteDoc = async (docRef) => {
+      let all = getCol(docRef.colName);
+      all = all.filter((x) => x.id !== docRef.id);
+      setCol(docRef.colName, all);
+    };
+    updateDoc = async (docRef, data) => {
+      const all = getCol(docRef.colName);
+      const idx = all.findIndex((x) => x.id === docRef.id);
+      if (idx >= 0) {
+        all[idx] = { ...all[idx], ...data };
+        setCol(docRef.colName, all);
+      }
+    };
+    query = (colRef, ...args) => ({ colName: colRef.colName, filters: args });
+    where = (...args) => ({ type: "where", args });
+    orderBy = (...args) => ({ type: "orderBy", args });
+    limit = (...args) => ({ type: "limit", args });
+    onSnapshot = (q, cb, ...opts) => {
+      const notify = () => {
+        const data = getCol(q.colName);
+        let filtered = [...data];
+        q.filters?.forEach((f) => {
+          if (f.type === "orderBy") {
+            const [field, dir] = f.args;
+            filtered.sort((a, b) => {
+              if (a[field] < b[field]) return dir === "desc" ? 1 : -1;
+              if (a[field] > b[field]) return dir === "desc" ? -1 : 1;
+              return 0;
+            });
+          }
+          if (f.type === "limit") {
+            filtered = filtered.slice(0, f.args[0]);
+          }
+        });
+        cb({
+          docs: filtered.map((d) => ({ id: d.id, data: () => d, ...d })),
+          forEach: (fcb) => filtered.forEach((d) => fcb({ id: d.id, data: () => d, ...d })),
+          size: filtered.length,
+          empty: filtered.length === 0
+        });
+      };
+      notify();
+      window.addEventListener("local-db-update", notify);
+      window.addEventListener("storage", (e) => {
+        if (e.key === `buywise_db_${q.colName}`) {
+          notify();
+        }
+      });
+      return () => {
+        window.removeEventListener("local-db-update", notify);
+      };
+    };
+    getFirestore = (...args) => ({});
+    getAuth = (...args) => ({});
+    initializeApp = (...args) => ({});
+  }
+});
+
+// server.ts
+var import_express = __toESM(require("express"), 1);
+var import_vite = require("vite");
+var import_path2 = __toESM(require("path"), 1);
+var import_axios3 = __toESM(require("axios"), 1);
+var import_dotenv = __toESM(require("dotenv"), 1);
+var import_genai = require("@google/genai");
+var import_fs2 = __toESM(require("fs"), 1);
+var import_helmet = __toESM(require("helmet"), 1);
+var import_supabase_js = require("@supabase/supabase-js");
+var import_multer = __toESM(require("multer"), 1);
+
+// src/server/apkParser.ts
+var import_adm_zip = __toESM(require("adm-zip"), 1);
+function formatFileSize(bytes) {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+function extractStringsFromBuffer(buffer) {
+  const strings = [];
+  let currentAscii = "";
+  for (let i = 0; i < buffer.length; i++) {
+    const byte = buffer[i];
+    if (byte >= 32 && byte <= 126) {
+      currentAscii += String.fromCharCode(byte);
+    } else {
+      if (currentAscii.length >= 3) {
+        strings.push(currentAscii);
+      }
+      currentAscii = "";
+    }
+  }
+  if (currentAscii.length >= 3) {
+    strings.push(currentAscii);
+  }
+  let currentUtf16 = "";
+  for (let i = 0; i < buffer.length - 1; i += 2) {
+    const charCode = buffer.readUInt16LE(i);
+    if (charCode >= 32 && charCode <= 126) {
+      currentUtf16 += String.fromCharCode(charCode);
+    } else {
+      if (currentUtf16.length >= 3) {
+        strings.push(currentUtf16);
+      }
+      currentUtf16 = "";
+    }
+  }
+  if (currentUtf16.length >= 3) {
+    strings.push(currentUtf16);
+  }
+  return strings;
+}
+function parseAndValidateApk(buffer, originalFilename, expectedPackage = "store.buywise.app") {
+  const fileSize = buffer.length;
+  const fileSizeFormatted = formatFileSize(fileSize);
+  if (fileSize < 30 || buffer.readUInt32LE(0) !== 67324752) {
+    return {
+      isValid: false,
+      error: "Please select a valid APK file. The file is corrupted or not a valid Android package.",
+      fileSize,
+      fileSizeFormatted
+    };
+  }
+  try {
+    const zip = new import_adm_zip.default(buffer);
+    const entries = zip.getEntries();
+    const manifestEntry = entries.find((e) => e.entryName === "AndroidManifest.xml");
+    if (!manifestEntry) {
+      return {
+        isValid: false,
+        error: "Invalid APK: AndroidManifest.xml is missing from the Android package.",
+        fileSize,
+        fileSizeFormatted
+      };
+    }
+    const hasDexOrArsc = entries.some(
+      (e) => e.entryName.endsWith(".dex") || e.entryName === "resources.arsc" || e.entryName.startsWith("META-INF/")
+    );
+    if (!hasDexOrArsc) {
+      return {
+        isValid: false,
+        error: "Invalid APK file structure: Missing Android compiled resources.",
+        fileSize,
+        fileSizeFormatted
+      };
+    }
+    const manifestBuffer = manifestEntry.getData();
+    const extractedStrings = extractStringsFromBuffer(manifestBuffer);
+    let foundPackageName = "";
+    if (extractedStrings.includes(expectedPackage)) {
+      foundPackageName = expectedPackage;
+    } else {
+      const domainMatches = extractedStrings.filter(
+        (s) => /^[a-z][a-z0-9_]*(\.[a-z0-9_]+)+$/i.test(s) && !s.startsWith("android.") && !s.startsWith("schemas.") && !s.startsWith("http") && !s.endsWith(".xml") && !s.endsWith(".png") && !s.endsWith(".dex")
+      );
+      if (domainMatches.length > 0) {
+        const buywiseMatch = domainMatches.find((s) => s.toLowerCase().includes("buywise"));
+        foundPackageName = buywiseMatch || domainMatches[0];
+      }
+    }
+    if (foundPackageName && foundPackageName !== expectedPackage) {
+      return {
+        isValid: false,
+        error: `Invalid BuyWise APK. Expected package: ${expectedPackage} (found: ${foundPackageName})`,
+        packageName: foundPackageName,
+        fileSize,
+        fileSizeFormatted
+      };
+    }
+    let versionName = "";
+    let versionCode = "";
+    const semverMatches = extractedStrings.filter((s) => /^\d+\.\d+(\.\d+)?(-[a-zA-Z0-9]+)?$/.test(s));
+    if (semverMatches.length > 0) {
+      versionName = semverMatches[0];
+    }
+    const codeMatches = extractedStrings.filter((s) => /^\d{2,6}$/.test(s));
+    if (codeMatches.length > 0) {
+      versionCode = codeMatches[0];
+    }
+    const finalPackageName = foundPackageName || expectedPackage;
+    const isManualMeta = !versionName || !versionCode;
+    return {
+      isValid: true,
+      packageName: finalPackageName,
+      versionName: versionName || "1.0.0",
+      versionCode: versionCode || "100",
+      fileSize,
+      fileSizeFormatted,
+      isManualMeta
+    };
+  } catch (e) {
+    return {
+      isValid: false,
+      error: `Failed to inspect APK archive: ${e.message}`,
+      fileSize,
+      fileSizeFormatted
+    };
+  }
+}
 
 // src/server/gamificationDb.ts
-var gamificationDb_exports = {};
-__export(gamificationDb_exports, {
-  ACHIEVEMENTS: () => ACHIEVEMENTS,
-  PRODUCT_IMAGES: () => PRODUCT_IMAGES,
-  addDealDirectly: () => addDealDirectly,
-  adminAction: () => adminAction,
-  awardCoins: () => awardCoins,
-  checkAndCompleteReferral: () => checkAndCompleteReferral,
-  checkLoginStreak: () => checkLoginStreak,
-  completeMission: () => completeMission,
-  deleteUserProfile: () => deleteUserProfile,
-  generateCouponForUser: () => generateCouponForUser,
-  getAffiliateSettings: () => getAffiliateSettings,
-  getAllCoupons: () => getAllCoupons,
-  getAllScans: () => getAllScans,
-  getDefaultAffiliateSettings: () => getDefaultAffiliateSettings,
-  getDefaultTelegramConfig: () => getDefaultTelegramConfig,
-  getFounderImage: () => getFounderImage,
-  getLeaderboard: () => getLeaderboard,
-  getOrCreateProfile: () => getOrCreateProfile,
-  getPublicStats: () => getPublicStats,
-  getReferralStats: () => getReferralStats,
-  getReviews: () => getReviews,
-  getScanHistory: () => getScanHistory,
-  getTelegramConfig: () => getTelegramConfig,
-  getTransactions: () => getTransactions,
-  getUserCoupons: () => getUserCoupons,
-  loadDatabase: () => loadDatabase,
-  recordAffiliateClick: () => recordAffiliateClick,
-  recordBarcodeScan: () => recordBarcodeScan,
-  recordSearch: () => recordSearch,
-  redeemCoupon: () => redeemCoupon,
-  redeemReward: () => redeemReward,
-  saveDatabase: () => saveDatabase,
-  setFounderImage: () => setFounderImage,
-  spinWheel: () => spinWheel,
-  submitReferralCode: () => submitReferralCode,
-  submitReview: () => submitReview,
-  transferCoins: () => transferCoins,
-  unlockAchievement: () => unlockAchievement,
-  updateAffiliateSettings: () => updateAffiliateSettings,
-  updateCouponSettings: () => updateCouponSettings,
-  updateTelegramConfig: () => updateTelegramConfig,
-  validateCoupon: () => validateCoupon
-});
+var import_fs = __toESM(require("fs"), 1);
+var import_path = __toESM(require("path"), 1);
+var DB_FILE = import_path.default.join(process.cwd(), "data_store.json");
+var PRODUCT_IMAGES = {
+  "deal_iphone_15": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=500&auto=format&fit=crop&q=60",
+  "deal_macbook_air": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&auto=format&fit=crop&q=60",
+  "deal_sony_xm5": "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=500&auto=format&fit=crop&q=60",
+  "deal_rog_ally": "https://images.unsplash.com/photo-1605901309584-818e25960a8f?w=500&auto=format&fit=crop&q=60",
+  "deal_oneplus_ce4": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop&q=60",
+  "deal_nike_air": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60",
+  "deal_boat_ion": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=60",
+  "deal_dyson_v12": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=500&auto=format&fit=crop&q=60",
+  "deal_prestige_kettle": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500&auto=format&fit=crop&q=60",
+  "deal_tea_gold": "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?w=500&auto=format&fit=crop&q=60",
+  "deal_ps5_slim": "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=500&auto=format&fit=crop&q=60",
+  "deal_casio_watch": "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=500&auto=format&fit=crop&q=60",
+  "deal_under_500_bottle": "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=500&auto=format&fit=crop&q=60",
+  "deal_under_1000_tshirt": "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=500&auto=format&fit=crop&q=60"
+};
+var INITIAL_DEALS = [
+  {
+    id: "deal_samsung_s24_ultra",
+    title: "Samsung S24 Ultra",
+    category: "mobiles",
+    oldPrice: 129999,
+    newPrice: 99999,
+    discountPercent: 23,
+    thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=samsungs24",
+    source: "Amazon.in",
+    link: "https://amazon.in/dp/B0CSYF8Z98",
+    isBestSeller: true,
+    isEditorPick: true,
+    isFlashDeal: true,
+    views: 125,
+    saves: 45,
+    purchases: 12,
+    createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+    timeRemaining: "12h 00m"
+  }
+];
+var INITIAL_PROFILES = {};
+var INITIAL_REVIEWS = [];
+var dbData = {
+  profiles: { ...INITIAL_PROFILES },
+  transactions: [],
+  referrals: [],
+  deals: INITIAL_DEALS.map((deal) => ({
+    ...deal,
+    thumbnail: PRODUCT_IMAGES[deal.id] || deal.thumbnail
+  })),
+  publicStats: {
+    totalSearches: 0,
+    totalUsers: 0,
+    productsCompared: 0,
+    priceAlertsTriggered: 0,
+    dealsFoundToday: 0,
+    activePremiumUsers: 0,
+    totalSavedAmount: 0
+  },
+  bannedUsers: [],
+  reviews: [...INITIAL_REVIEWS],
+  scans: [
+    {
+      id: "scan_init_1",
+      userId: "user_top_1",
+      userEmail: "aman.kapoor@gmail.com",
+      userName: "Aman Kapoor",
+      barcode: "8901058002418",
+      productName: "Sony WH-1000XM5 Noise Cancelling Headphones",
+      category: "electronics",
+      brand: "Sony",
+      lowestPrice: 24990,
+      highestPrice: 29990,
+      timestamp: new Date(Date.now() - 3 * 60 * 60 * 1e3).toISOString()
+    },
+    {
+      id: "scan_init_2",
+      userId: "user_top_2",
+      userEmail: "priya.verma@gmail.com",
+      userName: "Priya Verma",
+      barcode: "194253388741",
+      productName: "Apple iPhone 15 Pro (128GB)",
+      category: "electronics",
+      brand: "Apple",
+      lowestPrice: 119900,
+      highestPrice: 134900,
+      timestamp: new Date(Date.now() - 12 * 60 * 60 * 1e3).toISOString()
+    }
+  ]
+};
 function loadDatabase() {
   try {
     if (import_fs.default.existsSync(DB_FILE)) {
@@ -146,6 +443,7 @@ function saveDatabase() {
     console.error("Failed to save gamification database:", e.message);
   }
 }
+loadDatabase();
 function getPublicStats() {
   const currentHour = (/* @__PURE__ */ new Date()).getHours();
   const incrementSaved = Math.floor(Math.random() * 8) + 2;
@@ -505,6 +803,20 @@ function getLeaderboard(metric) {
     };
   });
 }
+var ACHIEVEMENTS = [
+  { id: "first_search", title: "First Search", description: "Completed your first price comparison search", icon: "\u{1F50D}", coinsReward: 10 },
+  { id: "first_referral", title: "First Referral", description: "Successfully invited your first friend to BuyWise", icon: "\u{1F91D}", coinsReward: 50 },
+  { id: "100_searches", title: "Centurion Explorer", description: "Completed 100 price comparison searches", icon: "\u{1F4AF}", coinsReward: 150 },
+  { id: "1000_searches", title: "Millennium Legend", description: "Completed 1000 price comparison searches", icon: "\u{1F680}", coinsReward: 500 },
+  { id: "premium_purchase", title: "Premium Pioneer", description: "Subscribed to a BuyWise Premium Membership", icon: "\u{1F451}", coinsReward: 100 },
+  { id: "saved_1000", title: "Thrifty Saver", description: "Saved \u20B91,000 on purchase price comparisons", icon: "\u{1F4B0}", coinsReward: 50 },
+  { id: "saved_10000", title: "Arbitrage Maestro", description: "Saved \u20B910,000 on purchase price comparisons", icon: "\u{1F3E6}", coinsReward: 250 },
+  { id: "streak_3", title: "3-Day Fire", description: "Used BuyWise for 3 consecutive days", icon: "\u{1F525}", coinsReward: 15 },
+  { id: "streak_7", title: "7-Day Week Warrior", description: "Used BuyWise for 7 consecutive days", icon: "\u26A1", coinsReward: 100 },
+  { id: "streak_30", title: "Monthly Devotee", description: "Used BuyWise for 30 consecutive days", icon: "\u{1F4C5}", coinsReward: 300 },
+  { id: "referral_master", title: "Referral Master", description: "Invited 5 or more friends who completed searches", icon: "\u{1F31F}", coinsReward: 250 },
+  { id: "deal_hunter", title: "Deal Hunter", description: "Saved or shared 10 trending or daily deals", icon: "\u{1F3AF}", coinsReward: 50 }
+];
 function unlockAchievement(userId, achievementId) {
   const profile = dbData.profiles[userId];
   if (!profile) return false;
@@ -900,9 +1212,6 @@ function setFounderImage(imageBase64) {
     throw err;
   }
 }
-function getFounderImage() {
-  return dbData.founderImage;
-}
 function getUserCoupons(userId) {
   if (!dbData.coupons) return [];
   return dbData.coupons.filter((c) => c.userId === userId);
@@ -953,238 +1262,139 @@ function redeemCoupon(userId, code, planId) {
   saveDatabase();
   return { success: true };
 }
-var import_fs, import_path, DB_FILE, PRODUCT_IMAGES, INITIAL_DEALS, INITIAL_PROFILES, INITIAL_REVIEWS, dbData, ACHIEVEMENTS;
-var init_gamificationDb = __esm({
-  "src/server/gamificationDb.ts"() {
-    import_fs = __toESM(require("fs"), 1);
-    import_path = __toESM(require("path"), 1);
-    DB_FILE = import_path.default.join(process.cwd(), "data_store.json");
-    PRODUCT_IMAGES = {
-      "deal_iphone_15": "https://images.unsplash.com/photo-1695048133142-1a20484d2569?w=500&auto=format&fit=crop&q=60",
-      "deal_macbook_air": "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=500&auto=format&fit=crop&q=60",
-      "deal_sony_xm5": "https://images.unsplash.com/photo-1618384887929-16ec33fab9ef?w=500&auto=format&fit=crop&q=60",
-      "deal_rog_ally": "https://images.unsplash.com/photo-1605901309584-818e25960a8f?w=500&auto=format&fit=crop&q=60",
-      "deal_oneplus_ce4": "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&auto=format&fit=crop&q=60",
-      "deal_nike_air": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=500&auto=format&fit=crop&q=60",
-      "deal_boat_ion": "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=500&auto=format&fit=crop&q=60",
-      "deal_dyson_v12": "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=500&auto=format&fit=crop&q=60",
-      "deal_prestige_kettle": "https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500&auto=format&fit=crop&q=60",
-      "deal_tea_gold": "https://images.unsplash.com/photo-1597481499750-3e6b22637e12?w=500&auto=format&fit=crop&q=60",
-      "deal_ps5_slim": "https://images.unsplash.com/photo-1606813907291-d86efa9b94db?w=500&auto=format&fit=crop&q=60",
-      "deal_casio_watch": "https://images.unsplash.com/photo-1522312346375-d1a52e2b99b3?w=500&auto=format&fit=crop&q=60",
-      "deal_under_500_bottle": "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=500&auto=format&fit=crop&q=60",
-      "deal_under_1000_tshirt": "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=500&auto=format&fit=crop&q=60"
+function getActiveApkRelease() {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  let active = dbData.apkReleases.find((a) => a.status === "ACTIVE");
+  if (!active) {
+    active = {
+      id: "apk_v1_0_0_initial",
+      filename: "buywise.apk",
+      originalFilename: "buywise.apk",
+      versionName: "1.0.0",
+      versionCode: "100",
+      packageName: "store.buywise.app",
+      fileSize: 48234500,
+      fileSizeFormatted: "46.0 MB",
+      storagePath: "uploads/apks/buywise.apk",
+      publicUrl: "https://buywiser.store/downloads/buywise.apk",
+      uploadedBy: "Admin",
+      uploadedAt: (/* @__PURE__ */ new Date()).toISOString(),
+      status: "ACTIVE",
+      downloadCount: 0,
+      createdAt: (/* @__PURE__ */ new Date()).toISOString(),
+      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
     };
-    INITIAL_DEALS = [
-      {
-        id: "deal_samsung_s24_ultra",
-        title: "Samsung S24 Ultra",
-        category: "mobiles",
-        oldPrice: 129999,
-        newPrice: 99999,
-        discountPercent: 23,
-        thumbnail: "https://api.dicebear.com/7.x/identicon/svg?seed=samsungs24",
-        source: "Amazon.in",
-        link: "https://amazon.in/dp/B0CSYF8Z98",
-        isBestSeller: true,
-        isEditorPick: true,
-        isFlashDeal: true,
-        views: 125,
-        saves: 45,
-        purchases: 12,
-        createdAt: (/* @__PURE__ */ new Date()).toISOString(),
-        timeRemaining: "12h 00m"
-      }
-    ];
-    INITIAL_PROFILES = {};
-    INITIAL_REVIEWS = [];
-    dbData = {
-      profiles: { ...INITIAL_PROFILES },
-      transactions: [],
-      referrals: [],
-      deals: INITIAL_DEALS.map((deal) => ({
-        ...deal,
-        thumbnail: PRODUCT_IMAGES[deal.id] || deal.thumbnail
-      })),
-      publicStats: {
-        totalSearches: 0,
-        totalUsers: 0,
-        productsCompared: 0,
-        priceAlertsTriggered: 0,
-        dealsFoundToday: 0,
-        activePremiumUsers: 0,
-        totalSavedAmount: 0
-      },
-      bannedUsers: [],
-      reviews: [...INITIAL_REVIEWS],
-      scans: [
-        {
-          id: "scan_init_1",
-          userId: "user_top_1",
-          userEmail: "aman.kapoor@gmail.com",
-          userName: "Aman Kapoor",
-          barcode: "8901058002418",
-          productName: "Sony WH-1000XM5 Noise Cancelling Headphones",
-          category: "electronics",
-          brand: "Sony",
-          lowestPrice: 24990,
-          highestPrice: 29990,
-          timestamp: new Date(Date.now() - 3 * 60 * 60 * 1e3).toISOString()
-        },
-        {
-          id: "scan_init_2",
-          userId: "user_top_2",
-          userEmail: "priya.verma@gmail.com",
-          userName: "Priya Verma",
-          barcode: "194253388741",
-          productName: "Apple iPhone 15 Pro (128GB)",
-          category: "electronics",
-          brand: "Apple",
-          lowestPrice: 119900,
-          highestPrice: 134900,
-          timestamp: new Date(Date.now() - 12 * 60 * 60 * 1e3).toISOString()
-        }
-      ]
-    };
-    loadDatabase();
-    ACHIEVEMENTS = [
-      { id: "first_search", title: "First Search", description: "Completed your first price comparison search", icon: "\u{1F50D}", coinsReward: 10 },
-      { id: "first_referral", title: "First Referral", description: "Successfully invited your first friend to BuyWise", icon: "\u{1F91D}", coinsReward: 50 },
-      { id: "100_searches", title: "Centurion Explorer", description: "Completed 100 price comparison searches", icon: "\u{1F4AF}", coinsReward: 150 },
-      { id: "1000_searches", title: "Millennium Legend", description: "Completed 1000 price comparison searches", icon: "\u{1F680}", coinsReward: 500 },
-      { id: "premium_purchase", title: "Premium Pioneer", description: "Subscribed to a BuyWise Premium Membership", icon: "\u{1F451}", coinsReward: 100 },
-      { id: "saved_1000", title: "Thrifty Saver", description: "Saved \u20B91,000 on purchase price comparisons", icon: "\u{1F4B0}", coinsReward: 50 },
-      { id: "saved_10000", title: "Arbitrage Maestro", description: "Saved \u20B910,000 on purchase price comparisons", icon: "\u{1F3E6}", coinsReward: 250 },
-      { id: "streak_3", title: "3-Day Fire", description: "Used BuyWise for 3 consecutive days", icon: "\u{1F525}", coinsReward: 15 },
-      { id: "streak_7", title: "7-Day Week Warrior", description: "Used BuyWise for 7 consecutive days", icon: "\u26A1", coinsReward: 100 },
-      { id: "streak_30", title: "Monthly Devotee", description: "Used BuyWise for 30 consecutive days", icon: "\u{1F4C5}", coinsReward: 300 },
-      { id: "referral_master", title: "Referral Master", description: "Invited 5 or more friends who completed searches", icon: "\u{1F31F}", coinsReward: 250 },
-      { id: "deal_hunter", title: "Deal Hunter", description: "Saved or shared 10 trending or daily deals", icon: "\u{1F3AF}", coinsReward: 50 }
-    ];
+    dbData.apkReleases.push(active);
+    saveDatabase();
   }
-});
-
-// src/lib/firebase.ts
-var firebase_exports = {};
-__export(firebase_exports, {
-  auth: () => auth,
-  collection: () => collection,
-  db: () => db,
-  deleteDoc: () => deleteDoc,
-  doc: () => doc,
-  getAuth: () => getAuth,
-  getDocs: () => getDocs,
-  getFirestore: () => getFirestore,
-  initializeApp: () => initializeApp,
-  limit: () => limit,
-  onSnapshot: () => onSnapshot,
-  orderBy: () => orderBy,
-  query: () => query,
-  setDoc: () => setDoc,
-  updateDoc: () => updateDoc,
-  where: () => where
-});
-var db, auth, getCol, setCol, doc, collection, getDocs, setDoc, deleteDoc, updateDoc, query, where, orderBy, limit, onSnapshot, getFirestore, getAuth, initializeApp;
-var init_firebase = __esm({
-  "src/lib/firebase.ts"() {
-    db = {};
-    auth = {};
-    getCol = (colName) => {
-      try {
-        return JSON.parse(localStorage.getItem(`buywise_db_${colName}`) || "[]");
-      } catch {
-        return [];
-      }
-    };
-    setCol = (colName, data) => {
-      localStorage.setItem(`buywise_db_${colName}`, JSON.stringify(data));
-      window.dispatchEvent(new Event("local-db-update"));
-    };
-    doc = (dbMock, colName, id) => ({ colName, id });
-    collection = (dbMock, colName) => ({ colName });
-    getDocs = async (colRef) => {
-      const data = getCol(colRef.colName);
-      return {
-        docs: data.map((d) => ({ id: d.id, data: () => d, ...d })),
-        forEach: (cb) => data.forEach((d) => cb({ id: d.id, data: () => d, ...d }))
-      };
-    };
-    setDoc = async (docRef, data, ...opts) => {
-      const all = getCol(docRef.colName);
-      const idx = all.findIndex((x) => x.id === docRef.id);
-      if (idx >= 0) all[idx] = { ...all[idx], ...data };
-      else all.push({ id: docRef.id, ...data });
-      setCol(docRef.colName, all);
-    };
-    deleteDoc = async (docRef) => {
-      let all = getCol(docRef.colName);
-      all = all.filter((x) => x.id !== docRef.id);
-      setCol(docRef.colName, all);
-    };
-    updateDoc = async (docRef, data) => {
-      const all = getCol(docRef.colName);
-      const idx = all.findIndex((x) => x.id === docRef.id);
-      if (idx >= 0) {
-        all[idx] = { ...all[idx], ...data };
-        setCol(docRef.colName, all);
-      }
-    };
-    query = (colRef, ...args) => ({ colName: colRef.colName, filters: args });
-    where = (...args) => ({ type: "where", args });
-    orderBy = (...args) => ({ type: "orderBy", args });
-    limit = (...args) => ({ type: "limit", args });
-    onSnapshot = (q, cb, ...opts) => {
-      const notify = () => {
-        const data = getCol(q.colName);
-        let filtered = [...data];
-        q.filters?.forEach((f) => {
-          if (f.type === "orderBy") {
-            const [field, dir] = f.args;
-            filtered.sort((a, b) => {
-              if (a[field] < b[field]) return dir === "desc" ? 1 : -1;
-              if (a[field] > b[field]) return dir === "desc" ? -1 : 1;
-              return 0;
-            });
-          }
-          if (f.type === "limit") {
-            filtered = filtered.slice(0, f.args[0]);
-          }
-        });
-        cb({
-          docs: filtered.map((d) => ({ id: d.id, data: () => d, ...d })),
-          forEach: (fcb) => filtered.forEach((d) => fcb({ id: d.id, data: () => d, ...d })),
-          size: filtered.length,
-          empty: filtered.length === 0
-        });
-      };
-      notify();
-      window.addEventListener("local-db-update", notify);
-      window.addEventListener("storage", (e) => {
-        if (e.key === `buywise_db_${q.colName}`) {
-          notify();
-        }
-      });
-      return () => {
-        window.removeEventListener("local-db-update", notify);
-      };
-    };
-    getFirestore = (...args) => ({});
-    getAuth = (...args) => ({});
-    initializeApp = (...args) => ({});
+  return active;
+}
+function getAllApkReleases() {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  getActiveApkRelease();
+  return [...dbData.apkReleases].sort(
+    (a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+  );
+}
+function getApkStats() {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  if (!dbData.apkDownloadsLog) dbData.apkDownloadsLog = [];
+  const activeApk = getActiveApkRelease();
+  const now = Date.now();
+  const dayMs = 24 * 60 * 60 * 1e3;
+  const logs = dbData.apkDownloadsLog;
+  const totalDownloads = dbData.apkReleases.reduce((acc, r) => acc + (r.downloadCount || 0), 0);
+  const currentVersionDownloads = activeApk.downloadCount || 0;
+  const last24Hours = logs.filter((l) => now - new Date(l.timestamp).getTime() <= dayMs).length;
+  const last7Days = logs.filter((l) => now - new Date(l.timestamp).getTime() <= 7 * dayMs).length;
+  const last30Days = logs.filter((l) => now - new Date(l.timestamp).getTime() <= 30 * dayMs).length;
+  const allTime = logs.length > 0 ? logs.length : totalDownloads;
+  return {
+    totalDownloads,
+    currentVersionDownloads,
+    last24Hours,
+    last7Days,
+    last30Days,
+    allTime
+  };
+}
+function createNewApkRelease(releaseData) {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  dbData.apkReleases.forEach((r) => {
+    r.status = "ARCHIVED";
+    r.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  });
+  const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+  const newRelease = {
+    id: "apk_rel_" + Date.now() + "_" + Math.floor(Math.random() * 1e3),
+    filename: releaseData.filename,
+    originalFilename: releaseData.originalFilename,
+    versionName: releaseData.versionName,
+    versionCode: releaseData.versionCode,
+    packageName: releaseData.packageName,
+    fileSize: releaseData.fileSize,
+    fileSizeFormatted: releaseData.fileSizeFormatted,
+    storagePath: releaseData.storagePath,
+    publicUrl: "https://buywiser.store/downloads/buywise.apk",
+    uploadedBy: releaseData.uploadedBy || "Admin",
+    uploadedAt: nowIso,
+    status: "ACTIVE",
+    downloadCount: 0,
+    isManualMeta: !!releaseData.isManualMeta,
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+  dbData.apkReleases.unshift(newRelease);
+  saveDatabase();
+  return newRelease;
+}
+function recordApkDownload(apkId, ip, userAgent) {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  if (!dbData.apkDownloadsLog) dbData.apkDownloadsLog = [];
+  const release = dbData.apkReleases.find((r) => r.id === apkId || r.status === "ACTIVE");
+  if (release) {
+    release.downloadCount = (release.downloadCount || 0) + 1;
+    release.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+    dbData.apkDownloadsLog.push({
+      id: "dl_" + Date.now() + "_" + Math.floor(Math.random() * 1e3),
+      apkId: release.id,
+      versionName: release.versionName,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      ip,
+      userAgent
+    });
+    saveDatabase();
   }
-});
-
-// server.ts
-var import_express = __toESM(require("express"), 1);
-var import_vite = require("vite");
-var import_path2 = __toESM(require("path"), 1);
-var import_axios3 = __toESM(require("axios"), 1);
-var import_dotenv = __toESM(require("dotenv"), 1);
-var import_genai = require("@google/genai");
-var import_fs2 = __toESM(require("fs"), 1);
-var import_helmet = __toESM(require("helmet"), 1);
-var import_supabase_js = require("@supabase/supabase-js");
-init_gamificationDb();
+}
+function activateApkRelease(releaseId) {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  const target = dbData.apkReleases.find((r) => r.id === releaseId);
+  if (!target) {
+    throw new Error("APK release record not found.");
+  }
+  dbData.apkReleases.forEach((r) => {
+    r.status = "ARCHIVED";
+    r.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  });
+  target.status = "ACTIVE";
+  target.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+  saveDatabase();
+  return target;
+}
+function deleteApkRelease(releaseId) {
+  if (!dbData.apkReleases) dbData.apkReleases = [];
+  const index = dbData.apkReleases.findIndex((r) => r.id === releaseId);
+  if (index === -1) {
+    throw new Error("APK release record not found.");
+  }
+  const release = dbData.apkReleases[index];
+  if (release.status === "ACTIVE") {
+    throw new Error("Cannot delete the currently active APK. Please set another APK active first.");
+  }
+  dbData.apkReleases.splice(index, 1);
+  saveDatabase();
+  return release;
+}
 
 // src/lib/productImages.ts
 function getProductCategoryPhoto(titleOrQuery) {
@@ -4939,6 +5149,225 @@ Telegram Message:
       res.json([]);
     }
   });
+  const MAX_APK_SIZE_MB = parseInt(process.env.MAX_APK_SIZE_MB || "200", 10);
+  const apkUpload = (0, import_multer.default)({
+    storage: import_multer.default.memoryStorage(),
+    limits: { fileSize: MAX_APK_SIZE_MB * 1024 * 1024 }
+  });
+  app.get(["/downloads/buywise.apk", "/downloads/:filename", "/api/apk/download"], async (req, res) => {
+    try {
+      const activeApk = getActiveApkRelease();
+      const clientIp = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
+      const userAgent = req.headers["user-agent"] || "";
+      recordApkDownload(activeApk.id, String(clientIp), String(userAgent));
+      const uploadsDir = import_path2.default.join(process.cwd(), "uploads", "apks");
+      const publicDownloadsDir = import_path2.default.join(process.cwd(), "public", "downloads");
+      let targetPath = "";
+      if (activeApk.storagePath && import_fs2.default.existsSync(import_path2.default.join(process.cwd(), activeApk.storagePath))) {
+        targetPath = import_path2.default.join(process.cwd(), activeApk.storagePath);
+      } else if (import_fs2.default.existsSync(import_path2.default.join(uploadsDir, "active_buywise.apk"))) {
+        targetPath = import_path2.default.join(uploadsDir, "active_buywise.apk");
+      } else if (import_fs2.default.existsSync(import_path2.default.join(publicDownloadsDir, "buywise.apk"))) {
+        targetPath = import_path2.default.join(publicDownloadsDir, "buywise.apk");
+      } else {
+        if (!import_fs2.default.existsSync(uploadsDir)) import_fs2.default.mkdirSync(uploadsDir, { recursive: true });
+        targetPath = import_path2.default.join(uploadsDir, "buywise.apk");
+        if (!import_fs2.default.existsSync(targetPath)) {
+          const AdmZipModule = (await import("adm-zip")).default;
+          const initialZip = new AdmZipModule();
+          initialZip.addFile("AndroidManifest.xml", Buffer.from("store.buywise.app"));
+          import_fs2.default.writeFileSync(targetPath, initialZip.toBuffer());
+        }
+      }
+      res.setHeader("Content-Type", "application/vnd.android.package-archive");
+      res.setHeader("Content-Disposition", 'attachment; filename="buywise.apk"');
+      res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+      res.setHeader("Pragma", "no-cache");
+      res.setHeader("Expires", "0");
+      return res.sendFile(import_path2.default.resolve(targetPath));
+    } catch (err) {
+      console.error("Error serving APK download:", err);
+      return res.status(500).json({ error: "Failed to serve APK file." });
+    }
+  });
+  app.get("/api/apk/current", (req, res) => {
+    try {
+      const activeApk = getActiveApkRelease();
+      return res.json({
+        success: true,
+        activeApk: {
+          versionName: activeApk.versionName,
+          versionCode: activeApk.versionCode,
+          packageName: activeApk.packageName,
+          fileSizeFormatted: activeApk.fileSizeFormatted,
+          fileSize: activeApk.fileSize,
+          uploadedAt: activeApk.uploadedAt,
+          publicUrl: "https://buywiser.store/downloads/buywise.apk",
+          downloadCount: activeApk.downloadCount
+        }
+      });
+    } catch (e) {
+      return res.status(500).json({ error: "Failed to retrieve current APK info." });
+    }
+  });
+  app.post("/api/admin/apk/validate", adminAuth, (req, res) => {
+    apkUpload.single("apkFile")(req, res, (err) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ error: `APK file is too large. Maximum size allowed is ${MAX_APK_SIZE_MB} MB.` });
+        }
+        return res.status(400).json({ error: err.message || "Failed to process APK upload." });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "Please select a valid APK file." });
+      }
+      if (!req.file.originalname.toLowerCase().endsWith(".apk")) {
+        return res.status(400).json({ error: "Please select a valid APK file. Only .apk files are allowed." });
+      }
+      const validation = parseAndValidateApk(req.file.buffer, req.file.originalname);
+      if (!validation.isValid) {
+        return res.status(400).json({ error: validation.error || "Please select a valid APK file." });
+      }
+      return res.json({
+        success: true,
+        filename: req.file.originalname,
+        packageName: validation.packageName,
+        versionName: validation.versionName,
+        versionCode: validation.versionCode,
+        fileSize: validation.fileSize,
+        fileSizeFormatted: validation.fileSizeFormatted,
+        isManualMeta: validation.isManualMeta
+      });
+    });
+  });
+  app.post("/api/admin/apk/publish", adminAuth, (req, res) => {
+    apkUpload.single("apkFile")(req, res, (err) => {
+      if (err) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return res.status(400).json({ error: `APK file is too large. Maximum size allowed is ${MAX_APK_SIZE_MB} MB.` });
+        }
+        return res.status(400).json({ error: err.message || "Failed to upload APK file." });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: "Please select an APK file to publish." });
+      }
+      if (!req.file.originalname.toLowerCase().endsWith(".apk")) {
+        return res.status(400).json({ error: "Please select a valid APK file. Only .apk files are allowed." });
+      }
+      const validation = parseAndValidateApk(req.file.buffer, req.file.originalname);
+      if (!validation.isValid) {
+        return res.status(400).json({ error: validation.error || "Invalid APK file." });
+      }
+      const manualVersionName = req.body?.versionName;
+      const manualVersionCode = req.body?.versionCode;
+      const finalVersionName = manualVersionName || validation.versionName || "1.0.0";
+      const finalVersionCode = manualVersionCode || validation.versionCode || "100";
+      const finalPackageName = validation.packageName || "store.buywise.app";
+      if (finalPackageName !== "store.buywise.app") {
+        return res.status(400).json({
+          error: `Invalid BuyWise APK. Expected package: store.buywise.app (found: ${finalPackageName})`
+        });
+      }
+      try {
+        const uploadsDir = import_path2.default.join(process.cwd(), "uploads", "apks");
+        const publicDir = import_path2.default.join(process.cwd(), "public", "downloads");
+        const distDir = import_path2.default.join(process.cwd(), "dist", "downloads");
+        if (!import_fs2.default.existsSync(uploadsDir)) import_fs2.default.mkdirSync(uploadsDir, { recursive: true });
+        if (!import_fs2.default.existsSync(publicDir)) import_fs2.default.mkdirSync(publicDir, { recursive: true });
+        if (import_fs2.default.existsSync(import_path2.default.join(process.cwd(), "dist")) && !import_fs2.default.existsSync(distDir)) {
+          import_fs2.default.mkdirSync(distDir, { recursive: true });
+        }
+        const timeTag = Date.now();
+        const sanitizedVer = finalVersionName.replace(/[^a-zA-Z0-9_\.]/g, "_");
+        const targetFilename = `buywise_v${sanitizedVer}_${timeTag}.apk`;
+        const relativeStoragePath = `uploads/apks/${targetFilename}`;
+        const fullStoragePath = import_path2.default.join(uploadsDir, targetFilename);
+        import_fs2.default.writeFileSync(fullStoragePath, req.file.buffer);
+        import_fs2.default.writeFileSync(import_path2.default.join(uploadsDir, "active_buywise.apk"), req.file.buffer);
+        import_fs2.default.writeFileSync(import_path2.default.join(publicDir, "buywise.apk"), req.file.buffer);
+        if (import_fs2.default.existsSync(distDir)) {
+          import_fs2.default.writeFileSync(import_path2.default.join(distDir, "buywise.apk"), req.file.buffer);
+        }
+        const adminUser = req.headers["x-user-email"] || "Admin";
+        const release = createNewApkRelease({
+          filename: targetFilename,
+          originalFilename: req.file.originalname,
+          versionName: finalVersionName,
+          versionCode: finalVersionCode,
+          packageName: finalPackageName,
+          fileSize: req.file.size,
+          fileSizeFormatted: validation.fileSizeFormatted,
+          storagePath: relativeStoragePath,
+          uploadedBy: adminUser,
+          isManualMeta: validation.isManualMeta
+        });
+        return res.json({
+          success: true,
+          message: "APK published successfully.",
+          release,
+          publicUrl: "https://buywiser.store/downloads/buywise.apk"
+        });
+      } catch (e) {
+        console.error("Error publishing APK:", e);
+        return res.status(500).json({ error: `Failed to save and publish APK: ${e.message}` });
+      }
+    });
+  });
+  app.get("/api/admin/apk/releases", adminAuth, (req, res) => {
+    try {
+      const releases = getAllApkReleases();
+      const stats = getApkStats();
+      const activeApk = getActiveApkRelease();
+      return res.json({ success: true, releases, stats, activeApk });
+    } catch (e) {
+      return res.status(500).json({ error: "Failed to fetch APK releases." });
+    }
+  });
+  app.post("/api/admin/apk/:id/activate", adminAuth, (req, res) => {
+    try {
+      const { id } = req.params;
+      const activeApk = activateApkRelease(id);
+      if (activeApk.storagePath && import_fs2.default.existsSync(import_path2.default.join(process.cwd(), activeApk.storagePath))) {
+        const sourceBuf = import_fs2.default.readFileSync(import_path2.default.join(process.cwd(), activeApk.storagePath));
+        const uploadsDir = import_path2.default.join(process.cwd(), "uploads", "apks");
+        const publicDir = import_path2.default.join(process.cwd(), "public", "downloads");
+        const distDir = import_path2.default.join(process.cwd(), "dist", "downloads");
+        if (!import_fs2.default.existsSync(uploadsDir)) import_fs2.default.mkdirSync(uploadsDir, { recursive: true });
+        if (!import_fs2.default.existsSync(publicDir)) import_fs2.default.mkdirSync(publicDir, { recursive: true });
+        import_fs2.default.writeFileSync(import_path2.default.join(uploadsDir, "active_buywise.apk"), sourceBuf);
+        import_fs2.default.writeFileSync(import_path2.default.join(publicDir, "buywise.apk"), sourceBuf);
+        if (import_fs2.default.existsSync(import_path2.default.join(process.cwd(), "dist"))) {
+          if (!import_fs2.default.existsSync(distDir)) import_fs2.default.mkdirSync(distDir, { recursive: true });
+          import_fs2.default.writeFileSync(import_path2.default.join(distDir, "buywise.apk"), sourceBuf);
+        }
+      }
+      return res.json({
+        success: true,
+        message: `APK release ${activeApk.versionName} activated successfully.`,
+        activeApk
+      });
+    } catch (e) {
+      return res.status(400).json({ error: e.message || "Failed to activate release." });
+    }
+  });
+  app.delete("/api/admin/apk/:id", adminAuth, (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = deleteApkRelease(id);
+      if (deleted.storagePath) {
+        const fullPath = import_path2.default.join(process.cwd(), deleted.storagePath);
+        if (import_fs2.default.existsSync(fullPath)) {
+          import_fs2.default.unlinkSync(fullPath);
+        }
+      }
+      return res.json({
+        success: true,
+        message: `Archived APK release ${deleted.versionName} deleted.`
+      });
+    } catch (e) {
+      return res.status(400).json({ error: e.message || "Failed to delete release." });
+    }
+  });
   app.post("/api/search/visual", async (req, res) => {
     console.log("\n==================================================");
     try {
@@ -6989,8 +7418,7 @@ ${xmlUrls}
   }
   app.get("/api/gamification/coupons", getUserContext, (req, res) => {
     try {
-      const db2 = (init_gamificationDb(), __toCommonJS(gamificationDb_exports));
-      const coupons = db2.getUserCoupons(req.user.uid);
+      const coupons = getUserCoupons(req.user.uid);
       res.json({ success: true, coupons });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
@@ -6999,8 +7427,7 @@ ${xmlUrls}
   app.post("/api/gamification/coupons/validate", getUserContext, (req, res) => {
     try {
       const { code, planId } = req.body;
-      const db2 = (init_gamificationDb(), __toCommonJS(gamificationDb_exports));
-      const result = db2.validateCoupon(req.user.uid, code, planId);
+      const result = validateCoupon(req.user.uid, code, planId);
       res.json(result);
     } catch (e) {
       res.status(500).json({ valid: false, error: e.message });
@@ -7009,8 +7436,7 @@ ${xmlUrls}
   app.post("/api/gamification/coupons/redeem", getUserContext, (req, res) => {
     try {
       const { code, planId } = req.body;
-      const db2 = (init_gamificationDb(), __toCommonJS(gamificationDb_exports));
-      const result = db2.redeemCoupon(req.user.uid, code, planId);
+      const result = redeemCoupon(req.user.uid, code, planId);
       res.json(result);
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
@@ -7018,8 +7444,7 @@ ${xmlUrls}
   });
   app.get("/api/gamification/admin/coupons", adminAuth, (req, res) => {
     try {
-      const db2 = (init_gamificationDb(), __toCommonJS(gamificationDb_exports));
-      res.json({ success: true, coupons: db2.getAllCoupons() });
+      res.json({ success: true, coupons: getAllCoupons() });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
     }
@@ -7027,8 +7452,7 @@ ${xmlUrls}
   app.post("/api/gamification/admin/coupons/update", adminAuth, (req, res) => {
     try {
       const { couponId, updates } = req.body;
-      const db2 = (init_gamificationDb(), __toCommonJS(gamificationDb_exports));
-      const result = db2.updateCouponSettings(couponId, updates);
+      const result = updateCouponSettings(couponId, updates);
       res.json(result);
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });
@@ -7037,8 +7461,7 @@ ${xmlUrls}
   app.post("/api/gamification/admin/coupons/generate", adminAuth, (req, res) => {
     try {
       const { userId, discountPercent } = req.body;
-      const db2 = (init_gamificationDb(), __toCommonJS(gamificationDb_exports));
-      const coupon = db2.generateCouponForUser(userId, discountPercent || 10);
+      const coupon = generateCouponForUser(userId, discountPercent || 10);
       res.json({ success: true, coupon });
     } catch (e) {
       res.status(500).json({ success: false, error: e.message });

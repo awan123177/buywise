@@ -46,7 +46,13 @@ import {
   createNewApkRelease,
   recordApkDownload,
   activateApkRelease,
-  deleteApkRelease
+  deleteApkRelease,
+  getUserCoupons,
+  getAllCoupons,
+  generateCouponForUser,
+  updateCouponSettings,
+  validateCoupon,
+  redeemCoupon
 } from "./src/server/gamificationDb.ts";
 import { getProductCategoryPhoto } from "./src/lib/productImages.js";
 import {
@@ -1504,6 +1510,12 @@ Telegram Message:
       res.setHeader("Pragma", "no-cache");
       res.setHeader("Expires", "0");
 
+      if (activeApk.base64Data) {
+        const buffer = Buffer.from(activeApk.base64Data, "base64");
+        res.setHeader("Content-Length", buffer.length.toString());
+        return res.send(buffer);
+      }
+
       return res.sendFile(path.resolve(targetPath));
     } catch (err: any) {
       console.error("Error serving APK download:", err);
@@ -1639,6 +1651,7 @@ Telegram Message:
           fileSize: req.file.size,
           fileSizeFormatted: validation.fileSizeFormatted,
           storagePath: relativeStoragePath,
+          base64Data: req.file.buffer.toString("base64"),
           uploadedBy: adminUser,
           isManualMeta: validation.isManualMeta,
         });
@@ -3915,35 +3928,64 @@ What can I assist you with today?`;
      }
   });
 
-  // Vite middleware for development
-  let vite;
-  if (process.env.NODE_ENV !== "production") {
-    vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "custom",
-    });
-    app.use(vite.middlewares);
-  } else {
-    // Production serving
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-  }
-
-  app.get("*", async (req, res) => {
-    const url = req.path;
+  // --- COUPON SYSTEM ---
+  
+  app.get("/api/gamification/coupons", getUserContext, (req: any, res: any) => {
     try {
-      if (process.env.NODE_ENV !== "production") {
-        let template = fs.readFileSync(path.join(process.cwd(), 'index.html'), 'utf-8');
-        template = await vite.transformIndexHtml(url, template);
-        res.set('Content-Type', 'text/html').end(template);
-      } else {
-        res.sendFile(path.join(process.cwd(), "dist", "index.html"));
-      }
+      const coupons = getUserCoupons(req.userContext.userId);
+      res.json({ success: true, coupons });
     } catch (e: any) {
-      res.status(500).end(e?.message || "Server Error");
+      res.status(500).json({ success: false, error: e.message });
     }
   });
 
+  app.post("/api/gamification/coupons/validate", getUserContext, (req: any, res: any) => {
+    try {
+      const { code, planId } = req.body;
+      const result = validateCoupon(req.userContext.userId, code, planId);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ valid: false, error: e.message });
+    }
+  });
+
+  app.post("/api/gamification/coupons/redeem", getUserContext, (req: any, res: any) => {
+    try {
+      const { code, planId } = req.body;
+      const result = redeemCoupon(req.userContext.userId, code, planId);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.get("/api/gamification/admin/coupons", adminAuth, (req: any, res: any) => {
+    try {
+      res.json({ success: true, coupons: getAllCoupons() });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/gamification/admin/coupons/update", adminAuth, (req: any, res: any) => {
+    try {
+      const { couponId, updates } = req.body;
+      const result = updateCouponSettings(couponId, updates);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/gamification/admin/coupons/generate", adminAuth, (req: any, res: any) => {
+    try {
+      const { userId, discountPercent } = req.body;
+      const coupon = generateCouponForUser(userId, discountPercent || 10);
+      res.json({ success: true, coupon });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
 
   // Telegram polling mechanism
   let lastUpdateId = 0;
@@ -4016,72 +4058,21 @@ What can I assist you with today?`;
     }, 5000);
   }
 
-  
-
-  // --- COUPON SYSTEM ---
-  
-  app.get("/api/gamification/coupons", getUserContext, (req: any, res: any) => {
-    try {
-      const db = require('./src/server/gamificationDb.ts');
-      const coupons = db.getUserCoupons(req.user.uid);
-      res.json({ success: true, coupons });
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e.message });
-    }
-  });
-
-  app.post("/api/gamification/coupons/validate", getUserContext, (req: any, res: any) => {
-    try {
-      const { code, planId } = req.body;
-      const db = require('./src/server/gamificationDb.ts');
-      const result = db.validateCoupon(req.user.uid, code, planId);
-      res.json(result);
-    } catch (e: any) {
-      res.status(500).json({ valid: false, error: e.message });
-    }
-  });
-
-  app.post("/api/gamification/coupons/redeem", getUserContext, (req: any, res: any) => {
-    try {
-      const { code, planId } = req.body;
-      const db = require('./src/server/gamificationDb.ts');
-      const result = db.redeemCoupon(req.user.uid, code, planId);
-      res.json(result);
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e.message });
-    }
-  });
-
-  app.get("/api/gamification/admin/coupons", adminAuth, (req: any, res: any) => {
-    try {
-      const db = require('./src/server/gamificationDb.ts');
-      res.json({ success: true, coupons: db.getAllCoupons() });
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e.message });
-    }
-  });
-
-  app.post("/api/gamification/admin/coupons/update", adminAuth, (req: any, res: any) => {
-    try {
-      const { couponId, updates } = req.body;
-      const db = require('./src/server/gamificationDb.ts');
-      const result = db.updateCouponSettings(couponId, updates);
-      res.json(result);
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e.message });
-    }
-  });
-
-  app.post("/api/gamification/admin/coupons/generate", adminAuth, (req: any, res: any) => {
-    try {
-      const { userId, discountPercent } = req.body;
-      const db = require('./src/server/gamificationDb.ts');
-      const coupon = db.generateCouponForUser(userId, discountPercent || 10);
-      res.json({ success: true, coupon });
-    } catch (e: any) {
-      res.status(500).json({ success: false, error: e.message });
-    }
-  });
+  // Vite middleware for development
+  if (process.env.NODE_ENV !== "production") {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: "spa",
+    });
+    app.use(vite.middlewares);
+  } else {
+    // Production serving
+    const distPath = path.join(process.cwd(), "dist");
+    app.use(express.static(distPath));
+    app.get("*", (req, res) => {
+      res.sendFile(path.join(distPath, "index.html"));
+    });
+  }
 
   // --- HUMAN SUPPORT SYSTEM ---
   
