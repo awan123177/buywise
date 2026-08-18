@@ -221,14 +221,23 @@ export default function AdminPanel() {
     }
   }, [isAuthorized]);
 
-  const handleAuth = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (email === 'mohammdsaeed24@gmail.com' && (passcode === 'awanwarsi' || passcode === 'awanwarsi1A@')) { 
-      setIsAuthorized(true);
+    if (email && passcode) { 
       // Set the authorization and user context headers on the Axios api client
       api.defaults.headers.common["x-admin-passcode"] = passcode;
       api.defaults.headers.common["x-user-email"] = email;
-      api.defaults.headers.common["x-user-id"] = "admin-uid-mohammdsaeed24";
+      api.defaults.headers.common["x-user-id"] = "admin-uid-" + btoa(email).replace(/=/g, "");
+      
+      try {
+        await fetchAdminStats();
+        setIsAuthorized(true);
+      } catch (err) {
+        alert('INVALID ACCESS CREDENTIALS');
+        delete api.defaults.headers.common["x-admin-passcode"];
+        delete api.defaults.headers.common["x-user-email"];
+        delete api.defaults.headers.common["x-user-id"];
+      }
     } else {
       alert('INVALID ACCESS CREDENTIALS');
     }
