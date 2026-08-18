@@ -162,7 +162,7 @@ export default function PremiumLogin() {
         email,
         displayName: authUser.user_metadata?.full_name || email.split('@')[0],
         user_metadata: authUser.user_metadata,
-        photoURL: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+        photoURL: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
         isPremium: false
       };
       localStorage.setItem('mock_user_' + email, JSON.stringify(mockUser));

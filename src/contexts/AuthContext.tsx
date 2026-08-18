@@ -53,13 +53,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        if (hasSupabase) {
          (async () => {
            try {
-             const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', sessionUser.id).single();
+             const { data: existingProfile } = await supabase.from('profiles').select('id').eq('id', sessionUser.id).maybeSingle();
              if (!existingProfile) {
                 await supabase.from('profiles').insert({
                    id: sessionUser.id,
                    email: sessionUser.email,
                    full_name: sessionUser.user_metadata?.full_name || sessionUser.user_metadata?.name || sessionUser.email?.split('@')[0],
-                   avatar_url: sessionUser.user_metadata?.avatar_url || sessionUser.user_metadata?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sessionUser.email}`,
+                   avatar_url: sessionUser.user_metadata?.avatar_url || sessionUser.user_metadata?.picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(sessionUser.email || '')}`,
                    premium: false,
                    buywise_coins: 0,
                    created_at: new Date().toISOString(),
@@ -76,7 +76,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           uid: sessionUser.id,
           email: sessionUser.email || null,
           displayName: sessionUser.user_metadata?.full_name || sessionUser.displayName || null,
-          photoURL: sessionUser.user_metadata?.avatar_url || sessionUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${sessionUser.email}`,
+          photoURL: sessionUser.user_metadata?.avatar_url || sessionUser.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(sessionUser.email || '')}`,
           isPremium: false,
        };
        setUser(baseUser);
@@ -101,9 +101,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
            
            let hasPremium = false;
            if (data && data.length > 0) {
-             hasPremium = true;
-           }
-           if (sessionUser.email === 'mohammdsaeed24@gmail.com') {
              hasPremium = true;
            }
            
@@ -180,23 +177,27 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signIn = async (email: string, password?: string, isSignUp?: boolean, name?: string) => {
     if (hasSupabase) {
-      if (email === 'mohammdsaeed24@gmail.com' && password === 'awanwarsi') {
-        let { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error && error.message.includes("Invalid login credentials")) {
-           const { error: signUpError } = await supabase.auth.signUp({ email, password, options: { data: { full_name: name || 'Mohammad Saeed' } } });
-           if (signUpError) throw signUpError;
-        } else if (error) {
-           throw error;
-        }
-      } else if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
+      if (isSignUp) {
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password: password || '',
           options: {
-            data: { full_name: name || '' }
+            data: { full_name: name || '' },
+            emailRedirectTo: window.location.origin
           }
         });
         if (error) throw error;
+        // Supabase returns user but no session when email confirmation is required.
+        // An empty identities array means the email is already registered.
+        if (signUpData?.user && (!signUpData.user.identities || signUpData.user.identities.length === 0)) {
+          throw new Error('An account with this email already exists. Please sign in instead.');
+        }
+        if (signUpData?.user && !signUpData.session) {
+          // Email confirmation is required — don't auto-login
+          const verifyError: any = new Error('Please check your email to verify your account before signing in.');
+          verifyError.code = 'VERIFY_EMAIL';
+          throw verifyError;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -207,12 +208,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } else {
       // Mock auth flow
       const mockUser = {
-        id: 'mock-uuid-1234',
+        id: 'mock-uid-' + btoa(email).replace(/=/g, ""),
         email,
         displayName: name || email.split('@')[0],
         user_metadata: {
           full_name: name || email.split('@')[0],
-          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`
         }
       };
       localStorage.setItem('mock_user', JSON.stringify(mockUser));
@@ -222,7 +223,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         email: mockUser.email,
         displayName: mockUser.displayName,
         photoURL: mockUser.user_metadata.avatar_url,
-        isPremium: true // Give mock users premium for demo purposes
+        isPremium: false // Mock users start as non-premium; premium must be earned
       });
       api.defaults.headers.common["x-user-id"] = mockUser.id;
       api.defaults.headers.common["x-user-email"] = mockUser.email;
