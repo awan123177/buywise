@@ -86,7 +86,7 @@ export default function PremiumLogin() {
       // We have authenticated successfully.
       // Now check if profile exists
       if (hasSupabase) {
-        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', authUser.id).single();
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', authUser.id).maybeSingle();
         if (!profile || !profile.full_name) {
           // Profile needs completion
           setStep('complete_profile');
@@ -163,7 +163,7 @@ export default function PremiumLogin() {
         displayName: authUser.user_metadata?.full_name || email.split('@')[0],
         user_metadata: authUser.user_metadata,
         photoURL: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        isPremium: true
+        isPremium: false
       };
       localStorage.setItem('mock_user_' + email, JSON.stringify(mockUser));
       localStorage.setItem('mock_user', JSON.stringify(mockUser));
@@ -198,7 +198,7 @@ export default function PremiumLogin() {
       if (hasSupabase) {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (authUser) {
-           await supabase.from('profiles').upsert({
+           const { error: upsertError } = await supabase.from('profiles').upsert({
              id: authUser.id,
              email,
              full_name: fullName,
@@ -206,6 +206,7 @@ export default function PremiumLogin() {
              country,
              referral_code: referral || null
            });
+           if (upsertError) throw upsertError;
            
            await supabase.auth.updateUser({ data: { full_name: fullName } });
            finishLogin(authUser, null);

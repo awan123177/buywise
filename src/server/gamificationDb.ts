@@ -443,23 +443,7 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
     }
   }
 
-  // Grant permanent premium status to mohammdsaeed24@gmail.com
-  if (email && email.toLowerCase() === "mohammdsaeed24@gmail.com") {
-    if (!profile.isPremium || profile.premiumExpiry !== "2030-01-01T00:00:00.000Z") {
-      profile.isPremium = true;
-      profile.premiumExpiry = "2030-01-01T00:00:00.000Z";
-      saveDatabase();
-      console.log("Granted permanent premium status to owner mohammdsaeed24@gmail.com");
-    }
-  } else if (!profile.isPremium && !profile.premiumExpiry) {
-    // Auto-grant 3 days premium trial to all other users
-    profile.isPremium = true;
-    const now = new Date();
-    now.setDate(now.getDate() + 3); // 3 days trial
-    profile.premiumExpiry = now.toISOString();
-    saveDatabase();
-    console.log("Granted 3-day premium trial to user");
-  }
+
 
   return profile;
 }
