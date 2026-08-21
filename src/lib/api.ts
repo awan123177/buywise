@@ -134,12 +134,23 @@ export async function logReviewAction() {
 }
 
 // 5a. Fetch All Application/Community Reviews
-export async function fetchReviews() {
+export async function fetchReviews(page = 1, limit = 20, sortBy = 'recent') {
   try {
-    const response = await api.get("/gamification/reviews");
-    return response.data;
+    const response = await api.get(`/gamification/reviews?page=${page}&limit=${limit}&sortBy=${sortBy}`);
+    return response.data; // { reviews, summary, hasMore }
   } catch (e: any) {
     console.error("fetchReviews error:", e);
+    throw e;
+  }
+}
+
+// 5c. Vote Helpful on a Review
+export async function voteReviewHelpful(reviewId: string) {
+  try {
+    const response = await api.post(`/gamification/reviews/${reviewId}/helpful`);
+    return response.data;
+  } catch (e: any) {
+    console.error("voteReviewHelpful error:", e);
     throw e;
   }
 }
@@ -468,3 +479,89 @@ export async function adminUpdateCoupon(couponId: string, updates: any) {
     throw e;
   }
 }
+
+// 28. Forever Founder Mystery Box Status
+export async function fetchFounderMysteryBoxStatus() {
+  try {
+    const response = await api.get("/gamification/founder-mystery-box/status");
+    return response.data;
+  } catch (e: any) {
+    console.error("fetchFounderMysteryBoxStatus error:", e);
+    throw e;
+  }
+}
+
+// 29. Claim Forever Founder Mystery Box (Guaranteed 10,000 Coins + Lifetime Super Enhanced Founder Badge)
+export async function claimFounderMysteryBox() {
+  try {
+    const response = await api.post("/gamification/founder-mystery-box/claim");
+    return response.data;
+  } catch (e: any) {
+    console.error("claimFounderMysteryBox error:", e);
+    throw e;
+  }
+}
+
+// 30. Fetch Daily Premium Coin Status
+export async function fetchPremiumDailyStatus() {
+  try {
+    const response = await api.get("/gamification/premium-daily/status");
+    return response.data;
+  } catch (e: any) {
+    console.error("fetchPremiumDailyStatus error:", e);
+    throw e;
+  }
+}
+
+// 31. Claim Daily Premium Coins
+export async function claimPremiumDailyCoins() {
+  try {
+    const response = await api.post("/gamification/premium-daily/claim");
+    const { success, message, coinsAwarded } = response.data;
+    if (success) {
+      toast.success(message || `Claimed +${coinsAwarded} Premium Daily Coins!`, { icon: "💎" });
+    } else {
+      toast.error(message || "Failed to claim daily premium reward.");
+    }
+    return response.data;
+  } catch (e: any) {
+    const errMsg = e.response?.data?.message || e.response?.data?.error || "Failed to claim daily premium reward.";
+    toast.error(errMsg);
+    throw e;
+  }
+}
+
+// 32. Fetch Gamification Settings
+export async function fetchGamificationSettings() {
+  try {
+    const response = await api.get("/gamification/settings");
+    return response.data;
+  } catch (e: any) {
+    console.error("fetchGamificationSettings error:", e);
+    throw e;
+  }
+}
+
+// 33. Admin Update Gamification Settings
+export async function adminUpdateGamificationSettings(updates: any) {
+  try {
+    const response = await api.post("/gamification/admin/settings", updates);
+    return response.data;
+  } catch (e: any) {
+    console.error("adminUpdateGamificationSettings error:", e);
+    throw e;
+  }
+}
+
+// 34. Admin Adjust User Coins
+export async function adminAdjustUserCoins(userId: string, amount: number, reason: string) {
+  try {
+    const response = await api.post("/gamification/admin/adjust-coins", { userId, amount, reason });
+    return response.data;
+  } catch (e: any) {
+    console.error("adminAdjustUserCoins error:", e);
+    throw e;
+  }
+}
+
+

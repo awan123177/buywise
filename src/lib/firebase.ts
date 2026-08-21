@@ -97,6 +97,12 @@ export const onSnapshot = (q: any, cb: any, ...opts: any[]) => {
 };
 
 export const getFirestore = (...args: any[]) => ({});
-export const getAuth = (...args: any[]) => ({});
-export const initializeApp = (...args: any[]) => ({});
+
+import { initializeApp } from 'firebase/app';
+import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import firebaseConfig from '../../firebase-applet-config.json';
+
+const app = initializeApp(firebaseConfig);
+export const authInstance = getAuth(app);
+export const googleProvider = new GoogleAuthProvider();
 

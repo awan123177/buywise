@@ -24,7 +24,6 @@ const GOOEY_NAV_ITEMS = [
   { label: 'GUIDES', href: '/guides' },
   { label: 'SCANNER', href: '/scanner' },
   { label: 'RADAR', href: '/radar' },
-  { label: 'TRAVEL', href: '/travel' },
   { label: 'GIFTS', href: '/gifts' },
   { label: 'CLUB', href: '/rewards' },
   { label: 'PREMIUM', href: '/premium' },
@@ -85,18 +84,46 @@ export default function Navbar() {
   }, [user]);
 
   useEffect(() => {
-    if (user?.uid) {
-      fetchGamificationProfile()
-        .then(profile => {
-          setCoins(profile.coins);
-          if (profile.hasReceived1000PointCoupon && !localStorage.getItem('1000_point_coupon_seen')) {
-             setShowCouponModal(true);
-             localStorage.setItem('1000_point_coupon_seen', 'true');
-          }
-          setActiveBadge(profile.activeBadge || null);
-        })
-        .catch(() => {});
-    }
+    const loadProfile = () => {
+      if (user?.uid) {
+        fetchGamificationProfile()
+          .then(profile => {
+            setCoins(profile.coins);
+            if (profile.hasReceived1000PointCoupon && !localStorage.getItem('1000_point_coupon_seen')) {
+               setShowCouponModal(true);
+               localStorage.setItem('1000_point_coupon_seen', 'true');
+            }
+            setActiveBadge(profile.activeBadge || null);
+          })
+          .catch(() => {});
+      }
+    };
+
+    loadProfile();
+
+    const handleCoins = (e: any) => {
+      if (typeof e.detail?.coins === 'number') {
+        setCoins(e.detail.coins);
+      }
+      loadProfile();
+    };
+
+    const handleProfile = (e: any) => {
+      if (e.detail?.badge) {
+        setActiveBadge(e.detail.badge);
+      }
+      loadProfile();
+    };
+
+    window.addEventListener('buywiseCoinsUpdated', handleCoins);
+    window.addEventListener('buywiseProfileUpdated', handleProfile);
+    window.addEventListener('buywisePremiumActivated', loadProfile);
+
+    return () => {
+      window.removeEventListener('buywiseCoinsUpdated', handleCoins);
+      window.removeEventListener('buywiseProfileUpdated', handleProfile);
+      window.removeEventListener('buywisePremiumActivated', loadProfile);
+    };
   }, [user?.uid, location.pathname]);
 
   useEffect(() => {
@@ -210,7 +237,7 @@ export default function Navbar() {
                  <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-full border border-yellow-500 flex items-center justify-center bg-yellow-500/20 group-hover:rotate-180 transition-transform duration-500 sm:mr-1">
                    <span className="text-[8px] sm:text-[9px] text-yellow-300">₹</span>
                  </div>
-                 {coins.toLocaleString()} <span className="text-[9px] font-bold text-yellow-500/70 hidden sm:inline tracking-wider">COINS</span>
+                 {(coins || 0).toLocaleString()} <span className="text-[9px] font-bold text-yellow-500/70 hidden sm:inline tracking-wider">COINS</span>
                </Link>
                {activeBadge && (
                   <div className="hidden sm:flex items-center justify-center px-1.5 py-1 sm:px-2 sm:py-1.5 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-400 text-[8px] sm:text-[9px] font-black uppercase tracking-wider font-mono shadow-[0_0_10px_rgba(59,130,246,0.1)] max-w-[80px] sm:max-w-none truncate shrink-0">
@@ -313,7 +340,6 @@ export default function Navbar() {
                 { label: 'BARCODE SCANNER', href: '/scanner', icon: <Scan size={20} /> },
                 { label: 'PRICE RADAR', href: '/radar', icon: <Search size={20} /> },
                 { label: 'GIFT CARDS', href: '/gifts', icon: <Gift size={20} /> },
-                { label: 'FLIGHTS & TRAVEL', href: '/travel', icon: <Plane size={20} /> },
                 { label: 'REWARDS CLUB', href: '/rewards', icon: <Trophy size={20} /> },
                 { label: 'PREMIUM', href: '/premium', icon: <Diamond size={20} /> },
                 { label: 'HUMAN SUPPORT', href: '/support', icon: <HeartHandshake size={20} /> },

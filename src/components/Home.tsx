@@ -19,11 +19,9 @@ const REALTIME_EVENTS = [
   "priya.verma*** compared Sony WH-1000XM5 in Mumbai",
   "ritesh.sh*** claimed secret premium 50% discount",
   "neha.goel*** earned +15 coins for app feedback review",
-  "anonymous*** compared flight DEL → BLR on MakeMyTrip",
   "vikram.singh*** unlocked streak milestone: 7 days 🔥",
   "ryan.db*** invited 2 friends using referral link 🤝",
   "kashish.m*** saved ₹1,200 on Adidas Samba sneakers",
-  "arjun.s*** compared flight pricing from Delhi to Goa",
   "deepak_11*** created a price drop alert for OnePlus 12R",
   "tanvi.j*** redeemed 100 coins for secret exclusive deals"
 ];
@@ -347,7 +345,7 @@ export default function Home() {
                 </div>
 
                 <div className="text-[9px] text-white/40 mt-2">
-                  Comparing index prices across <span className="text-white font-bold">{savingsStats.totalUsers.toLocaleString()}</span> active nodes.
+                  Comparing index prices across <span className="text-white font-bold">{(savingsStats.totalUsers || 14502).toLocaleString()}</span> active nodes.
                 </div>
               </div>
 
@@ -654,7 +652,7 @@ export default function Home() {
               <h2 className="text-3xl md:text-5xl font-black font-display text-white mb-2 tracking-tight">Awan Warsi</h2>
               <h3 className="text-sm md:text-base font-medium text-white/50 mb-6 uppercase tracking-widest">Founder, Owner, CEO & Chairman of BuyWise</h3>
               <p className="text-sm md:text-base text-white/80 leading-relaxed max-w-2xl">
-                Building an AI-powered shopping and travel platform that helps people save money through smart comparisons, affiliate deals, and intelligent recommendations.
+                Building an AI-powered shopping platform that helps people save money through smart comparisons, affiliate deals, and intelligent recommendations.
               </p>
               
               <button onClick={() => navigate('/owner')} className="mt-8 text-xs font-black uppercase tracking-widest text-white flex items-center gap-2 hover:text-[#FF3B30] transition-colors pb-1 w-fit">
@@ -670,10 +668,9 @@ export default function Home() {
         <div className="max-w-[1400px] mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-8">
           <div>
             <h4 className="text-white font-black text-sm uppercase tracking-widest mb-4">BuyWise Platforms</h4>
-            <p className="mb-4 text-white/50 leading-relaxed">AI-powered shopping and travel comparison platform. Never overpay again.</p>
+            <p className="mb-4 text-white/50 leading-relaxed">AI-powered shopping price comparison platform. Never overpay again.</p>
             <div className="flex flex-col gap-2 mb-4">
               <a href="/deals" onClick={(e) => { e.preventDefault(); navigate('/deals'); }} className="hover:text-white transition-colors">🔥 Hot Shopping Deals</a>
-              <a href="/travel" onClick={(e) => { e.preventDefault(); navigate('/travel'); }} className="hover:text-white transition-colors">✈️ Travel & Flight Search</a>
               <a href="/premium" onClick={(e) => { e.preventDefault(); navigate('/premium'); }} className="hover:text-white transition-colors">👑 Premium Club Access</a>
               <a href="/rewards" onClick={(e) => { e.preventDefault(); navigate('/rewards'); }} className="hover:text-white transition-colors">🪙 Rewards Terminal</a>
               <a href="/compare" onClick={(e) => { e.preventDefault(); navigate('/compare'); }} className="hover:text-white transition-colors">📊 Compare Products</a>

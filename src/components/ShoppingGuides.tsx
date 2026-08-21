@@ -344,7 +344,7 @@ const GUIDES_DATA: { [key: string]: GuideData } = {
       { name: "Laptop Cooling Pad", price: "₹1,199", link: "/search?q=laptop+cooling+pad" }
     ],
     internalLinks: [
-      { text: "Best Power Banks (Highly Recommended for travel)", link: "/guides/best-power-banks" },
+      { text: "Best Power Banks (Highly Recommended)", link: "/guides/best-power-banks" },
       { text: "Best Gaming Headphones", link: "/guides/best-gaming-headphones" }
     ]
   },
@@ -838,7 +838,7 @@ const GUIDES_DATA: { [key: string]: GuideData } = {
     icon: "Zap",
     metaTitle: "Best Power Banks (2026) - Fast Charging 10000 & 20000mAh",
     metaDescription: "Never run out of phone battery. AI evaluates power banks based on weight, charging standards, multi-port capabilities, and safety certifications.",
-    intro: "With power-hungry 5G networks, dynamic screens, and constant GPS navigation, mobile phone batteries rarely last a full day. A reliable power bank with fast Power Delivery (PD) ensures you stay connected while traveling. Here are the top-rated charging bricks evaluated by our AI.",
+    intro: "With power-hungry 5G networks, dynamic screens, and constant navigation, mobile phone batteries rarely last a full day. A reliable power bank with fast Power Delivery (PD) ensures you stay connected. Here are the top-rated charging bricks evaluated by our AI.",
     aiRecommendation: "For long weekend trips or running multiple devices, the Mi 20000mAh is exceptionally durable and reliable. Commuters looking for an ultra-slim pocket friendly option should select the Ambrane 10000mAh.",
     products: [
       {
@@ -848,7 +848,7 @@ const GUIDES_DATA: { [key: string]: GuideData } = {
         rating: 4.7,
         image: "https://images.unsplash.com/photo-1609592424109-dd08ffcf3e68?auto=format&fit=crop&w=600&q=80",
         badge: "Best Heavy Duty",
-        bestFor: "Frequent travelers and long weekend camping trips",
+        bestFor: "Heavy users and long weekend camping trips",
         specs: {
           "Capacity": "20000 mAh Lithium Polymer",
           "Output Speed": "18W Fast Charging",

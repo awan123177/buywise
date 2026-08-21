@@ -377,7 +377,7 @@ export default function AdminApkManager({ email, passcode }: AdminApkManagerProp
           ].map((item, idx) => (
             <div key={idx} className="bg-white/5 border border-white/10 p-4 rounded-2xl space-y-1">
               <span className="text-[10px] uppercase font-bold text-white/40 block">{item.label}</span>
-              <span className={`text-2xl font-black ${item.color}`}>{item.value.toLocaleString()}</span>
+              <span className={`text-2xl font-black ${item.color}`}>{(item.value || 0).toLocaleString()}</span>
             </div>
           ))}
         </div>

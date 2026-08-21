@@ -61,6 +61,7 @@ export interface ParsedQuerySpecs {
   marketingKeywords: string[];
   promotionalText: string[];
   isAccessorySearch: boolean;
+  isAccessoryIntent?: boolean;
   negativeTerms: string[];
 }
 
@@ -753,7 +754,7 @@ export function correctSpellingAndNormalize(query: string): string {
 
   // Token replacement
   for (const [typo, replacement] of Object.entries(SPELLING_DICTIONARY)) {
-    const regex = new RegExp(`\\b${typo}\\b`, "gi");
+    const regex = new RegExp(`\b${typo}\b`, "gi");
     q = q.replace(regex, replacement);
   }
 
@@ -789,12 +790,12 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
     /\bcheck this\b/gi,
     /\blook at this\b/gi,
     /\blook at\b/gi,
-    /\bsearch for\b/gi,
+    /\search for\b/gi,
     /\bcan you find\b/gi,
     /\bfind me\b/gi,
-    /\bshow me\b/gi,
+    /\show me\b/gi,
     /\bprice of\b/gi,
-    /\bbuy\b/gi,
+    /\buy\b/gi,
     /\bon flipkart\b/gi,
     /\bfrom flipkart\b/gi,
     /\bon amazon\b/gi,
@@ -917,7 +918,7 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
   }
 
   const promotionalText: string[] = [];
-  const promoRegexes = [/\bbest\s*price\b/i, /\bfree\s*delivery\b/i, /\bsale\b/i, /\bdiscount\b/i, /\bofficial\b/i];
+  const promoRegexes = [/\best\s*price\b/i, /\bfree\s*delivery\b/i, /\sale\b/i, /\bdiscount\b/i, /\bofficial\b/i];
   for (const reg of promoRegexes) {
     const m = clean.match(reg);
     if (m) promotionalText.push(m[0]);
@@ -926,12 +927,12 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
   // Derive Core Model Name (strip detected brand & optional specs from clean)
   let coreModelStr = clean;
   if (detectedBrand) {
-    coreModelStr = coreModelStr.replace(new RegExp(`\\b${detectedBrand}\\b`, "gi"), "");
+    coreModelStr = coreModelStr.replace(new RegExp(`\b${detectedBrand}\b`, "gi"), "");
   }
   
   // Remove detected color, storage, and specs
   if (detectedColor) {
-    coreModelStr = coreModelStr.replace(new RegExp(`\\b${detectedColor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "gi"), "");
+    coreModelStr = coreModelStr.replace(new RegExp(`\b${detectedColor.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\b`, "gi"), "");
   }
   coreModelStr = coreModelStr.replace(/\b(64|128|256|512)\s*gb\b/gi, "");
   coreModelStr = coreModelStr.replace(/\b[12]\s*tb\b/gi, "");
@@ -944,7 +945,7 @@ export function parseProductQuery(queryText: string): ParsedQuerySpecs {
 
   for (const term of removeTerms) {
     try {
-      coreModelStr = coreModelStr.replace(new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, "gi"), "");
+      coreModelStr = coreModelStr.replace(new RegExp(`\\b${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\b`, "gi"), "");
     } catch (_) {}
   }
 
@@ -1643,31 +1644,64 @@ export function evaluateCandidateRelevance(
     return { isRelevant: false, matchType: 'rejected', confidence: 0, explanation: "Rejected generic retailer title." };
   }
 
-  // 2. Rejection of accessories & garbage items if searching for main product
-  if (!specs.isAccessorySearch) {
-    const accessoryTerms = ["garbage bag", "trash bag", "case", "cover", "screen protector", "tempered glass", "pouch", "cable", "adapter", "back cover"];
-    for (const term of accessoryTerms) {
-      if (titleLower.includes(term)) {
-        // Check if title is a main product bundled with a free/included accessory
-        const isBundleOrMain =
-          /\b(with|plus|\+|\bfree\b|\bincluded\b|\bbundle\b|\bwith free\b)\b/i.test(titleLower) ||
-          /\b(smartphone|mobile|phone|5g|256gb|512gb|1tb|128gb|64gb)\b/i.test(titleLower);
+  // 2. Rejection of accessories & non-device listings if user searched for main product
+  if (!specs.isAccessoryIntent && !specs.isAccessorySearch) {
+    const accessoryKeywords = [
+      "case", "cover", "back cover", "phone cover", "flip cover", "bumper case",
+      "screen protector", "tempered glass", "glass guard", "screen guard", "lens protector", "camera protector",
+      "charger", "charging cable", "cable", "adapter", "power adapter", "magsafe charger", "fast charger",
+      "strap", "band", "watch strap", "watch band", "wrist band",
+      "stand", "holder", "car mount", "dock", "charging dock",
+      "skin", "pouch", "sleeve", "laptop sleeve", "laptop bag",
+      "replacement", "battery", "ear tips", "airpods tips", "stylus pen", "s pen tip",
+      "garbage bag", "trash bag"
+    ];
 
-        const isExplicitAccessory =
-          new RegExp(`\\b(for|for the|compatible|fits|suit[s]?|designed for)\\b`, "i").test(titleLower) ||
-          new RegExp(`^${term}\\b`, "i").test(titleLower) ||
-          new RegExp(`\\b${term}\\s+(for|for the|compatible|fits)\\b`, "i").test(titleLower);
+    for (const term of accessoryKeywords) {
+      const termRegex = new RegExp(`\\b${term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, "i");
+      if (termRegex.test(titleLower)) {
+        // Only allow if this is an explicit main bundle (e.g. phone with free charger included)
+        const isExplicitAccessoryListing =
+          /\\b(for|for the|compatible with|fits|suit[s]? for|designed for|pack of|pcs)\\b/i.test(titleLower) ||
+          new RegExp(`^${term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\b`, "i").test(titleLower) ||
+          new RegExp(`\\b${term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}\\s+(for|compatible|fits)\\b`, "i").test(titleLower) ||
+          /\\b(silicone|leather|matte|transparent|glass|tpu|hard case|bumper)\\b/i.test(titleLower);
 
-        if (isExplicitAccessory || !isBundleOrMain) {
-          return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Filtered out accessory (${term}).` };
+        if (isExplicitAccessoryListing) {
+          return { isRelevant: false, matchType: 'rejected', confidence: 0, explanation: `Accessory filtered out: "${term}". User is searching for the actual product.` };
         }
       }
     }
   }
 
-  // 3. REQUIRED FILTERS: Brand, Model, Category
+  // 3. Form Factor & Series Mutual Exclusions
+  const queryLower = (specs.cleanQuery || "").toLowerCase();
 
-  // 3a. Category check
+  // Fold vs Flip exclusion
+  if (/\b(fold|z\s*fold)\b/i.test(queryLower) && /\b(flip|z\s*flip)\b/i.test(titleLower)) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 5, explanation: "Series mismatch: User searched for Fold, listing is Flip." };
+  }
+  if (/\b(flip|z\s*flip)\b/i.test(queryLower) && /\b(fold|z\s*fold)\b/i.test(titleLower)) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 5, explanation: "Series mismatch: User searched for Flip, listing is Fold." };
+  }
+
+  // Headphones (over-ear) vs Earbuds (in-ear)
+  if (/\b(wh-?1000|over-?ear|headphone)\b/i.test(queryLower) && /\b(wf-?1000|in-?ear|earbud)\b/i.test(titleLower)) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 5, explanation: "Form-factor mismatch: User searched for over-ear headphones, listing is earbuds." };
+  }
+  if (/\b(wf-?1000|in-?ear|earbud)\b/i.test(queryLower) && /\b(wh-?1000|over-?ear|headphone)\b/i.test(titleLower)) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 5, explanation: "Form-factor mismatch: User searched for earbuds, listing is over-ear headphones." };
+  }
+
+  // AirPods Pro vs AirPods Max
+  if (/\bairpods\s*pro\b/i.test(queryLower) && /\bairpods\s*max\b/i.test(titleLower)) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 5, explanation: "Model mismatch: User searched for AirPods Pro, listing is AirPods Max." };
+  }
+  if (/\bairpods\s*max\b/i.test(queryLower) && /\bairpods\s*pro\b/i.test(titleLower)) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 5, explanation: "Model mismatch: User searched for AirPods Max, listing is AirPods Pro." };
+  }
+
+  // 4. CATEGORY VERIFICATION
   if (specs.category === "Furniture") {
     if (titleLower.includes("iphone") || titleLower.includes("galaxy") || titleLower.includes("laptop") || titleLower.includes("macbook")) {
       return { isRelevant: false, matchType: 'rejected', confidence: 10, explanation: "Category mismatch: furniture is not a tech device." };
@@ -1682,45 +1716,45 @@ export function evaluateCandidateRelevance(
     }
   }
 
-  // 3b. Brand check
+  // 5. BRAND VERIFICATION
   if (specs.brand) {
     const brandLower = specs.brand.toLowerCase();
     const brandAliases: Record<string, string[]> = {
       apple: ["apple", "iphone", "macbook", "ipad", "airpods"],
-      samsung: ["samsung", "galaxy"],
+      samsung: ["samsung", "galaxy", "z fold", "z flip"],
       dell: ["dell", "xps", "inspiron", "alienware"],
       hp: ["hp", "spectre", "pavilion", "envy", "omen"],
       lenovo: ["lenovo", "thinkpad", "yoga", "legion"],
-      sony: ["sony", "bravia", "playstation"],
-      oneplus: ["oneplus"],
+      sony: ["sony", "playstation", "bravia", "wh-1000", "wf-1000"],
+      microsoft: ["microsoft", "surface", "xbox"],
       google: ["google", "pixel"]
     };
     const validTokens = brandAliases[brandLower] || [brandLower];
     const matchesBrand = validTokens.some(tok => titleLower.includes(tok));
     if (!matchesBrand) {
-      return { isRelevant: false, matchType: 'rejected', confidence: 20, explanation: `Brand mismatch (${specs.brand} expected).` };
+      return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Brand mismatch (${specs.brand} expected).` };
     }
   }
 
-  // 3c. Model check
+  // 6. MODEL TIER & GENERATION CHECKS
   const rawModelStr = specs.model || specs.cleanQuery;
   const modelStr = rawModelStr;
-  const cleanedModelStr = rawModelStr.toLowerCase().replace(/[\(\)\,\-\_\|\[\]\{\}\/]/g, " ");
+  const cleanedModelStr = rawModelStr.toLowerCase().replace(/[(),_|[\]{}/-]/g, " ");
   const modelTokens = cleanedModelStr.split(/\s+/).filter(t => 
     t.length > 1 && 
     !["apple", "samsung", "dell", "hp", "lenovo", "sony", "google", "the", "and", "with", "for", "take", "look", "at", "this", "on", "from", "flipkart", "amazon", "buy", "price", "deep", "color"].includes(t) &&
-    !/^(64|128|256|512)gb$/i.test(t) &&
+    !/^(4|6|8|12|16|24|32|64|128|256|512)gb$/i.test(t) &&
     !/^[12]tb$/i.test(t)
   );
 
-  const matchedModelTokens = modelTokens.filter(tok => titleLower.includes(tok));
-  const isModelMatch = modelTokens.length === 0 || matchedModelTokens.length >= Math.ceil(modelTokens.length * 0.6);
+  const matchedModelTokens = modelTokens.filter(t => titleLower.includes(t));
+  const isModelMatch = modelTokens.length === 0 || matchedModelTokens.length >= Math.ceil(modelTokens.length * 0.5);
 
   if (!isModelMatch) {
-    return { isRelevant: false, matchType: 'rejected', confidence: 25, explanation: `Model mismatch for "${rawModelStr}".` };
+    return { isRelevant: false, matchType: 'rejected', confidence: 20, explanation: `Model mismatch for "${rawModelStr}".` };
   }
 
-  // 3c-1. Model Tier Precision Check (Pro vs Pro Max vs Ultra vs Plus vs Base)
+  // 6a. Model Tier Precision Check (Pro vs Pro Max vs Ultra vs Plus vs Base vs R)
   const queryLowerForTier = rawModelStr.toLowerCase();
 
   const queryHasProMax = /\b(pro\s*max|promax)\b/i.test(queryLowerForTier);
@@ -1729,11 +1763,11 @@ export function evaluateCandidateRelevance(
   const queryHasPro = !queryHasProMax && /\bpro\b/i.test(queryLowerForTier);
   const titleHasPro = !titleHasProMax && /\bpro\b/i.test(titleLower);
 
-  const queryHasUltra = /\bultra\b/i.test(queryLowerForTier);
-  const titleHasUltra = /\bultra\b/i.test(titleLower);
-
   const queryHasPlus = /\b(plus|\+)\b/i.test(queryLowerForTier);
   const titleHasPlus = /\b(plus|\+)\b/i.test(titleLower);
+
+  const queryHasUltra = /\bultra\b/i.test(queryLowerForTier);
+  const titleHasUltra = /\bultra\b/i.test(titleLower);
 
   const queryHasMini = /\bmini\b/i.test(queryLowerForTier);
   const titleHasMini = /\bmini\b/i.test(titleLower);
@@ -1743,6 +1777,9 @@ export function evaluateCandidateRelevance(
 
   const queryHasFE = /\b(fe|fan\s*edition)\b/i.test(queryLowerForTier);
   const titleHasFE = /\b(fe|fan\s*edition)\b/i.test(titleLower);
+
+  const queryHasR = /\b(\bd+r|\br\b)\b/i.test(queryLowerForTier);
+  const titleHasR = /\b(\bd+r|\br\b)\b/i.test(titleLower);
 
   if (queryHasProMax && !titleHasProMax) {
     return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected Pro Max, got ${titleHasPro ? 'Pro' : 'base model'}.` };
@@ -1793,23 +1830,46 @@ export function evaluateCandidateRelevance(
     return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is FE model.` };
   }
 
-  // 3c-2. Generation / Number Strictness Check
-  const genNumMatch = queryLowerForTier.match(/\b(17|16|15|14|13|12|11|25|24|23|22|21|20|9|8|7|6|5)\b/);
+  if (queryHasR && !titleHasR) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: expected R model.` };
+  }
+  if (!queryHasR && titleHasR) {
+    return { isRelevant: false, matchType: 'rejected', confidence: 15, explanation: `Tier mismatch: candidate is R model.` };
+  }
+
+  // 6b. Generation / Number Strictness Check
+  const genNumMatch = queryLowerForTier.match(/(?:^|\b|\D)(17|16|15|14|13|12|11|10|x|xr|xs|25|24|23|22|21|20|9|8|7|6|5|4|3|2|1)\b/);
   if (genNumMatch) {
     const requiredGenNum = genNumMatch[1];
     const conflictingNums: Record<string, string[]> = {
-      "17": ["16", "15", "14", "13", "12", "11"],
-      "16": ["17", "15", "14", "13", "12", "11"],
-      "15": ["17", "16", "14", "13", "12", "11"],
+      "17": ["16", "15", "14", "13", "12", "11", "X", "XR", "XS"],
+      "16": ["17", "15", "14", "13", "12", "11", "X", "XR", "XS"],
+      "15": ["17", "16", "14", "13", "12", "11", "X", "XR", "XS"],
+      "14": ["17", "16", "15", "13", "12", "11", "X", "XR", "XS"],
+      "13": ["17", "16", "15", "14", "12", "11", "X", "XR", "XS"],
+      "12": ["17", "16", "15", "14", "13", "11", "X", "XR", "XS"],
+      "11": ["17", "16", "15", "14", "13", "12", "X", "XR", "XS"],
       "25": ["24", "23", "22", "21", "20"],
       "24": ["25", "23", "22", "21", "20"],
-      "9": ["8", "7", "6", "5"],
-      "8": ["9", "7", "6", "5"]
+      "23": ["25", "24", "22", "21", "20"],
+      "22": ["25", "24", "23", "21", "20"],
+      "21": ["25", "24", "23", "22", "20"],
+      "20": ["25", "24", "23", "22", "21"],
+      "7": ["8", "6", "5", "4", "3", "2"],
+      "6": ["8", "7", "5", "4", "3", "2"],
+      "5": ["8", "7", "6", "4", "3", "2"],
+      "4": ["8", "7", "6", "5", "3", "2"],
+      "9": ["8", "7", "6", "5", "10"],
+      "8": ["9", "7", "6", "5", "10"],
+      "10": ["9", "8", "7", "6", "5", "X", "XR", "XS", "11", "12", "13", "14"],
+      "x": ["17", "16", "15", "14", "13", "12", "11", "XR", "XS", "8", "9", "10"],
+      "xr": ["17", "16", "15", "14", "13", "12", "11", "X", "XS", "8", "9", "10"],
+      "xs": ["17", "16", "15", "14", "13", "12", "11", "X", "XR", "8", "9", "10"],
     };
     const badNums = conflictingNums[requiredGenNum];
     if (badNums) {
       for (const bad of badNums) {
-        const regex = new RegExp(`\\b(iphone|galaxy|s|pixel|ipad|macbook|watch|series)\\s*${bad}\\b`, "i");
+        const regex = new RegExp(`\\b(iphone|galaxy|fold|flip|s|pixel|ipad|macbook|watch|series)\\s*${bad}\\b`, "i");
         if (regex.test(titleLower)) {
           return { isRelevant: false, matchType: 'rejected', confidence: 10, explanation: `Generation mismatch: requested series ${requiredGenNum}, listing is series ${bad}.` };
         }
@@ -1817,34 +1877,29 @@ export function evaluateCandidateRelevance(
     }
   }
 
-  const requiredPassedSummary = `Brand=${specs.brand || 'Auto'}, Model=${modelStr}, Category=${specs.category || 'Auto'}`;
-
-  // 4. OPTIONAL FILTERS EVALUATION
-  const foundOptional: string[] = [];
-  const missingOptional: string[] = [];
-
+  // 7. SPECIFICATION EVALUATION (Storage, RAM, Color, Chip, etc.)
   const featuresText = candidate.features ? candidate.features.join(" ").toLowerCase() : "";
   const combinedListingText = `${titleLower} ${featuresText}`;
+
+  const foundSpecs: string[] = [];
+  const missingSpecs: string[] = [];
+  let isDifferentVariant = false;
 
   // Check Storage
   if (specs.storage) {
     const normStorage = specs.storage.toLowerCase().replace(/\s+/g, "");
     const normText = combinedListingText.replace(/\s+/g, "");
     if (normText.includes(normStorage)) {
-      foundOptional.push(`Storage (${specs.storage})`);
+      foundSpecs.push(`Storage ${specs.storage}`);
     } else {
-      missingOptional.push(`Storage (${specs.storage})`);
-    }
-  }
-
-  // Check Color
-  if (specs.color) {
-    const colorLower = specs.color.toLowerCase();
-    const colorParts = colorLower.split(/\s+/);
-    if (colorParts.some(p => combinedListingText.includes(p))) {
-      foundOptional.push(`Color (${specs.color})`);
-    } else {
-      missingOptional.push(`Color (${specs.color})`);
+      // Check if another storage was detected in listing
+      const candStorageMatch = combinedListingText.match(/\b(64|128|256|512)\s*gb\b|\b[12]\s*tb\b/i);
+      if (candStorageMatch) {
+        isDifferentVariant = true;
+        missingSpecs.push(`Storage (${candStorageMatch[0].toUpperCase()} instead of ${specs.storage})`);
+      } else {
+        missingSpecs.push(`Storage ${specs.storage}`);
+      }
     }
   }
 
@@ -1853,104 +1908,56 @@ export function evaluateCandidateRelevance(
     const normRam = specs.ram.toLowerCase().replace(/\s+/g, "");
     const normText = combinedListingText.replace(/\s+/g, "");
     if (normText.includes(normRam)) {
-      foundOptional.push(`RAM (${specs.ram})`);
+      foundSpecs.push(`RAM ${specs.ram}`);
     } else {
-      missingOptional.push(`RAM (${specs.ram})`);
+      const candRamMatch = combinedListingText.match(/\b(4|6|8|12|16|24|32|64)\s*gb\s*ram\b/i);
+      if (candRamMatch) {
+        isDifferentVariant = true;
+        missingSpecs.push(`RAM (${candRamMatch[0].toUpperCase()} instead of ${specs.ram})`);
+      } else {
+        missingSpecs.push(`RAM ${specs.ram}`);
+      }
     }
   }
 
-  // Check Chip
+  // Check Color
+  if (specs.color) {
+    const colorLower = specs.color.toLowerCase();
+    const colorParts = colorLower.split(/\s+/);
+    if (colorParts.some(p => combinedListingText.includes(p))) {
+      foundSpecs.push(`Color ${specs.color}`);
+    } else {
+      missingSpecs.push(`Color ${specs.color}`);
+    }
+  }
+
+  // Check Processor / Chip
   if (specs.chip || specs.processor) {
-    const chipVal = specs.chip || specs.processor || "";
-    if (combinedListingText.includes(chipVal.toLowerCase())) {
-      foundOptional.push(`Chip (${chipVal})`);
-    } else {
-      missingOptional.push(`Chip (${chipVal})`);
+    const chipVal = (specs.chip || specs.processor || "").toLowerCase();
+    if (combinedListingText.includes(chipVal)) {
+      foundSpecs.push(`Chip ${specs.chip || specs.processor}`);
     }
   }
 
-  // Check Camera
-  if (specs.camera) {
-    if (combinedListingText.includes(specs.camera.toLowerCase())) {
-      foundOptional.push(`Camera (${specs.camera})`);
-    } else {
-      missingOptional.push(`Camera (${specs.camera})`);
-    }
-  }
-
-  // Check Display technology
-  if (specs.display) {
-    if (combinedListingText.includes(specs.display.toLowerCase())) {
-      foundOptional.push(`Display technology (${specs.display})`);
-    } else {
-      missingOptional.push(`Display technology (${specs.display})`);
-    }
-  }
-
-  // Check AI features
-  if (specs.aiFeatures) {
-    if (combinedListingText.includes(specs.aiFeatures.toLowerCase())) {
-      foundOptional.push(`AI features (${specs.aiFeatures})`);
-    } else {
-      missingOptional.push(`AI features (${specs.aiFeatures})`);
-    }
-  }
-
-  // Check Battery
-  if (specs.battery) {
-    if (combinedListingText.includes(specs.battery.toLowerCase())) {
-      foundOptional.push(`Battery (${specs.battery})`);
-    } else {
-      missingOptional.push(`Battery (${specs.battery})`);
-    }
-  }
-
-  // Check Marketing keywords
-  if (specs.marketingKeywords && specs.marketingKeywords.length > 0) {
-    for (const kw of specs.marketingKeywords) {
-      if (combinedListingText.includes(kw.toLowerCase())) {
-        foundOptional.push(`Marketing keyword (${kw})`);
-      } else {
-        missingOptional.push(`Marketing keyword (${kw})`);
-      }
-    }
-  }
-
-  // Check Promotional text
-  if (specs.promotionalText && specs.promotionalText.length > 0) {
-    for (const promo of specs.promotionalText) {
-      if (combinedListingText.includes(promo.toLowerCase())) {
-        foundOptional.push(`Promotional text (${promo})`);
-      } else {
-        missingOptional.push(`Promotional text (${promo})`);
-      }
-    }
-  }
-
-  // ACCEPT PRODUCT SINCE ALL REQUIRED FILTERS PASSED!
-  let confidence = 92;
-  if (foundOptional.length > 0) {
-    confidence = Math.min(99, 92 + foundOptional.length * 2);
-  }
-
+  // Compute final score & match type
   let matchType: 'exact' | 'variant' | 'alternative' = 'exact';
-  if (specs.storage && missingOptional.some(m => m.includes('Storage'))) {
+  let confidence = 95;
+
+  if (isDifferentVariant || missingSpecs.some(m => m.includes("RAM") || m.includes("Storage"))) {
     matchType = 'variant';
+    confidence = 88;
   }
 
-  let explanation = `Exact match for ${specs.brand || ''} ${modelStr}.`.trim();
-  if (missingOptional.length > 0) {
-    explanation += ` Unavailable in listing: ${missingOptional.join(", ")}`;
-  } else if (foundOptional.length > 0) {
-    explanation += ` Verified specs: ${foundOptional.join(", ")}`;
+  if (foundSpecs.length > 0) {
+    confidence = Math.min(99, confidence + foundSpecs.length * 2);
   }
 
-  // LOG AUDIT MANDATED BY INSTRUCTIONS
-  console.log(`[Filter Audit] Candidate Title: "${rawTitle}"`);
-  console.log(`[Filter Audit] Required filters passed: ${requiredPassedSummary}`);
-  console.log(`[Filter Audit] Optional filters found: ${foundOptional.length > 0 ? foundOptional.join(', ') : 'None'}`);
-  console.log(`[Filter Audit] Optional filters missing: ${missingOptional.length > 0 ? missingOptional.join(', ') : 'None'}`);
-  console.log(`[Filter Audit] Final confidence: ${confidence}%`);
+  let explanation = `Exact match for ${specs.brand || ''} ${modelStr}`.trim();
+  if (matchType === 'variant') {
+    explanation = `Variant match: ${missingSpecs.join(", ")}`;
+  } else if (foundSpecs.length > 0) {
+    explanation += ` (${foundSpecs.join(", ")})`;
+  }
 
   return { isRelevant: true, matchType, confidence, explanation };
 }

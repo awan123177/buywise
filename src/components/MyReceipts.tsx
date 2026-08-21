@@ -111,7 +111,7 @@ export function MyReceipts() {
                           {new Date(receipt.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-900">
-                          {receipt.currency} {receipt.totalAmount.toLocaleString()}
+                          {receipt.currency} {(receipt.totalAmount || 0).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 text-sm">
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${

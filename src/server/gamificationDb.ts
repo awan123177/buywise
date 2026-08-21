@@ -35,6 +35,14 @@ export interface UserProfile {
   hasReceived1000PointCoupon?: boolean;
   isPremium?: boolean;
   premiumExpiry?: string;
+  activePlanId?: string;
+  activePlanName?: string;
+  lastPaymentDate?: string;
+  founder_mystery_box_claimed?: boolean;
+  founder_mystery_box_claimed_at?: string;
+  superEnhancedFounderBadge?: boolean;
+  premium_daily_claimed_at?: string;
+  last_premium_daily_date?: string; // YYYY-MM-DD
   notificationPreferences: {
     morning: boolean;
     afternoon: boolean;
@@ -45,6 +53,15 @@ export interface UserProfile {
   activeBadge?: string | null;
   lastSpinDate?: string | null;
   completedMissions?: string[]; // IDs of completed missions
+  hasReceivedReviewReward?: boolean;
+}
+
+export interface GamificationSettings {
+  premiumMultiplier: number;
+  founderMultiplier: number;
+  freeMultiplier: number;
+  premiumDailyRewardAmount: number;
+  multiplierEnabled: boolean;
 }
 
 export interface CoinTransaction {
@@ -53,6 +70,11 @@ export interface CoinTransaction {
   amount: number;
   reason: string;
   timestamp: string;
+  type?: "EARNED" | "SPENT" | "ADJUSTMENT";
+  source?: "DAILY_PREMIUM_REWARD" | "REVIEW_REWARD" | "FOUNDER_REWARD" | "MYSTERY_BOX" | "REFERRAL_REWARD" | "ADMIN_ADJUSTMENT" | "COIN_SPEND" | "DAILY_LOGIN" | "SEARCH_REWARD" | "MISSION_REWARD" | "SPIN_WHEEL" | "TRANSFER" | string;
+  description?: string;
+  referenceId?: string;
+  multiplierApplied?: number;
 }
 
 export interface Referral {
@@ -104,6 +126,11 @@ export interface UserReview {
   comment: string;
   coinsEarned: number;
   timestamp: string;
+  isVerified?: boolean;
+  isDemo?: boolean;
+  status?: "approved" | "pending" | "rejected";
+  helpfulVotes?: number;
+  helpfulVoters?: string[];
 }
 
 export interface BarcodeScan {
@@ -176,6 +203,65 @@ export interface ApkDownloadLog {
   userAgent?: string;
 }
 
+export interface ReceiptRecord {
+  receiptId: string;
+  userId: string;
+  customerName: string;
+  customerEmail: string;
+  planId: string;
+  planName: string;
+  planDuration: string;
+  amount: number;
+  currency: string;
+  tax: number;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentProvider: string;
+  transactionId: string;
+  orderId: string;
+  paymentStatus: "PAID" | "PENDING" | "FAILED";
+  purchaseDate: string;
+  purchaseTimestamp: string;
+  premiumExpiry?: string;
+  isTestMode?: boolean;
+}
+
+export interface CashfreeOrderRecord {
+  orderId: string;
+  cfOrderId?: string;
+  paymentSessionId?: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  planId: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  paymentStatus: "created" | "paid" | "failed" | "pending" | "cancelled";
+  paymentId?: string;
+  paymentMethod?: string;
+  createdAt: string;
+  activatedAt?: string;
+  processedWebhooks?: string[];
+}
+
+export interface RazorpayOrderRecord {
+  orderId: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  planId: string;
+  planName: string;
+  amountPaise: number;
+  currency: string;
+  receipt: string;
+  paymentStatus: "created" | "paid" | "failed";
+  paymentId?: string;
+  signature?: string;
+  createdAt: string;
+  activatedAt?: string;
+}
+
 export interface DatabaseSchema {
   profiles: { [userId: string]: UserProfile };
   transactions: CoinTransaction[];
@@ -191,6 +277,10 @@ export interface DatabaseSchema {
   founderImage?: string;
   apkReleases?: ApkRelease[];
   apkDownloadsLog?: ApkDownloadLog[];
+  receipts?: ReceiptRecord[];
+  cashfreeOrders?: { [orderId: string]: CashfreeOrderRecord };
+  razorpayOrders?: { [orderId: string]: RazorpayOrderRecord };
+  gamificationSettings?: GamificationSettings;
 }
 
 // High-quality real product images from Unsplash to display beautiful photos of the products
@@ -240,6 +330,15 @@ const INITIAL_PROFILES: { [userId: string]: UserProfile } = {};
 // Initial Mock Reviews
 const INITIAL_REVIEWS: UserReview[] = [];
 
+// Default Gamification Settings
+export const DEFAULT_GAMIFICATION_SETTINGS: GamificationSettings = {
+  premiumMultiplier: 2,
+  founderMultiplier: 3,
+  freeMultiplier: 1,
+  premiumDailyRewardAmount: 50,
+  multiplierEnabled: true
+};
+
 // Default DB instance
 let dbData: DatabaseSchema = {
   profiles: { ...INITIAL_PROFILES },
@@ -287,7 +386,12 @@ let dbData: DatabaseSchema = {
       highestPrice: 134900,
       timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString()
     }
-  ]
+  ],
+  receipts: [],
+  cashfreeOrders: {},
+  razorpayOrders: {},
+  coupons: [],
+  gamificationSettings: { ...DEFAULT_GAMIFICATION_SETTINGS }
 };
 
 // Load database from file
@@ -315,8 +419,35 @@ export function loadDatabase() {
         scans: loaded.scans || [],
         affiliateSettings: loaded.affiliateSettings || undefined,
         telegramConfig: loaded.telegramConfig || undefined,
-        founderImage: loaded.founderImage || undefined
+        founderImage: loaded.founderImage || undefined,
+        apkReleases: loaded.apkReleases || [],
+        apkDownloadsLog: loaded.apkDownloadsLog || [],
+        receipts: loaded.receipts || [],
+        cashfreeOrders: loaded.cashfreeOrders || {},
+        razorpayOrders: loaded.razorpayOrders || {},
+        coupons: loaded.coupons || [],
+        gamificationSettings: loaded.gamificationSettings ? { ...DEFAULT_GAMIFICATION_SETTINGS, ...loaded.gamificationSettings } : { ...DEFAULT_GAMIFICATION_SETTINGS }
       };
+
+      // Strict validation of loaded profile premium states:
+      // Premium is ONLY active if valid, unexpired premiumExpiry exists.
+      for (const userId in dbData.profiles) {
+        const p = dbData.profiles[userId];
+        if (p.premiumExpiry) {
+          const expiryTime = new Date(p.premiumExpiry).getTime();
+          const isStillValid = !isNaN(expiryTime) && expiryTime > Date.now();
+          p.isPremium = isStillValid;
+          if (!isStillValid) {
+            p.activePlanName = undefined;
+            p.activePlanId = undefined;
+          }
+        } else {
+          p.isPremium = false;
+          p.activePlanName = undefined;
+          p.activePlanId = undefined;
+        }
+      }
+
       if (dbData.affiliateSettings && dbData.affiliateSettings.stores && dbData.affiliateSettings.stores.amazon) {
         dbData.affiliateSettings.stores.amazon.tag = "buywiseind0f8-21";
       }
@@ -430,7 +561,12 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
       createdAt: new Date().toISOString(),
       activeBadge: null,
       lastSpinDate: null,
-      completedMissions: []
+      completedMissions: [],
+      isPremium: false,
+      premiumExpiry: undefined,
+      activePlanId: undefined,
+      activePlanName: undefined,
+      lastPaymentDate: undefined
     };
     dbData.profiles[userId] = profile;
     dbData.publicStats.totalUsers += 1;
@@ -443,31 +579,159 @@ export function getOrCreateProfile(userId: string, email: string, name: string):
     }
   }
 
+  // Strictly enforce server-side truth for Premium status:
+  // Lifetime Forever Founder users and users with superEnhancedFounderBadge always maintain premium status
+  const isFounder = (profile.activePlanId === "lifetime" || profile.activePlanId === "buywise_founder_forever" || profile.activePlanName === "Forever Founder" || profile.superEnhancedFounderBadge);
 
+  if (isFounder) {
+    profile.isPremium = true;
+    if (!profile.activePlanName) profile.activePlanName = "Forever Founder";
+    if (!profile.activePlanId) profile.activePlanId = "lifetime";
+    if (!profile.premiumExpiry) {
+      profile.premiumExpiry = new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString();
+    }
+    if (profile.superEnhancedFounderBadge && !profile.activeBadge) {
+      profile.activeBadge = "👑 SUPER ENHANCED FOUNDER";
+    }
+  } else if (profile.premiumExpiry) {
+    const expiryTime = new Date(profile.premiumExpiry).getTime();
+    const isStillValid = !isNaN(expiryTime) && expiryTime > Date.now();
+    if (profile.isPremium !== isStillValid) {
+      profile.isPremium = isStillValid;
+      if (!isStillValid) {
+        profile.activePlanName = undefined;
+        profile.activePlanId = undefined;
+      }
+      saveDatabase();
+    }
+  } else {
+    if (profile.isPremium) {
+      profile.isPremium = false;
+      profile.activePlanName = undefined;
+      profile.activePlanId = undefined;
+      saveDatabase();
+    }
+  }
+
+  if (profile.superEnhancedFounderBadge && !profile.activeBadge) {
+    profile.activeBadge = "👑 SUPER ENHANCED FOUNDER";
+  }
 
   return profile;
 }
 
-// Record Coin Transaction
-export function awardCoins(userId: string, amount: number, reason: string): { coins: number; gained: number; transaction: CoinTransaction } {
+// Gamification Settings Accessors
+export function getGamificationSettings(): GamificationSettings {
+  if (!dbData.gamificationSettings) {
+    dbData.gamificationSettings = { ...DEFAULT_GAMIFICATION_SETTINGS };
+    saveDatabase();
+  }
+  return { ...dbData.gamificationSettings };
+}
+
+export function updateGamificationSettings(updates: Partial<GamificationSettings>): GamificationSettings {
+  if (!dbData.gamificationSettings) {
+    dbData.gamificationSettings = { ...DEFAULT_GAMIFICATION_SETTINGS };
+  }
+  dbData.gamificationSettings = {
+    ...dbData.gamificationSettings,
+    ...updates
+  };
+  saveDatabase();
+  return { ...dbData.gamificationSettings };
+}
+
+// User Coin Multiplier calculation (1x Free, 2x Premium, 3x Founder)
+export function getUserCoinMultiplier(userId: string): number {
+  const settings = getGamificationSettings();
+  if (!settings.multiplierEnabled) return 1;
+
+  const profile = dbData.profiles[userId];
+  if (!profile) return settings.freeMultiplier || 1;
+
+  // Check Founder status
+  if (
+    profile.superEnhancedFounderBadge ||
+    profile.activePlanId === "plan_founder" ||
+    profile.activePlanId === "lifetime" ||
+    profile.activePlanId === "buywise_founder_forever" ||
+    (profile.activePlanName && profile.activePlanName.toLowerCase().includes("founder"))
+  ) {
+    return settings.founderMultiplier || 3;
+  }
+
+  // Check Active Premium status
+  if (profile.isPremium) {
+    if (profile.premiumExpiry) {
+      const expiry = new Date(profile.premiumExpiry).getTime();
+      if (!isNaN(expiry) && expiry > Date.now()) {
+        return settings.premiumMultiplier || 2;
+      }
+    }
+  }
+
+  return settings.freeMultiplier || 1;
+}
+
+export interface AwardCoinOptions {
+  applyMultiplier?: boolean; // Defaults to true for positive earning actions
+  type?: "EARNED" | "SPENT" | "ADJUSTMENT";
+  source?: "DAILY_PREMIUM_REWARD" | "REVIEW_REWARD" | "FOUNDER_REWARD" | "MYSTERY_BOX" | "REFERRAL_REWARD" | "ADMIN_ADJUSTMENT" | "COIN_SPEND" | "DAILY_LOGIN" | "SEARCH_REWARD" | "MISSION_REWARD" | "SPIN_WHEEL" | "TRANSFER" | string;
+  description?: string;
+  referenceId?: string; // Idempotency key to prevent double-crediting
+}
+
+// Authoritative Record Coin Transaction
+export function awardCoins(
+  userId: string,
+  amount: number,
+  reason: string,
+  options?: AwardCoinOptions
+): { coins: number; gained: number; transaction: CoinTransaction; multiplierApplied: number } {
   const profile = dbData.profiles[userId];
   if (!profile) throw new Error("Profile not found");
 
-  profile.coins += amount;
-  if (profile.coins < 0) profile.coins = 0; // Prevent negative coins
+  // Idempotency & anti-abuse check
+  if (options?.referenceId) {
+    const existingTxn = dbData.transactions.find(t => t.referenceId === options.referenceId);
+    if (existingTxn) {
+      return {
+        coins: profile.coins,
+        gained: existingTxn.amount,
+        transaction: existingTxn,
+        multiplierApplied: existingTxn.multiplierApplied || 1
+      };
+    }
+  }
+
+  let finalAmount = amount;
+  let multiplierApplied = 1;
+
+  // Apply multiplier if positive earning reward and not explicitly opted out
+  if (amount > 0 && options?.applyMultiplier !== false) {
+    multiplierApplied = getUserCoinMultiplier(userId);
+    finalAmount = Math.round(amount * multiplierApplied);
+  }
+
+  profile.coins += finalAmount;
+  if (profile.coins < 0) profile.coins = 0; // Prevent negative balance
 
   const transaction: CoinTransaction = {
     id: `txn_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     userId,
-    amount,
-    reason,
-    timestamp: new Date().toISOString()
+    amount: finalAmount,
+    reason: (multiplierApplied > 1 && amount > 0) ? `${reason} (${multiplierApplied}× Multiplier)` : reason,
+    timestamp: new Date().toISOString(),
+    type: options?.type || (finalAmount >= 0 ? "EARNED" : "SPENT"),
+    source: options?.source || (finalAmount >= 0 ? "SEARCH_REWARD" : "COIN_SPEND"),
+    description: options?.description || reason,
+    referenceId: options?.referenceId,
+    multiplierApplied: (amount > 0 && options?.applyMultiplier !== false) ? multiplierApplied : 1
   };
 
   dbData.transactions.unshift(transaction);
   
-  // Check for streak and saving achievements!
-  
+  // Check for 1000 point milestone coupon
   if (profile.coins >= 1000 && !profile.hasReceived1000PointCoupon) {
     profile.hasReceived1000PointCoupon = true;
     const newCoupon: Coupon = {
@@ -483,9 +747,122 @@ export function awardCoins(userId: string, amount: number, reason: string): { co
     if (!dbData.coupons) dbData.coupons = [];
     dbData.coupons.push(newCoupon);
   }
+
   saveDatabase();
 
-  return { coins: profile.coins, gained: amount, transaction };
+  return { coins: profile.coins, gained: finalAmount, transaction, multiplierApplied };
+}
+
+// Admin manual balance adjustment
+export function adminAdjustCoins(userId: string, amount: number, reason: string): { coins: number; transaction: CoinTransaction } {
+  const profile = dbData.profiles[userId];
+  if (!profile) throw new Error("Profile not found");
+
+  const result = awardCoins(userId, amount, reason || "Admin balance adjustment", {
+    applyMultiplier: false,
+    type: "ADJUSTMENT",
+    source: "ADMIN_ADJUSTMENT",
+    description: reason || "Manual modification by system administrator"
+  });
+
+  return { coins: result.coins, transaction: result.transaction };
+}
+
+// ---------------------- DAILY PREMIUM REWARDS ----------------------
+
+export function getPremiumDailyStatus(userId: string, email?: string, name?: string): {
+  eligible: boolean;
+  claimedToday: boolean;
+  rewardAmount: number;
+  multiplier: number;
+  lastClaimedDate: string | null;
+  lastClaimedAt: string | null;
+  planName?: string;
+} {
+  const profile = getOrCreateProfile(userId, email || "", name || "");
+  const multiplier = getUserCoinMultiplier(userId);
+  const settings = getGamificationSettings();
+  const rewardAmount = settings.premiumDailyRewardAmount || 50;
+
+  const isEligible = Boolean(
+    profile.isPremium ||
+    profile.superEnhancedFounderBadge ||
+    (profile.activePlanName && profile.activePlanName.toLowerCase().includes("founder"))
+  );
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  const claimedToday = profile.last_premium_daily_date === todayStr;
+
+  return {
+    eligible: isEligible,
+    claimedToday,
+    rewardAmount,
+    multiplier,
+    lastClaimedDate: profile.last_premium_daily_date || null,
+    lastClaimedAt: profile.premium_daily_claimed_at || null,
+    planName: profile.activePlanName || (profile.isPremium ? "Premium Member" : "Free Member")
+  };
+}
+
+export function claimPremiumDailyReward(userId: string, email?: string, name?: string): {
+  success: boolean;
+  message: string;
+  coinsAwarded: number;
+  newBalance: number;
+  transaction?: CoinTransaction;
+} {
+  const profile = getOrCreateProfile(userId, email || "", name || "");
+  const isEligible = Boolean(
+    profile.isPremium ||
+    profile.superEnhancedFounderBadge ||
+    (profile.activePlanName && profile.activePlanName.toLowerCase().includes("founder"))
+  );
+
+  if (!isEligible) {
+    return {
+      success: false,
+      message: "Daily coin boost is exclusive to Premium and Founder members. Upgrade to claim!",
+      coinsAwarded: 0,
+      newBalance: profile.coins
+    };
+  }
+
+  const todayStr = new Date().toISOString().split("T")[0];
+  if (profile.last_premium_daily_date === todayStr) {
+    return {
+      success: false,
+      message: "You have already claimed today's Premium Daily Coins! Check back tomorrow at midnight.",
+      coinsAwarded: 0,
+      newBalance: profile.coins
+    };
+  }
+
+  const settings = getGamificationSettings();
+  const rewardAmount = settings.premiumDailyRewardAmount || 50;
+  const refId = `premium_daily_${userId}_${todayStr}`;
+
+  // Update profile claim state
+  profile.last_premium_daily_date = todayStr;
+  profile.premium_daily_claimed_at = new Date().toISOString();
+
+  // Disburse reward without double-multiplication
+  const result = awardCoins(userId, rewardAmount, "Daily Premium Member Loyalty Reward", {
+    applyMultiplier: false,
+    type: "EARNED",
+    source: "DAILY_PREMIUM_REWARD",
+    referenceId: refId,
+    description: "Exclusive daily coins for active Premium/Founder members"
+  });
+
+  saveDatabase();
+
+  return {
+    success: true,
+    message: `Claimed +${rewardAmount} Daily Premium Coins!`,
+    coinsAwarded: rewardAmount,
+    newBalance: result.coins,
+    transaction: result.transaction
+  };
 }
 
 // Transfer Coins
@@ -864,7 +1241,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "streak_7", title: "7-Day Week Warrior", description: "Used BuyWise for 7 consecutive days", icon: "⚡", coinsReward: 100 },
   { id: "streak_30", title: "Monthly Devotee", description: "Used BuyWise for 30 consecutive days", icon: "📅", coinsReward: 300 },
   { id: "referral_master", title: "Referral Master", description: "Invited 5 or more friends who completed searches", icon: "🌟", coinsReward: 250 },
-  { id: "deal_hunter", title: "Deal Hunter", description: "Saved or shared 10 trending or daily deals", icon: "🎯", coinsReward: 50 }
+  { id: "deal_hunter", title: "Deal Hunter", description: "Saved or shared 10 trending or daily deals", icon: "🎯", coinsReward: 50 },
+  { id: "forever_founder", title: "Forever Founder", description: "Lifetime VIP Founder of BuyWise", icon: "👑", coinsReward: 0 },
+  { id: "super_enhanced_founder", title: "Super Enhanced Founder", description: "Opened the Forever Founder Mystery Box and unlocked lifetime prestige", icon: "🏆", coinsReward: 0 }
 ];
 
 // Unlock Achievement
@@ -899,10 +1278,8 @@ export function redeemReward(userId: string, rewardType: string): { success: boo
     rewardMessage = "Premium 50% discount coupon: BUYWISE50. Paste in Support chat to apply!";
   } else if (rewardType === "trial") {
     cost = 250;
-    rewardMessage = "3-Day Premium Free Trial activated! Go to /premium to see status.";
-    // Mock premium activation
-    // We can insert a premium request in Supabase if needed, or simply unlock in profile.
-    // Let's grant immediate mock premium status by registering a mock approved request!
+    rewardMessage = "Special 250 Bonus Coins & VIP Supporter status unlocked!";
+    profile.coins += 250;
   } else if (rewardType === "deal") {
     cost = 50;
     rewardMessage = "Unlocked Exclusive Secret Deal! Check your email for details.";
@@ -914,11 +1291,11 @@ export function redeemReward(userId: string, rewardType: string): { success: boo
     cost = 200;
     const isJackpot = Math.random() > 0.9;
     if (isJackpot) {
-       profile.isPremium = true;
-       profile.premiumExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-       rewardMessage = "JACKPOT! You won 1-Month Premium from the Mystery Box!";
+       const bonusCoins = 500;
+       profile.coins += bonusCoins;
+       rewardMessage = "JACKPOT! You won 500 Mega Coins from the Mystery Box!";
     } else {
-       const bonusCoins = Math.floor(Math.random() * 300);
+       const bonusCoins = Math.floor(Math.random() * 300) + 50;
        profile.coins += bonusCoins; // add back some coins
        rewardMessage = `Mystery Box opened! You found ${bonusCoins} coins inside.`;
     }
@@ -996,36 +1373,211 @@ export function adminAction(action: string, payload: any) {
 
 // ---------------------- REVIEWS OPERATIONS ----------------------
 
-export function getReviews(): UserReview[] {
-  return dbData.reviews || [];
+export function getReviews(options: { page?: number; limit?: number; sortBy?: string } = {}) {
+  let reviews: UserReview[] = [...(dbData.reviews || [])];
+
+  // Filter for approved or pending reviews (exclude rejected/removed unless admin)
+  reviews = reviews.filter(r => r.status !== 'rejected');
+  
+  if (process.env.NODE_ENV === 'production') {
+    reviews = reviews.filter(r => !r.isDemo);
+  }
+
+  // Summary statistics calculation (before pagination)
+  const totalReviews = reviews.length;
+  const ratingCounts: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+  let ratingSum = 0;
+
+  for (const r of reviews) {
+    const star = Math.max(1, Math.min(5, Math.round(r.rating || 5)));
+    ratingCounts[star] = (ratingCounts[star] || 0) + 1;
+    ratingSum += (r.rating || 5);
+  }
+
+  const averageRating = totalReviews > 0 ? (ratingSum / totalReviews).toFixed(1) : "0.0";
+
+  // Sorting
+  const sortBy = options.sortBy || 'recent';
+  if (sortBy === 'highest') {
+    reviews.sort((a, b) => b.rating - a.rating || new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  } else if (sortBy === 'lowest') {
+    reviews.sort((a, b) => a.rating - b.rating || new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  } else if (sortBy === 'helpful') {
+    reviews.sort((a, b) => (b.helpfulVotes || 0) - (a.helpfulVotes || 0) || new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  } else {
+    // 'recent' by default
+    reviews.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+
+  // Pagination
+  const page = Math.max(1, options.page || 1);
+  const limit = Math.max(1, Math.min(100, options.limit || 20));
+  const startIndex = (page - 1) * limit;
+  const paginatedReviews = reviews.slice(startIndex, startIndex + limit);
+  const hasMore = startIndex + limit < totalReviews;
+
+  return {
+    reviews: paginatedReviews,
+    summary: {
+      totalReviews,
+      averageRating: parseFloat(averageRating),
+      ratingCounts
+    },
+    hasMore,
+    page,
+    totalPages: Math.ceil(totalReviews / limit) || 1
+  };
+}
+
+export function voteReviewHelpful(userId: string, reviewId: string): { success: boolean; helpfulVotes: number; isHelpful: boolean; message: string } {
+  if (!dbData.reviews) {
+    dbData.reviews = [];
+  }
+
+  const review = dbData.reviews.find(r => r.id === reviewId);
+  if (!review) {
+    return { success: false, helpfulVotes: 0, isHelpful: false, message: "Review not found" };
+  }
+
+  if (!review.helpfulVoters) {
+    review.helpfulVoters = [];
+  }
+
+  const voterIndex = review.helpfulVoters.indexOf(userId);
+  let isHelpful = false;
+
+  if (voterIndex > -1) {
+    // Remove vote (toggle off)
+    review.helpfulVoters.splice(voterIndex, 1);
+    isHelpful = false;
+  } else {
+    // Add vote
+    review.helpfulVoters.push(userId);
+    isHelpful = true;
+  }
+
+  review.helpfulVotes = review.helpfulVoters.length;
+  saveDatabase();
+
+  return {
+    success: true,
+    helpfulVotes: review.helpfulVotes,
+    isHelpful,
+    message: isHelpful ? "Marked as helpful" : "Vote removed"
+  };
+}
+
+export function generateDemoReviewsIfNeeded() {
+  if (process.env.NODE_ENV === 'production') {
+    return;
+  }
+
+  if (!dbData.reviews) {
+    dbData.reviews = [];
+  }
+
+  // If we already have demo reviews or > 50 reviews, skip
+  const existingDemo = dbData.reviews.filter(r => r.isDemo);
+  if (existingDemo.length >= 100) {
+    return;
+  }
+
+  const sampleUsers = [
+    "Rahul Sharma", "Priya Patel", "Vikram Malhotra", "Sneha Rao", "Amit Verma",
+    "Ananya Iyer", "Karthik Raja", "Deepika Sen", "Siddharth Joshi", "Pooja Hegde",
+    "Rohan Gupta", "Kavita Reddy", "Manish Mehra", "Divya Nair", "James G.",
+    "Sarah Jenkins", "Michael Chen", "Emily Watson", "Alex Turner", "David Miller"
+  ];
+
+  const sampleComments = [
+    "PriceVerse saved me over ₹14,000 on my MacBook purchase! Real-time price tracking accurately caught the Flipkart midnight drop.",
+    "Best price comparison engine in India! Seamlessly aggregates Amazon, Croma, and Vijay Sales without annoying ads.",
+    "The barcode scanner feature at the retail store instantly showed me Croma had it ₹3,000 cheaper online. Incredible app!",
+    "Earned enough Reward Coins from daily check-ins and searches to unlock a ₹500 Amazon gift voucher. Legit rewards!",
+    "The AI deal detector is scary accurate. Got an alert for Sony WH-1000XM5 at all-time lowest price.",
+    "Super clean cyberpunk aesthetic and lightning fast comparison engine. Love the price history charts.",
+    "Great customer support and verified price drop alerts. Recommended to all my colleagues.",
+    "I was skeptical at first, but the founder mystery box and coin bonuses make saving money genuinely fun.",
+    "Saved ₹2,500 on Samsung Galaxy Tab S9 Ultra using the auto-applied coupon aggregator."
+  ];
+
+  const newDemos: UserReview[] = [];
+  const now = Date.now();
+
+  for (let i = 0; i < 150; i++) {
+    const userIndex = i % sampleUsers.length;
+    const commentIndex = i % sampleComments.length;
+    const rating = Math.random() > 0.15 ? (Math.random() > 0.3 ? 5 : 4) : Math.floor(Math.random() * 3) + 1;
+    const daysAgo = Math.floor(Math.random() * 60);
+    const hoursAgo = Math.floor(Math.random() * 24);
+    const timestamp = new Date(now - (daysAgo * 86400000 + hoursAgo * 3600000)).toISOString();
+    const isVerified = Math.random() > 0.25;
+    const helpfulVotes = Math.floor(Math.random() * 45);
+
+    newDemos.push({
+      id: `demo_rev_${now}_${i}`,
+      userId: `demo_user_${i}`,
+      userName: sampleUsers[userIndex],
+      userEmail: `${sampleUsers[userIndex].toLowerCase().replace(/\s+/g, '')}@example.com`,
+      rating,
+      comment: sampleComments[commentIndex],
+      coinsEarned: 15,
+      timestamp,
+      isVerified,
+      isDemo: true,
+      status: "approved",
+      helpfulVotes,
+      helpfulVoters: []
+    });
+  }
+
+  dbData.reviews = [...dbData.reviews, ...newDemos];
+  saveDatabase();
 }
 
 export function submitReview(userId: string, email: string, name: string, rating: number, comment: string): { success: boolean; review: UserReview; coinsAwarded: number } {
   const profile = getOrCreateProfile(userId, email, name);
-  const rewardCoinsAmount = 15; // Earn 15 coins for submitting a detailed review!
+  let rewardCoinsAmount = 0;
   
+  if (!profile.hasReceivedReviewReward) {
+    rewardCoinsAmount = 15; // Earn 15 coins for submitting a review
+    profile.hasReceivedReviewReward = true;
+    awardCoins(userId, rewardCoinsAmount, "Submitted a detailed user review and app feedback");
+    unlockAchievement(userId, "deal_hunter");
+  }
+
+  // Check if user has verified purchase (receipt or premium)
+  const isVerified = Boolean(
+    profile.isPremium || 
+    (dbData.receipts && dbData.receipts.some(r => r.userId === userId))
+  );
+
+  const existingReviewIndex = (dbData.reviews || []).findIndex(r => r.userId === userId && !r.isDemo);
+
   const review: UserReview = {
-    id: `rev_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    id: existingReviewIndex >= 0 ? dbData.reviews[existingReviewIndex].id : `rev_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     userId,
     userName: name || "Anonymous User",
     userEmail: email,
     rating,
     comment: comment.trim(),
-    coinsEarned: rewardCoinsAmount,
-    timestamp: new Date().toISOString()
+    coinsEarned: rewardCoinsAmount > 0 ? rewardCoinsAmount : (existingReviewIndex >= 0 ? dbData.reviews[existingReviewIndex].coinsEarned : 0),
+    timestamp: new Date().toISOString(),
+    isVerified,
+    status: "approved",
+    helpfulVotes: existingReviewIndex >= 0 ? (dbData.reviews[existingReviewIndex].helpfulVotes || 0) : 0,
+    helpfulVoters: existingReviewIndex >= 0 ? (dbData.reviews[existingReviewIndex].helpfulVoters || []) : []
   };
 
   if (!dbData.reviews) {
     dbData.reviews = [];
   }
-  
-  dbData.reviews.unshift(review);
 
-  // Award user the review coins
-  awardCoins(userId, rewardCoinsAmount, "Submitted a detailed user review and app feedback");
-
-  // Unlock 'deal_hunter' achievement if they submit a review
-  unlockAchievement(userId, "deal_hunter");
+  if (existingReviewIndex >= 0) {
+    dbData.reviews[existingReviewIndex] = review;
+  } else {
+    dbData.reviews.unshift(review);
+  }
 
   saveDatabase();
 
@@ -1245,7 +1797,7 @@ export function spinWheel(userId: string): { success: boolean, reward: string, c
     { type: "coins", amount: 50, label: "50 Coins", chance: 30 },
     { type: "coins", amount: 100, label: "100 Coins", chance: 15 },
     { type: "coins", amount: 500, label: "500 Coins", chance: 5 },
-    { type: "trial", amount: 0, label: "Premium Trial", chance: 5 },
+    { type: "coins", amount: 250, label: "250 Bonus Coins", chance: 5 },
     { type: "badge", amount: 0, label: "Lucky Badge", chance: 5 },
     { type: "coins", amount: 0, label: "Better Luck Tomorrow", chance: 10 },
   ];
@@ -1257,12 +1809,6 @@ export function spinWheel(userId: string): { success: boolean, reward: string, c
   if (selectedReward.type === "coins" && selectedReward.amount > 0) {
     awardCoins(userId, selectedReward.amount, "Spin to Win daily reward");
     message = `Congratulations! You won ${selectedReward.amount} Coins!`;
-  } else if (selectedReward.type === "trial") {
-    profile.isPremium = true;
-    const now = new Date();
-    now.setDate(now.getDate() + 3);
-    profile.premiumExpiry = now.toISOString();
-    message = "Jackpot! You won a 3-Day Premium Trial!";
   } else if (selectedReward.type === "badge") {
     profile.activeBadge = "🍀 LUCKY SPINNER";
     message = "Awesome! You won the exclusive Lucky Spinner badge!";
@@ -1633,4 +2179,257 @@ export function deleteApkRelease(releaseId: string): ApkRelease {
 
   return release;
 }
+
+// Receipt & Premium Activation Management
+
+export function recordReceipt(receipt: ReceiptRecord): ReceiptRecord {
+  if (!dbData.receipts) {
+    dbData.receipts = [];
+  }
+  
+  // Prevent duplicate receipt record by transaction ID
+  const existing = dbData.receipts.find(r => r.transactionId === receipt.transactionId);
+  if (existing) {
+    return existing;
+  }
+  
+  dbData.receipts.unshift(receipt);
+  saveDatabase();
+  return receipt;
+}
+
+export function getReceiptById(receiptId: string): ReceiptRecord | null {
+  if (!dbData.receipts) return null;
+  return dbData.receipts.find(r => r.receiptId === receiptId) || null;
+}
+
+export function getUserReceipts(userId: string): ReceiptRecord[] {
+  if (!dbData.receipts) return [];
+  return dbData.receipts.filter(r => r.userId === userId);
+}
+
+export function isPaymentAlreadyProcessed(transactionId: string): boolean {
+  if (!dbData.receipts) return false;
+  return dbData.receipts.some(r => r.transactionId === transactionId && r.paymentStatus === "PAID");
+}
+
+export function activateUserPremium(
+  userId: string, 
+  email: string, 
+  name: string, 
+  planDays: number,
+  planName?: string,
+  planId?: string
+): { profile: UserProfile; expiry: string } {
+  const profile = getOrCreateProfile(userId, email, name);
+  profile.isPremium = true;
+
+  let currentExpiry = profile.premiumExpiry ? new Date(profile.premiumExpiry) : new Date();
+  if (isNaN(currentExpiry.getTime()) || currentExpiry.getTime() < Date.now()) {
+    currentExpiry = new Date();
+  }
+
+  const newExpiryTime = currentExpiry.getTime() + planDays * 24 * 60 * 60 * 1000;
+  const newExpiryDate = new Date(newExpiryTime);
+  profile.premiumExpiry = newExpiryDate.toISOString();
+  if (planName) profile.activePlanName = planName;
+  if (planId) profile.activePlanId = planId;
+  profile.lastPaymentDate = new Date().toISOString();
+
+  if (!profile.achievements) profile.achievements = [];
+  if (!profile.achievements.includes("premium_member")) {
+    profile.achievements.push("premium_member");
+  }
+
+  saveDatabase();
+  return { profile, expiry: profile.premiumExpiry };
+}
+
+// Cashfree Order Management
+
+export function saveCashfreeOrder(order: CashfreeOrderRecord): void {
+  if (!dbData.cashfreeOrders) dbData.cashfreeOrders = {};
+  dbData.cashfreeOrders[order.orderId] = order;
+  saveDatabase();
+}
+
+export function getCashfreeOrder(orderId: string): CashfreeOrderRecord | null {
+  if (!dbData.cashfreeOrders) return null;
+  return dbData.cashfreeOrders[orderId] || null;
+}
+
+export function updateCashfreeOrderStatus(
+  orderId: string,
+  status: "created" | "paid" | "failed" | "pending" | "cancelled",
+  paymentId?: string,
+  paymentMethod?: string
+): void {
+  if (!dbData.cashfreeOrders) dbData.cashfreeOrders = {};
+  if (dbData.cashfreeOrders[orderId]) {
+    dbData.cashfreeOrders[orderId].paymentStatus = status;
+    if (paymentId) dbData.cashfreeOrders[orderId].paymentId = paymentId;
+    if (paymentMethod) dbData.cashfreeOrders[orderId].paymentMethod = paymentMethod;
+    if (status === "paid") {
+      dbData.cashfreeOrders[orderId].activatedAt = new Date().toISOString();
+    }
+    saveDatabase();
+  }
+}
+
+export function markWebhookProcessed(orderId: string, webhookId: string): boolean {
+  if (!dbData.cashfreeOrders || !dbData.cashfreeOrders[orderId]) return false;
+  const order = dbData.cashfreeOrders[orderId];
+  if (!order.processedWebhooks) order.processedWebhooks = [];
+  if (order.processedWebhooks.includes(webhookId)) return true; // Already processed
+  order.processedWebhooks.push(webhookId);
+  saveDatabase();
+  return false;
+}
+
+export function isOrderAlreadyActivated(orderId: string): boolean {
+  if (dbData.cashfreeOrders && dbData.cashfreeOrders[orderId]) {
+    const cfOrder = dbData.cashfreeOrders[orderId];
+    if (cfOrder.paymentStatus === "paid" && cfOrder.activatedAt) return true;
+  }
+  if (dbData.razorpayOrders && dbData.razorpayOrders[orderId]) {
+    const rzpOrder = dbData.razorpayOrders[orderId];
+    if (rzpOrder.paymentStatus === "paid" && rzpOrder.activatedAt) return true;
+  }
+  return false;
+}
+
+// ==========================================
+// --- FOREVER FOUNDER MYSTERY BOX SYSTEM ---
+// ==========================================
+
+export function isUserForeverFounder(profile: UserProfile): boolean {
+  if (!profile) return false;
+  
+  // Direct plan id or plan name checks
+  const planId = (profile.activePlanId || "").toLowerCase();
+  const planName = (profile.activePlanName || "").toLowerCase();
+  
+  if (
+    planId === "lifetime" || 
+    planId === "buywise_founder_forever" || 
+    planName.includes("forever founder") || 
+    planName.includes("founder") ||
+    profile.superEnhancedFounderBadge
+  ) {
+    return true;
+  }
+  
+  // Check receipts database for verified lifetime purchase
+  if (dbData.receipts && Array.isArray(dbData.receipts)) {
+    const hasLifetimeReceipt = dbData.receipts.some(r => 
+      r.userId === profile.userId && 
+      (r.planId === "lifetime" || r.planId === "buywise_founder_forever" || (r.planName && r.planName.toLowerCase().includes("founder"))) &&
+      r.paymentStatus === "PAID"
+    );
+    if (hasLifetimeReceipt) return true;
+  }
+  
+  // Check Razorpay orders database for paid lifetime order
+  if (dbData.razorpayOrders) {
+    const hasLifetimeOrder = Object.values(dbData.razorpayOrders).some(o =>
+      o.userId === profile.userId &&
+      (o.planId === "lifetime" || (o.planName && o.planName.toLowerCase().includes("founder"))) &&
+      o.paymentStatus === "paid"
+    );
+    if (hasLifetimeOrder) return true;
+  }
+
+  return false;
+}
+
+export function claimFounderMysteryBox(userId: string, email?: string, name?: string): {
+  success: boolean;
+  coins: number;
+  gained: number;
+  badge: string;
+  claimedAt: string;
+  message: string;
+  transaction: CoinTransaction;
+} {
+  const profile = getOrCreateProfile(userId, email || "", name || "");
+  
+  if (profile.founder_mystery_box_claimed) {
+    const error: any = new Error("Forever Founder Mystery Box has already been claimed for this account.");
+    error.statusCode = 400;
+    error.alreadyClaimed = true;
+    error.claimedAt = profile.founder_mystery_box_claimed_at;
+    throw error;
+  }
+  
+  if (!isUserForeverFounder(profile)) {
+    const error: any = new Error("Only users with an active Forever Founder plan are eligible to claim the Forever Founder Mystery Box.");
+    error.statusCode = 403;
+    throw error;
+  }
+  
+  // Enforce atomic server-side transaction & reward disbursement
+  const claimedAt = new Date().toISOString();
+  profile.founder_mystery_box_claimed = true;
+  profile.founder_mystery_box_claimed_at = claimedAt;
+  profile.superEnhancedFounderBadge = true;
+  profile.activeBadge = "👑 SUPER ENHANCED FOUNDER";
+  
+  if (!profile.achievements) profile.achievements = [];
+  if (!profile.achievements.includes("forever_founder")) profile.achievements.push("forever_founder");
+  if (!profile.achievements.includes("super_enhanced_founder")) profile.achievements.push("super_enhanced_founder");
+  
+  // Guaranteed Promotional Reward: 10,000 Coins added directly to user ledger
+  const coinResult = awardCoins(userId, 10000, "Forever Founder Mystery Box Drop", {
+    applyMultiplier: false,
+    type: "EARNED",
+    source: "MYSTERY_BOX",
+    referenceId: `founder_mystery_box_${userId}`,
+    description: "Exclusive lifetime promotional reward for Forever Founders"
+  });
+  
+  saveDatabase();
+  
+  return {
+    success: true,
+    coins: profile.coins,
+    gained: 10000,
+    badge: "👑 SUPER ENHANCED FOUNDER",
+    claimedAt,
+    message: "Successfully opened the Forever Founder Mystery Box! 10,000 Coins and Lifetime Super Enhanced Founder Badge awarded.",
+    transaction: coinResult.transaction
+  };
+}
+
+export function getFounderMysteryBoxStatus(userId: string, email?: string, name?: string): {
+  eligible: boolean;
+  claimed: boolean;
+  claimedAt: string | null;
+  superEnhancedFounderBadge: boolean;
+  rewards: {
+    coins: number;
+    badge: string;
+    duration: string;
+  };
+} {
+  const profile = getOrCreateProfile(userId, email || "", name || "");
+  const eligible = isUserForeverFounder(profile);
+  const claimed = !!profile.founder_mystery_box_claimed;
+  const claimedAt = profile.founder_mystery_box_claimed_at || null;
+  const superEnhancedFounderBadge = !!profile.superEnhancedFounderBadge;
+  
+  return {
+    eligible,
+    claimed,
+    claimedAt,
+    superEnhancedFounderBadge,
+    rewards: {
+      coins: 10000,
+      badge: "Super Enhanced Founder Badge — Lifetime",
+      duration: "Lifetime ♾️"
+    }
+  };
+}
+
+
+
 

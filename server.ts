@@ -4,6 +4,11 @@ import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import dotenv from "dotenv";
+
+// Load environment variables immediately on module evaluation
+dotenv.config({ override: true });
+
+import crypto from "crypto";
 import { GoogleGenAI } from "@google/genai";
 import fs from "fs";
 import helmet from "helmet";
@@ -27,6 +32,8 @@ import {
   ACHIEVEMENTS,
   getReviews,
   submitReview,
+  generateDemoReviewsIfNeeded,
+  voteReviewHelpful,
   recordBarcodeScan,
   getScanHistory,
   getAllScans,
@@ -52,7 +59,24 @@ import {
   generateCouponForUser,
   updateCouponSettings,
   validateCoupon,
-  redeemCoupon
+  redeemCoupon,
+  recordReceipt,
+  getReceiptById,
+  getUserReceipts,
+  isPaymentAlreadyProcessed,
+  activateUserPremium,
+  markWebhookProcessed,
+  isOrderAlreadyActivated,
+  isUserForeverFounder,
+  claimFounderMysteryBox,
+  getFounderMysteryBoxStatus,
+  getUserCoinMultiplier,
+  getGamificationSettings,
+  updateGamificationSettings,
+  adminAdjustCoins,
+  getPremiumDailyStatus,
+  claimPremiumDailyReward,
+  ReceiptRecord
 } from "./src/server/gamificationDb.ts";
 import { getProductCategoryPhoto } from "./src/lib/productImages.js";
 import {
@@ -69,15 +93,40 @@ import {
   selectValidatedBestImage,
   ImageCandidate
 } from "./src/server/searchEngine.ts";
-import { searchFlights, FlightSearchQuery, searchTrains, searchHotels } from "./src/server/travelEngine.js";
 import {
   validateProductPrice,
   parseNumericPrice,
   getStoreTrustScore,
   getExpectedMarketPrice
 } from "./src/server/priceValidationEngine.ts";
+import {
+  acquireRegistrationLock,
+  releaseRegistrationLock,
+  checkRegistrationRateLimit,
+  recordRegistrationAttempt,
+  getEmailRateLimitStatus
+} from "./src/server/authRateLimiter.ts";
 
-dotenv.config();
+dotenv.config({ override: true });
+
+// Force sync environment from .env file to override stale container process variables
+if (fs.existsSync(".env")) {
+  try {
+    const envLines = fs.readFileSync(".env", "utf8").split(/\r?\n/);
+    for (const line of envLines) {
+      const parts = line.split("=");
+      if (parts.length >= 2) {
+        const k = parts[0].trim();
+        const v = parts.slice(1).join("=").trim().replace(/^["']|["']$/g, "");
+        if (k && v) {
+          process.env[k] = v;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Could not parse .env:", e);
+  }
+}
 
 function getSupabaseClient() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -347,6 +396,7 @@ async function startServer() {
   // 2. SECURITY HEADERS (HELMET) WITH IFRAME COMPATIBILITY FOR GOOGLE AI STUDIO
   app.use(
     helmet({
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
@@ -355,12 +405,16 @@ async function startServer() {
             "'unsafe-inline'",
             "'unsafe-eval'",
             "https://*.google.com",
+            "https://*.googleapis.com",
+            "https://*.firebaseapp.com",
             "https://*.googleadservices.com"
           ],
           connectSrc: [
             "'self'",
             "https://*.supabase.co",
             "https://*.google.com",
+            "https://*.googleapis.com",
+            "https://*.firebaseapp.com",
             "https://api.telegram.org",
             "https://api.dicebear.com",
             "https://serpapi.com",
@@ -372,10 +426,18 @@ async function startServer() {
           imgSrc: ["'self'", "data:", "blob:", "https://*", "http://*"],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-          frameSrc: ["'self'", "https://*.google.com", "https://*.googleadservices.com"],
+          frameSrc: [
+            "'self'",
+            "https://*.google.com",
+            "https://*.googleapis.com",
+            "https://*.firebaseapp.com",
+            "https://*.googleadservices.com"
+          ],
           frameAncestors: [
             "'self'",
             "https://*.google.com",
+            "https://*.googleapis.com",
+            "https://*.firebaseapp.com",
             "https://ai.studio",
             "https://*.run.app",
             "https://ais-dev-*.run.app",
@@ -491,6 +553,236 @@ async function startServer() {
   const resetRateLimiter = createRateLimiter(3, 3600000, "Too many reset attempts. Please try again after 1 hour.");
 
   // ==========================================
+  // --- BUYWISE AUTHENTICATION & REGISTRATION GATEWAY ---
+  // ==========================================
+
+  // Check rate limit and cooldown status for an email address
+  app.get("/api/auth/rate-limit-status", (req, res) => {
+    const email = (req.query.email as string) || "";
+    if (!email) {
+      return res.json({ isRateLimited: false, retryAfter: 0 });
+    }
+    const status = getEmailRateLimitStatus(email);
+    res.json(status);
+  });
+
+  // Secure, rate-limited registration endpoint with concurrency mutex & 429 graceful handler
+  app.post("/api/auth/register", async (req, res) => {
+    const { email, password, name, isDevTestMode } = req.body || {};
+    const ip = (req.headers["x-forwarded-for"] as string) || req.ip || req.socket.remoteAddress || "127.0.0.1";
+
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ success: false, error: "Please enter a valid email address." });
+    }
+
+    if (!password || typeof password !== "string" || password.length < 6) {
+      return res.status(400).json({ success: false, error: "Password must be at least 6 characters long." });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // 1. Check rate limits (IP and per-email throttling)
+    const rateLimitCheck = isDevTestMode ? { allowed: true } : checkRegistrationRateLimit(ip, normalizedEmail);
+    if (!rateLimitCheck.allowed) {
+      console.warn(`[Auth Rate Limit] Blocked registration for ${normalizedEmail} from ${ip}. Reason: ${rateLimitCheck.code}`);
+      return res.status(429).json({
+        success: false,
+        error: rateLimitCheck.error || "Too many email requests. Please wait a few minutes and try again.",
+        code: rateLimitCheck.code || "RATE_LIMIT_EXCEEDED",
+        retryAfter: rateLimitCheck.retryAfter || 180,
+        cooldownSeconds: rateLimitCheck.retryAfter || 180
+      });
+    }
+
+    // 2. Acquire concurrency mutex lock to prevent duplicate double-click requests
+    const lockResult = acquireRegistrationLock(normalizedEmail);
+    if (!lockResult.acquired) {
+      console.warn(`[Auth Mutex] Duplicate concurrent registration blocked for ${normalizedEmail}`);
+      return res.status(429).json({
+        success: false,
+        error: "Registration request is already in progress for this email. Please wait a moment.",
+        code: "IN_FLIGHT_DUPLICATE_LOCKED",
+        retryAfter: 15,
+        cooldownSeconds: 15
+      });
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+
+      if (!supabase) {
+        // Safe development / mock auth fallback
+        const devUserId = "dev_usr_" + Buffer.from(normalizedEmail).toString("hex").slice(0, 12);
+        getOrCreateProfile(devUserId, normalizedEmail, name || normalizedEmail.split("@")[0]);
+        recordRegistrationAttempt(ip, normalizedEmail, { success: true });
+        
+        return res.json({
+          success: true,
+          mode: "mock",
+          message: "Account created successfully!",
+          user: {
+            id: devUserId,
+            email: normalizedEmail,
+            user_metadata: { full_name: name || normalizedEmail.split("@")[0] }
+          }
+        });
+      }
+
+      // Execute Supabase Auth signUp
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: { full_name: name || "" }
+        }
+      });
+
+      if (error) {
+        const errMsg = error.message || "";
+        const isRateLimitError =
+          error.status === 429 ||
+          errMsg.toLowerCase().includes("rate limit") ||
+          errMsg.toLowerCase().includes("over_email_send_rate_limit") ||
+          errMsg.toLowerCase().includes("too many requests");
+
+        if (isRateLimitError) {
+          console.warn(`[Auth Gateway] Upstream Supabase email rate limit triggered for ${normalizedEmail}. Handling gracefully.`);
+          recordRegistrationAttempt(ip, normalizedEmail, { success: false, wasRateLimited: true });
+
+          // Safe development / test mode support:
+          // If testing or in development environment, provide a safe registration fallback so testing is not blocked
+          if (isDevTestMode || process.env.NODE_ENV !== "production") {
+            const devUserId = "test_usr_" + Buffer.from(normalizedEmail).toString("hex").slice(0, 12);
+            getOrCreateProfile(devUserId, normalizedEmail, name || normalizedEmail.split("@")[0]);
+            console.log(`[Dev Auth] Safe development test account initialized for ${normalizedEmail}`);
+
+            return res.json({
+              success: true,
+              isDevTest: true,
+              message: "Account created successfully! (Development Test Mode: external email quota rate limit handled safely).",
+              user: {
+                id: devUserId,
+                email: normalizedEmail,
+                user_metadata: { full_name: name || normalizedEmail.split("@")[0] }
+              }
+            });
+          }
+
+          // In production: Return standard user-friendly error with cooldown
+          return res.status(429).json({
+            success: false,
+            error: "Too many email requests. Please wait a few minutes and try again.",
+            code: "EMAIL_RATE_LIMIT_EXCEEDED",
+            retryAfter: 180,
+            cooldownSeconds: 180
+          });
+        }
+
+        // Other Supabase Auth error (e.g. user already exists, weak password)
+        recordRegistrationAttempt(ip, normalizedEmail, { success: false });
+        return res.status(400).json({
+          success: false,
+          error: errMsg || "Registration failed. Please try again."
+        });
+      }
+
+      // Success
+      recordRegistrationAttempt(ip, normalizedEmail, { success: true });
+      if (data?.user?.id) {
+        getOrCreateProfile(data.user.id, normalizedEmail, name || normalizedEmail.split("@")[0]);
+      }
+
+      return res.json({
+        success: true,
+        user: data.user,
+        session: data.session,
+        message: "Account created! Check your email to confirm your account."
+      });
+
+    } catch (unexpectedErr: any) {
+      console.error("[Auth Gateway Exception]:", unexpectedErr);
+      recordRegistrationAttempt(ip, normalizedEmail, { success: false });
+      return res.status(500).json({
+        success: false,
+        error: "An unexpected error occurred during account creation. Please try again later."
+      });
+    } finally {
+      releaseRegistrationLock(normalizedEmail);
+    }
+  });
+
+  // Rate-limited Resend Verification Email endpoint
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    const { email } = req.body || {};
+    const ip = (req.headers["x-forwarded-for"] as string) || req.ip || req.socket.remoteAddress || "127.0.0.1";
+
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      return res.status(400).json({ success: false, error: "Please enter a valid email address." });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const rateLimitCheck = checkRegistrationRateLimit(ip, normalizedEmail);
+    if (!rateLimitCheck.allowed) {
+      return res.status(429).json({
+        success: false,
+        error: rateLimitCheck.error || "Too many email requests. Please wait a few minutes and try again.",
+        code: rateLimitCheck.code || "RATE_LIMIT_EXCEEDED",
+        retryAfter: rateLimitCheck.retryAfter || 180
+      });
+    }
+
+    const lockResult = acquireRegistrationLock(normalizedEmail);
+    if (!lockResult.acquired) {
+      return res.status(429).json({
+        success: false,
+        error: "A request is already in progress. Please wait a moment.",
+        code: "IN_FLIGHT_LOCKED"
+      });
+    }
+
+    try {
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        return res.json({ success: true, message: "Verification email sent! Check your inbox." });
+      }
+
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: normalizedEmail
+      });
+
+      if (error) {
+        const errMsg = error.message || "";
+        const isRateLimitError =
+          error.status === 429 ||
+          errMsg.toLowerCase().includes("rate limit") ||
+          errMsg.toLowerCase().includes("over_email_send_rate_limit");
+
+        if (isRateLimitError) {
+          recordRegistrationAttempt(ip, normalizedEmail, { success: false, wasRateLimited: true });
+          return res.status(429).json({
+            success: false,
+            error: "Too many email requests. Please wait a few minutes and try again.",
+            code: "EMAIL_RATE_LIMIT_EXCEEDED",
+            retryAfter: 180
+          });
+        }
+
+        recordRegistrationAttempt(ip, normalizedEmail, { success: false });
+        return res.status(400).json({ success: false, error: errMsg });
+      }
+
+      recordRegistrationAttempt(ip, normalizedEmail, { success: true });
+      return res.json({ success: true, message: "Verification email sent! Check your inbox." });
+
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e.message || "Failed to resend verification email." });
+    } finally {
+      releaseRegistrationLock(normalizedEmail);
+    }
+  });
+
+  // ==========================================
   // --- BUYWISE GAMIFICATION API ENDPOINTS ---
   // ==========================================
 
@@ -524,14 +816,293 @@ async function startServer() {
     }
   };
 
+  // Server-side Premium Plans Configuration (Canonical source of truth for pricing)
+  const PREMIUM_PLANS_CONFIG: Record<string, {
+    name: string;
+    duration: string;
+    days: number;
+    priceInr: number;
+    amountPaise: number;
+  }> = {
+    daily: {
+      name: "Daily Pass",
+      duration: "1 Day",
+      days: 1,
+      priceInr: 10,
+      amountPaise: 1000,
+    },
+    weekly: {
+      name: "Weekly Pass",
+      duration: "7 Days",
+      days: 7,
+      priceInr: 30,
+      amountPaise: 3000,
+    },
+    monthly: {
+      name: "Monthly Elite",
+      duration: "30 Days",
+      days: 30,
+      priceInr: 100,
+      amountPaise: 10000,
+    },
+    yearly: {
+      name: "Yearly Pro",
+      duration: "1 Year",
+      days: 365,
+      priceInr: 500,
+      amountPaise: 50000,
+    },
+    lifetime: {
+      name: "Forever Founder",
+      duration: "Lifetime",
+      days: 36500,
+      priceInr: 700,
+      amountPaise: 70000,
+    },
+  };
+
+  // Receipts API Endpoints
+  app.get("/api/receipts/:receiptId", getUserContext, (req: any, res: any) => {
+    try {
+      const { receiptId } = req.params;
+      const receipt = getReceiptById(receiptId);
+      if (!receipt) {
+        return res.status(404).json({ error: "Receipt not found." });
+      }
+      res.json(receipt);
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to retrieve receipt." });
+    }
+  });
+
+  app.get("/api/receipts", getUserContext, (req: any, res: any) => {
+    try {
+      const userId = req.userContext?.userId;
+      if (!userId) {
+        return res.json([]);
+      }
+      const receipts = getUserReceipts(userId);
+      res.json(receipts);
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to retrieve user receipts." });
+    }
+  });
+
+  // Direct Plan Activation Endpoint
+  app.post("/api/payments/direct-activate", getUserContext, (req: any, res: any) => {
+    try {
+      const { userId, email, name } = req.userContext;
+      const { planId, planName, amount } = req.body;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, error: "Unauthorized user." });
+      }
+
+      const planDaysMap: Record<string, number> = {
+        daily: 1,
+        weekly: 7,
+        monthly: 30,
+        yearly: 365,
+        lifetime: 36500
+      };
+
+      const days = planDaysMap[planId] || 30;
+      const { profile, expiry } = activateUserPremium(
+        userId,
+        email || 'customer@buywise.in',
+        name || 'BuyWise Member',
+        days,
+        planName || 'BuyWise Premium',
+        planId || 'monthly'
+      );
+
+      const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const receiptId = `rcpt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
+      const nowIso = new Date().toISOString();
+      const numAmount = Number(amount) || 100;
+      const receiptRecord: ReceiptRecord = {
+        receiptId,
+        transactionId,
+        orderId: `order_${Date.now()}`,
+        userId,
+        customerEmail: email || 'customer@buywise.in',
+        customerName: name || 'BuyWise Member',
+        planId: planId || 'monthly',
+        planName: planName || 'BuyWise Premium',
+        planDuration: `${days} Days`,
+        amount: numAmount,
+        tax: 0,
+        totalAmount: numAmount,
+        currency: 'INR',
+        paymentStatus: 'PAID',
+        paymentMethod: 'Direct Activation',
+        paymentProvider: 'System Direct',
+        purchaseDate: nowIso,
+        purchaseTimestamp: nowIso,
+        premiumExpiry: expiry
+      };
+
+      recordReceipt(receiptRecord);
+
+      res.json({
+        success: true,
+        message: `${planName || 'Premium'} activated successfully!`,
+        profile,
+        expiry,
+        receiptId
+      });
+    } catch (e: any) {
+      console.error("Direct activation error:", e);
+      res.status(500).json({ success: false, error: e.message || "Failed to activate plan." });
+    }
+  });
+
   // Get or Create User Profile
   app.get("/api/gamification/profile", getUserContext, (req: any, res: any) => {
     const { userId, email, name } = req.userContext;
     try {
       const profile = getOrCreateProfile(userId, email, name);
-      res.json(profile);
+      const multiplier = getUserCoinMultiplier(userId);
+      res.json({
+        ...profile,
+        multiplier
+      });
     } catch (e: any) {
       res.sendSecureError(e, "Failed to get profile");
+    }
+  });
+
+  // Profile alias route
+  app.get("/api/profile", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const profile = getOrCreateProfile(userId, email, name);
+      const multiplier = getUserCoinMultiplier(userId);
+      res.json({
+        success: true,
+        profile: {
+          ...profile,
+          multiplier
+        },
+        ...profile,
+        multiplier
+      });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: "Failed to get profile" });
+    }
+  });
+
+  // Daily Premium Coin Status
+  app.get("/api/gamification/premium-daily/status", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const status = getPremiumDailyStatus(userId, email, name);
+      res.json(status);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to get premium daily status" });
+    }
+  });
+
+  // Daily Premium Coin Claim
+  app.post("/api/gamification/premium-daily/claim", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const result = claimPremiumDailyReward(userId, email, name);
+      if (result.success) {
+        res.json(result);
+      } else {
+        res.status(400).json(result);
+      }
+    } catch (e: any) {
+      res.status(500).json({ success: false, message: e.message || "Failed to claim daily premium reward" });
+    }
+  });
+
+  // Gamification Settings (Public/Client Read)
+  app.get("/api/gamification/settings", (req: any, res: any) => {
+    try {
+      const settings = getGamificationSettings();
+      res.json(settings);
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to get gamification settings" });
+    }
+  });
+
+  // Admin Update Gamification Settings
+  app.post("/api/gamification/admin/settings", (req: any, res: any) => {
+    try {
+      const updates = req.body;
+      const updated = updateGamificationSettings(updates);
+      res.json({ success: true, settings: updated });
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to update gamification settings" });
+    }
+  });
+
+  // Admin Adjust User Coins
+  app.post("/api/gamification/admin/adjust-coins", (req: any, res: any) => {
+    try {
+      const { userId, amount, reason } = req.body;
+      if (!userId || amount === undefined) {
+        return res.status(400).json({ error: "Missing userId or amount parameter" });
+      }
+      const result = adminAdjustCoins(userId, Number(amount), reason || "Admin manual adjustment");
+      res.json({ success: true, ...result });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to adjust user coins" });
+    }
+  });
+
+  // Forever Founder Mystery Box Status
+  app.get("/api/gamification/founder-mystery-box/status", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const status = getFounderMysteryBoxStatus(userId, email, name);
+      res.json(status);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to check mystery box status" });
+    }
+  });
+  app.get("/api/founder-mystery-box/status", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const status = getFounderMysteryBoxStatus(userId, email, name);
+      res.json(status);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message || "Failed to check mystery box status" });
+    }
+  });
+
+  // Forever Founder Mystery Box Claim (Atomic Server-Enforced Execution)
+  app.post("/api/gamification/founder-mystery-box/claim", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const result = claimFounderMysteryBox(userId, email, name);
+      res.json(result);
+    } catch (e: any) {
+      const statusCode = e.statusCode || (e.message?.includes("eligible") ? 403 : 400);
+      res.status(statusCode).json({
+        success: false,
+        error: e.message || "Failed to claim mystery box reward",
+        alreadyClaimed: e.alreadyClaimed || false,
+        claimedAt: e.claimedAt || null
+      });
+    }
+  });
+  app.post("/api/founder-mystery-box/claim", getUserContext, (req: any, res: any) => {
+    const { userId, email, name } = req.userContext;
+    try {
+      const result = claimFounderMysteryBox(userId, email, name);
+      res.json(result);
+    } catch (e: any) {
+      const statusCode = e.statusCode || (e.message?.includes("eligible") ? 403 : 400);
+      res.status(statusCode).json({
+        success: false,
+        error: e.message || "Failed to claim mystery box reward",
+        alreadyClaimed: e.alreadyClaimed || false,
+        claimedAt: e.claimedAt || null
+      });
     }
   });
 
@@ -617,10 +1188,27 @@ async function startServer() {
   // GET user reviews
   app.get("/api/gamification/reviews", (req: any, res: any) => {
     try {
-      const reviewsList = getReviews();
-      res.json(reviewsList);
+      generateDemoReviewsIfNeeded();
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const sortBy = (req.query.sortBy as string) || 'recent';
+      
+      const result = getReviews({ page, limit, sortBy });
+      res.json(result);
     } catch (e: any) {
-      res.json([]);
+      res.json({ reviews: [], summary: { totalReviews: 0, averageRating: 0, ratingCounts: {} }, hasMore: false });
+    }
+  });
+
+  // POST a helpful vote
+  app.post("/api/gamification/reviews/:id/helpful", getUserContext, (req: any, res: any) => {
+    const { userId } = req.userContext;
+    const { id } = req.params;
+    try {
+      const result = voteReviewHelpful(userId, id);
+      res.json(result);
+    } catch (e: any) {
+      res.sendSecureError(e, "Failed to vote on review");
     }
   });
 
@@ -2157,13 +2745,13 @@ You have the ability to:
 - Give daily shopping tips and recommendations.
 
 1. ABOUT THE BUYWISE APP:
-   - It is a comprehensive AI-powered Shopping and Travel Super App.
-   - Primary features: AI Product Search & Real-time Comparison, Interactive 3D Product Viewer, Price Radar & Trend Tracking, Smart Barcode Scanner with local Offline Queuing, Google Flights Integration, and real-time Premium user sync.
+   - It is a comprehensive AI-powered Shopping Super App.
+   - Primary features: AI Product Search & Real-time Comparison, Interactive 3D Product Viewer, Price Radar & Trend Tracking, Smart Barcode Scanner with local Offline Queuing, and real-time Premium user sync.
    - Created by: mohammdsaeed24 (with lead developer awanwarsi).
 
 2. SUBSCRIPTION & PRICING PLANS:
    - We offer three premium tiers:
-     - Weekly Pass: ₹30 (Provides Unlimited AI Insights, Price Drop Alerts, & Flight/Train scans)
+     - Weekly Pass: ₹30 (Provides Unlimited AI Insights & Price Drop Alerts)
      - Monthly Elite: ₹100 (Adds a Premium Badge, Ad-free Experience, & Priority Support)
      - Forever Founder (Lifetime): ₹700 (Includes all features, Early Access, Lifetime Support)
 
@@ -2172,7 +2760,6 @@ You have the ability to:
    - 3D VIEW (Interactive Viewer): Let users inspect high-fidelity 3D renderings of products.
    - SMART SCANNER: Barcode scanning with Offline Queuing and real-time price intercept.
    - PRICE RADAR (Wishlist): Allows tracking of prices with alerts and AI price-trend predictions.
-   - TRAVEL ROUTE BUILDER: Under "/travel".
 
 Always respond professionally with genius-level insight. If analyzing product search results, deliver a cutting-edge, ruthless market synthesis for the user query. Identify precise value arbitrage (price vs hardware specs), pinpoint the exact platform yielding maximum ROI, and cite actual Rupee (₹) figures from the data. Expose marketing gimmicks and fake discounts. Be hyper-intelligent, authoritative, and visionary. Format your response elegantly using markdown (lists, bold text, etc.).`;
 
@@ -2978,71 +3565,6 @@ What can I assist you with today?`;
     }
   });
 
-  // Travelpayouts Integration
-  app.get("/api/travel/search", async (req, res) => {
-    const { origin, destination, depart_date, return_date, adults, cabin_class, type } = req.query;
-    try {
-      if (!process.env.SERP_API_KEY) {
-        return res.status(500).json({ error: "SERP_API_KEY is not configured. Genuine prices cannot be fetched." });
-      }
-      
-      const query: FlightSearchQuery = {
-        origin: origin as string,
-        destination: destination as string,
-        departDate: depart_date as string,
-        returnDate: return_date as string,
-        adults: parseInt(adults as string) || 1,
-        cabinClass: cabin_class as string,
-        tripType: (type as any) || 'one-way'
-      };
-      
-      const searchResult = await searchFlights(query);
-      return res.json(searchResult);
-    } catch (error: any) {
-      console.error("Travel Search Error:", error);
-      return res.status(500).json({ error: error.message || "Failed to search flights" });
-    }
-  });
-
-  app.get("/api/travel/hotels", async (req, res) => {
-    const { city, checkIn, checkOut, guests, rooms, currency, country, language } = req.query;
-    
-    try {
-      const results = await searchHotels({
-         city: city as string,
-         checkIn: checkIn as string,
-         checkOut: checkOut as string,
-         guests: guests ? parseInt(guests as string) : 2,
-         rooms: rooms ? parseInt(rooms as string) : 1,
-         currency: currency as string,
-         country: country as string,
-         language: language as string
-      });
-      return res.json(results);
-    } catch (error: any) {
-      console.error("Hotel Search Error:", error);
-      return res.status(500).json({ error: error.message || "Failed to search hotels" });
-    }
-  });
-
-  app.get("/api/travel/trains", async (req, res) => {
-    const { origin, destination, date, adults, class: travel_class, quota } = req.query;
-    try {
-      const results = await searchTrains({
-         origin: origin as string,
-         destination: destination as string,
-         date: date as string,
-         adults: adults ? parseInt(adults as string) : 1,
-         class: travel_class as string,
-         quota: quota as string
-      });
-      return res.json(results);
-    } catch (error: any) {
-      console.error("Train Search Error:", error);
-      return res.status(500).json({ error: error.message || "Failed to search trains" });
-    }
-  });
-
   app.get("/api/admin/stats", adminAuth, (req: any, res: any) => {
     try {
       const scans = getAllScans();
@@ -3159,7 +3681,6 @@ What can I assist you with today?`;
     const pages = [
       "",
       "/radar",
-      "/travel",
       "/premium",
       "/deals",
       "/rewards",
@@ -3761,7 +4282,6 @@ What can I assist you with today?`;
       (res as any).sendSecureError(err, "Failed to update ticket status");
     }
   });
-
 
   app.post('/api/verify-play-purchase', async (req, res) => {
     try {

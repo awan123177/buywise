@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
-import { X, Mail, User, ShieldCheck, Lock, Eye, EyeOff, ArrowLeft, Sparkles } from 'lucide-react';
+import { X, Mail, User, ShieldCheck, Lock, Eye, EyeOff, ArrowLeft, Sparkles, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { supabase, hasSupabase } from '../lib/supabase';
 import PasswordStrengthMeter from './PasswordStrengthMeter';
@@ -9,7 +9,7 @@ import PasswordStrengthMeter from './PasswordStrengthMeter';
 type AuthMode = 'email-login' | 'email-signup' | 'forgot-password';
 
 export default function LoginModal() {
-  const { loginOpen, setLoginOpen, signIn } = useAuth();
+  const { loginOpen, setLoginOpen, signIn, signUp, signInWithGoogle } = useAuth();
   const [mode, setMode] = useState<AuthMode>('email-login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,27 +17,96 @@ export default function LoginModal() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [rateLimitCooldown, setRateLimitCooldown] = useState<number>(0);
+  const [rateLimitError, setRateLimitError] = useState<string | null>(null);
+  const [devTestMode, setDevTestMode] = useState<boolean>(true); // Safe default for dev environment
+
+  // Debouncing & double-click concurrency lock
+  const isSubmittingRef = useRef<boolean>(false);
+  const lastSubmitTimeRef = useRef<number>(0);
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    let interval: any;
+    if (rateLimitCooldown > 0) {
+      interval = setInterval(() => {
+        setRateLimitCooldown((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [rateLimitCooldown]);
 
   if (!loginOpen) return null;
 
   const handleSubmitEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     const isSignUp = mode === 'email-signup';
+
+    // 1. Double click / Rapid submit throttle
+    const now = Date.now();
+    if (isSubmittingRef.current || now - lastSubmitTimeRef.current < 1200) {
+      return;
+    }
+
+    if (rateLimitCooldown > 0) {
+      toast.error(`Please wait ${rateLimitCooldown}s before retrying.`);
+      return;
+    }
+
     if (!email || !password || (isSignUp && !name)) {
       toast.error("Please fill in all required fields.");
       return;
     }
-    
+
+    isSubmittingRef.current = true;
+    lastSubmitTimeRef.current = now;
     setLoading(true);
+    setRateLimitError(null);
+
     try {
-      await signIn(email, password, isSignUp, name);
-      toast.success(isSignUp ? `Account created! Check your email to confirm.` : `Successfully logged in!`);
-      setEmail('');
-      setPassword('');
-      setName('');
+      if (isSignUp) {
+        const result = await signUp(email, password, name, devTestMode);
+        toast.success(result.message || `Account created! Check your email to confirm.`);
+        setEmail('');
+        setPassword('');
+        setName('');
+        setRateLimitError(null);
+        setRateLimitCooldown(0);
+      } else {
+        await signIn(email, password, false);
+        toast.success(`Successfully logged in!`);
+        setEmail('');
+        setPassword('');
+        setName('');
+        setRateLimitError(null);
+      }
     } catch (error: any) {
-      toast.error(error.message || 'Authentication failed');
+      const errMsg = error.message || '';
+      const isRateLimit =
+        error.status === 429 ||
+        error.code === 'RATE_LIMIT_EXCEEDED' ||
+        errMsg.toLowerCase().includes('rate limit') ||
+        errMsg.toLowerCase().includes('over_email_send_rate_limit') ||
+        errMsg.toLowerCase().includes('too many');
+
+      if (isRateLimit) {
+        const cooldownSecs = error.retryAfter || 180;
+        setRateLimitCooldown(cooldownSecs);
+        setRateLimitError("Too many email requests. Please wait a few minutes and try again.");
+        toast.error("Too many email requests. Please wait a few minutes and try again.");
+      } else {
+        toast.error(errMsg || 'Authentication failed');
+      }
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
@@ -48,7 +117,22 @@ export default function LoginModal() {
       toast.error("Please enter your email address first.");
       return;
     }
+
+    const now = Date.now();
+    if (isSubmittingRef.current || now - lastSubmitTimeRef.current < 1200) {
+      return;
+    }
+
+    if (rateLimitCooldown > 0) {
+      toast.error(`Please wait ${rateLimitCooldown}s before requesting another reset email.`);
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    lastSubmitTimeRef.current = now;
     setLoading(true);
+    setRateLimitError(null);
+
     try {
       if (hasSupabase) {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
@@ -62,8 +146,16 @@ export default function LoginModal() {
       toast.success("Password reset email sent! Check your inbox.");
       setMode('email-login');
     } catch (error: any) {
-      toast.error(error.message || "Failed to send reset password email");
+      const errMsg = error.message || '';
+      if (error.status === 429 || errMsg.toLowerCase().includes('rate limit')) {
+        setRateLimitCooldown(180);
+        setRateLimitError("Too many email requests. Please wait a few minutes and try again.");
+        toast.error("Too many email requests. Please wait a few minutes and try again.");
+      } else {
+        toast.error(errMsg || "Failed to send reset password email");
+      }
     } finally {
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
@@ -71,21 +163,8 @@ export default function LoginModal() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      if (hasSupabase) {
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: window.location.origin,
-            queryParams: {
-              access_type: 'offline',
-              prompt: 'consent',
-            }
-          }
-        });
-        if (error) throw error;
-      } else {
-        toast.error("Google Auth requires Supabase configuration.");
-      }
+      await signInWithGoogle();
+      toast.success("Successfully logged in with Google!");
     } catch (error: any) {
       toast.error(error.message || "Failed to sign in with Google");
     } finally {
@@ -375,15 +454,67 @@ export default function LoginModal() {
                     <PasswordStrengthMeter password={password} />
                   </div>
 
+                  {/* Rate Limit Warning Banner */}
+                  {rateLimitCooldown > 0 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs space-y-2 shadow-[0_4px_16px_rgba(245,158,11,0.15)]"
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-semibold text-amber-300">
+                            {rateLimitError || "Too many email requests. Please wait a few minutes and try again."}
+                          </p>
+                          <p className="text-[11px] text-amber-200/80 mt-1">
+                            Cooldown active: You can retry registration in <strong className="font-mono text-amber-300">{rateLimitCooldown}s</strong>.
+                          </p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Dev Safe Test Mode Indicator */}
+                  <div className="flex items-center justify-between p-2.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
+                      <span className="text-[11px] text-blue-200 font-medium">Safe Test Mode (Email Limit Bypass)</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={devTestMode}
+                        onChange={(e) => setDevTestMode(e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-8 h-4 bg-white/20 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
                   <motion.button
                     type="submit"
-                    disabled={loading}
-                    whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(59,130,246,0.5)" }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex items-center justify-center w-full py-4 mt-8 space-x-2.5 font-extrabold text-sm tracking-widest uppercase text-white transition-all bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 rounded-xl shadow-[0_4px_20px_rgba(37,99,235,0.35)] hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 cursor-pointer"
+                    disabled={loading || rateLimitCooldown > 0}
+                    whileHover={rateLimitCooldown === 0 ? { scale: 1.02, boxShadow: "0 0 30px rgba(59,130,246,0.5)" } : {}}
+                    whileTap={rateLimitCooldown === 0 ? { scale: 0.98 } : {}}
+                    className={`flex items-center justify-center w-full py-4 mt-6 space-x-2.5 font-extrabold text-sm tracking-widest uppercase text-white transition-all rounded-xl cursor-pointer ${
+                      rateLimitCooldown > 0
+                        ? "bg-amber-900/40 border border-amber-500/40 text-amber-300/80 cursor-not-allowed"
+                        : "bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 shadow-[0_4px_20px_rgba(37,99,235,0.35)] hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50"
+                    }`}
                   >
                     {loading ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : rateLimitCooldown > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+                        <span>Wait {rateLimitCooldown}s to Retry</span>
+                      </div>
+                    ) : rateLimitError ? (
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Retry Create Account</span>
+                      </div>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4" />

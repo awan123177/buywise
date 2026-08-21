@@ -6,7 +6,6 @@ import Home from './components/Home';
 import PremiumLogin from './components/PremiumLogin';
 import AdminPanel from './components/AdminPanel';
 import Radar from './components/Radar';
-import Travel from './components/Travel';
 import Premium from './components/Premium';
 import GiftCards from './components/GiftCards';
 import DealsPage from './components/DealsPage';
@@ -22,6 +21,7 @@ import HubPage from './components/HubPage';
 import HumanSupport from './components/HumanSupport';
 import DownloadPage from './components/DownloadPage';
 import { Receipt } from './components/Receipt';
+import { MyReceipts } from './components/MyReceipts';
 import { AuthProvider } from './contexts/AuthContext';
 import { CurrencyProvider } from './contexts/CurrencyContext';
 import { AffiliateProvider } from './contexts/AffiliateContext';
@@ -63,7 +63,6 @@ export default function App() {
               <Route path="/login" element={<PremiumLogin />} />
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/radar" element={<Radar />} />
-              <Route path="/travel" element={<Travel />} />
               <Route path="/premium" element={<Premium />} />
               <Route path="/gifts" element={<GiftCards />} />
               <Route path="/deals" element={<DealsPage />} />
@@ -80,6 +79,8 @@ export default function App() {
               <Route path="/support" element={<HumanSupport />} />
               <Route path="/download" element={<DownloadPage />} />
               <Route path="/receipt/:receiptId" element={<Receipt />} />
+              <Route path="/my-receipts" element={<MyReceipts />} />
+              <Route path="/receipts" element={<MyReceipts />} />
               <Route path="/:pageId" element={<StaticPage />} />
             </Routes>
           </main>

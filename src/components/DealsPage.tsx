@@ -180,8 +180,7 @@ export default function DealsPage() {
     { id: 'gaming', label: 'Gaming' },
     { id: 'fashion', label: 'Fashion' },
     { id: 'home', label: 'Home' },
-    { id: 'grocery', label: 'Grocery' },
-    { id: 'travel', label: 'Travel & Flights' }
+    { id: 'grocery', label: 'Grocery' }
   ];
 
   // Best Deal today (First deal with isBestSeller or flash deal)

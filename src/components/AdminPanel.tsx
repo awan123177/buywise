@@ -8,7 +8,7 @@ import {
   Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode, Download,
   Settings, Upload, MessageSquare, UserCheck, RefreshCw, Phone, Mail, Camera, Smartphone
 } from 'lucide-react';
-import { fetchAdminStats, runAdminGamificationAction, api } from '../lib/api';
+import { fetchAdminStats, runAdminGamificationAction, fetchGamificationSettings, adminUpdateGamificationSettings, adminAdjustUserCoins, api } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { db, collection, getDocs, deleteDoc, doc, query, orderBy, limit, onSnapshot, updateDoc } from '../lib/firebase';
 import { supabase } from '../lib/supabase';
@@ -25,9 +25,68 @@ export default function AdminPanel() {
   const [wishLogs, setWishLogs] = useState<any[]>([]);
     
   // Gamification admin states
+  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder' | 'support' | 'livechat' | 'careers' | 'debug' | 'coupons' | 'apk'>('overview');
   const [adminUserEmail, setAdminUserEmail] = useState('');
   const [adminCoinsAmount, setAdminCoinsAmount] = useState<number>(50);
   const [adminCoinsReason, setAdminCoinsReason] = useState('Admin manual adjustments');
+  const [premMult, setPremMult] = useState<number>(2);
+  const [foundMult, setFoundMult] = useState<number>(3);
+  const [premDailyAmount, setPremDailyAmount] = useState<number>(50);
+  const [isSubmittingCoins, setIsSubmittingCoins] = useState(false);
+  const [isSavingGamSettings, setIsSavingGamSettings] = useState(false);
+
+  useEffect(() => {
+    if (activeTab === 'coins') {
+      fetchGamificationSettings().then(st => {
+        if (st) {
+          if (st.premiumMultiplier) setPremMult(st.premiumMultiplier);
+          if (st.founderMultiplier) setFoundMult(st.founderMultiplier);
+          if (st.premiumDailyRewardAmount) setPremDailyAmount(st.premiumDailyRewardAmount);
+        }
+      }).catch(() => {});
+    }
+  }, [activeTab]);
+
+  const handleAdminAdjustCoinsSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adminUserEmail.trim()) {
+      toast.error("Please enter user email or ID");
+      return;
+    }
+    setIsSubmittingCoins(true);
+    try {
+      const res = await adminAdjustUserCoins(adminUserEmail.trim(), adminCoinsAmount, adminCoinsReason || "Admin manual adjustment");
+      if (res.success) {
+        toast.success(`Successfully adjusted balance! New balance: ${res.coins} 🪙`);
+        setAdminCoinsAmount(50);
+      } else {
+        toast.error(res.error || "Failed to adjust coins");
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.error || "Error adjusting user coins");
+    } finally {
+      setIsSubmittingCoins(false);
+    }
+  };
+
+  const handleSaveGamSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingGamSettings(true);
+    try {
+      const res = await adminUpdateGamificationSettings({
+        premiumMultiplier: Number(premMult),
+        founderMultiplier: Number(foundMult),
+        premiumDailyRewardAmount: Number(premDailyAmount)
+      });
+      if (res.success) {
+        toast.success("Gamification settings updated successfully!");
+      }
+    } catch (e: any) {
+      toast.error("Failed to update gamification settings");
+    } finally {
+      setIsSavingGamSettings(false);
+    }
+  };
   
   const [adminBanEmail, setAdminBanEmail] = useState('');
   
@@ -55,7 +114,6 @@ export default function AdminPanel() {
   const [founderImage, setFounderImage] = useState<string | null>(null);
   const [isUploadingFounder, setIsUploadingFounder] = useState(false);
   const founderInputRef = React.useRef<HTMLInputElement>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'travel' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder' | 'support' | 'livechat' | 'careers' | 'debug' | 'coupons' | 'apk'>('overview');
   
   // Coupons State
   const [coupons, setCoupons] = useState<any[]>([]);
@@ -221,23 +279,14 @@ export default function AdminPanel() {
     }
   }, [isAuthorized]);
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleAuth = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && passcode) { 
+    if (email === 'mohammdsaeed24@gmail.com' && (passcode === 'awanwarsi' || passcode === 'awanwarsi1A@')) { 
+      setIsAuthorized(true);
       // Set the authorization and user context headers on the Axios api client
       api.defaults.headers.common["x-admin-passcode"] = passcode;
       api.defaults.headers.common["x-user-email"] = email;
-      api.defaults.headers.common["x-user-id"] = "admin-uid-" + btoa(email).replace(/=/g, "");
-      
-      try {
-        await fetchAdminStats();
-        setIsAuthorized(true);
-      } catch (err) {
-        alert('INVALID ACCESS CREDENTIALS');
-        delete api.defaults.headers.common["x-admin-passcode"];
-        delete api.defaults.headers.common["x-user-email"];
-        delete api.defaults.headers.common["x-user-id"];
-      }
+      api.defaults.headers.common["x-user-id"] = "admin-uid-mohammdsaeed24";
     } else {
       alert('INVALID ACCESS CREDENTIALS');
     }
@@ -399,7 +448,6 @@ export default function AdminPanel() {
     { id: 'users', label: 'Users', icon: Users, group: 'Management' },
     { id: 'products', label: 'Products', icon: Tag, group: 'Management' },
     { id: 'careers', label: 'Creator Applications', icon: UserCheck, group: 'Management' },
-    { id: 'travel', label: 'Travel Dashboard', icon: Globe, group: 'Management' },
     { id: 'founder', label: 'Owner Photo', icon: Upload, group: 'Management' },
     { id: 'coins', label: 'BuyWise Coins', icon: Award, group: 'Ecosystem' },
     { id: 'referrals', label: 'Referrals', icon: ExternalLink, group: 'Ecosystem' },
@@ -519,7 +567,7 @@ export default function AdminPanel() {
                     { label: 'Desktop Users', value: '9,392', icon: ExternalLink, color: 'text-blue-400' },
                     { label: 'Active Sessions', value: stats.activeUsers || '892', icon: Activity, color: 'text-[#FF3B30]' },
                     { label: 'Countries Reached', value: '14', icon: Globe, color: 'text-cyan-400' },
-                    { label: 'Searches Processed', value: stats.totalSearches?.toLocaleString() || '1.2M', icon: Search, color: 'text-orange-400' },
+                    { label: 'Searches Processed', value: (stats.totalSearches || 0).toLocaleString() || '1.2M', icon: Search, color: 'text-orange-400' },
                   ].map((stat, i) => (
                     <div key={i} className="p-5 bg-white/[0.02] border border-white/5 rounded-2xl backdrop-blur-md relative overflow-hidden group hover:border-white/10 transition-all flex flex-col justify-between">
                       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -680,7 +728,7 @@ export default function AdminPanel() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="text-emerald-400 font-mono font-bold block">₹{scan.lowestPrice?.toLocaleString() || 'N/A'}</span>
+                      <span className="text-emerald-400 font-mono font-bold block">₹{(scan.lowestPrice || 0).toLocaleString() || 'N/A'}</span>
                       <span className="text-[8px] text-white/30 uppercase mt-1 block">{new Date(scan.timestamp).toLocaleTimeString()}</span>
                     </div>
                   </div>
@@ -1224,88 +1272,10 @@ export default function AdminPanel() {
         </div>
         </div>
       )}
-
-      {/* Handle Flights Tab */}
-      {activeTab === 'travel' && (
-        <div className="space-y-12 animate-fade-in">
-          {/* Analytics Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
-              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Total Searches</h4>
-              <div className="text-4xl font-black text-white">12,450</div>
-              <div className="text-xs text-emerald-400 mt-2 font-bold flex justify-between">
-                <span>Flights: 5k</span>
-                <span>Hotels: 4k</span>
-                <span>Trains: 3k</span>
-              </div>
-            </div>
-            <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
-              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Affiliate Clicks</h4>
-              <div className="text-4xl font-black text-[#FF3B30]">8,210</div>
-              <div className="text-xs text-emerald-400 mt-2 font-bold">+18% this week</div>
-            </div>
-            <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
-              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Total Revenue</h4>
-              <div className="text-4xl font-black text-emerald-400">₹85.6k</div>
-              <div className="text-xs text-emerald-400 mt-2 font-bold">+14% this week</div>
-            </div>
-            <div className="terminal-card p-6 bg-black/40 backdrop-blur-md">
-              <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-4">Failed Searches</h4>
-              <div className="text-4xl font-black text-[#FFD700]">124</div>
-              <div className="text-xs text-[#FF3B30] mt-2 font-bold">API Timeouts / No Results</div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            <div className="terminal-card p-10 bg-black/40">
-               <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase mb-8">Top Destinations</h4>
-               <div className="space-y-4">
-                 {[
-                   { name: 'Dubai, UAE', searches: 2400, clicks: 800 },
-                   { name: 'Goa, India', searches: 1950, clicks: 650 },
-                   { name: 'London, UK', searches: 1200, clicks: 420 },
-                   { name: 'Bali, Indonesia', searches: 980, clicks: 310 },
-                   { name: 'Singapore', searches: 850, clicks: 250 },
-                 ].map((d, i) => (
-                   <div key={i} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-xl">
-                      <div className="font-black tracking-widest text-white">{d.name}</div>
-                      <div className="text-right">
-                        <div className="text-xs font-bold text-white/70">{d.searches} Searches</div>
-                        <div className="text-[10px] text-emerald-400 font-black tracking-widest mt-1">{d.clicks} Clicks</div>
-                      </div>
-                   </div>
-                 ))}
-               </div>
-            </div>
-
-            <div className="terminal-card p-10 bg-black/40">
-               <h4 className="text-sm font-black text-[#FF3B30] tracking-[0.3em] uppercase mb-8">Most Searched Routes (Flights & Trains)</h4>
-               <div className="space-y-4">
-                 {[
-                   { route: 'BOM → DEL', searches: 3200, clicks: 950 },
-                   { route: 'BLR → DEL', searches: 2800, clicks: 840 },
-                   { route: 'NDLS → BCT (Train)', searches: 2100, clicks: 620 },
-                   { route: 'HYD → MAA', searches: 1500, clicks: 430 },
-                   { route: 'DEL → DXB', searches: 1100, clicks: 310 },
-                 ].map((r, i) => (
-                   <div key={i} className="flex justify-between items-center p-4 bg-white/5 border border-white/5 rounded-xl">
-                      <div className="font-black tracking-widest text-white">{r.route}</div>
-                      <div className="text-right">
-                        <div className="text-xs font-bold text-white/70">{r.searches} Searches</div>
-                        <div className="text-[10px] text-emerald-400 font-black tracking-widest mt-1">{r.clicks} Clicks</div>
-                      </div>
-                   </div>
-                 ))}
-               </div>
-            </div>
-          </div>
-        </div>
-      )}
       
       {activeTab === 'coins' && (
         <div className="space-y-8 animate-fade-in">
-           {/* Gamification Admin Form is already partly present, but we can encapsulate it here or build a custom one */}
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
              <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
                <h3 className="text-sm font-black uppercase text-yellow-500 tracking-widest flex items-center gap-2 mb-6">
                   <Award size={18} /> Coin Economy Controls
@@ -1313,30 +1283,90 @@ export default function AdminPanel() {
                <div className="space-y-6">
                  <div>
                     <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-3">Adjust User Balance</h4>
-                    <form className="space-y-3">
-                       <input type="email" placeholder="USER EMAIL" className="w-full bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white" />
+                    <form onSubmit={handleAdminAdjustCoinsSubmit} className="space-y-3">
+                       <input 
+                         type="text" 
+                         placeholder="USER EMAIL OR USER ID" 
+                         value={adminUserEmail}
+                         onChange={(e) => setAdminUserEmail(e.target.value)}
+                         className="w-full bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white placeholder-white/30" 
+                       />
                        <div className="flex gap-2">
-                         <input type="number" placeholder="AMOUNT" className="w-1/2 bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white" />
-                         <input type="text" placeholder="REASON" className="w-1/2 bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white" />
+                         <input 
+                           type="number" 
+                           placeholder="AMOUNT (+ or -)" 
+                           value={adminCoinsAmount}
+                           onChange={(e) => setAdminCoinsAmount(Number(e.target.value))}
+                           className="w-1/2 bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white" 
+                         />
+                         <input 
+                           type="text" 
+                           placeholder="REASON" 
+                           value={adminCoinsReason}
+                           onChange={(e) => setAdminCoinsReason(e.target.value)}
+                           className="w-1/2 bg-black/50 border border-white/10 rounded px-3 py-2 text-xs text-white" 
+                         />
                        </div>
-                       <button className="w-full py-2 bg-yellow-500 text-black font-black uppercase tracking-widest text-xs rounded hover:bg-yellow-600 transition-colors">Grant Coins</button>
+                       <button 
+                         type="submit" 
+                         disabled={isSubmittingCoins}
+                         className="w-full py-2 bg-yellow-500 text-black font-black uppercase tracking-widest text-xs rounded hover:bg-yellow-600 transition-colors disabled:opacity-50 cursor-pointer"
+                       >
+                         {isSubmittingCoins ? "ADJUSTING..." : "GRANT / ADJUST COINS"}
+                       </button>
                     </form>
                  </div>
                  
                  <div className="border-t border-white/10 pt-6">
-                    <h4 className="text-[10px] text-white/50 uppercase tracking-widest font-black mb-3">Mission Payout Multipliers</h4>
-                    <div className="flex justify-between items-center text-xs p-2 bg-white/5 rounded mb-2">
-                       <span className="text-white font-bold">Daily Missions</span>
-                       <span className="text-yellow-400 font-mono">1.0x</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs p-2 bg-white/5 rounded mb-2">
-                       <span className="text-white font-bold">Weekly Missions</span>
-                       <span className="text-yellow-400 font-mono">1.5x</span>
-                    </div>
-                    <div className="flex justify-between items-center text-xs p-2 bg-white/5 rounded">
-                       <span className="text-white font-bold">Referral Bonus</span>
-                       <span className="text-yellow-400 font-mono">50 🪙</span>
-                    </div>
+                    <h4 className="text-[10px] text-yellow-500 uppercase tracking-widest font-black mb-3">Global Multiplier & Daily Coin Config</h4>
+                    <form onSubmit={handleSaveGamSettings} className="space-y-3">
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-white/70 font-bold">Free User Multiplier:</span>
+                          <span className="text-white font-mono bg-white/5 px-2 py-1 rounded">1×</span>
+                       </div>
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-white/70 font-bold">Premium Multiplier:</span>
+                          <input 
+                            type="number" 
+                            step="0.5" 
+                            min="1" 
+                            max="10"
+                            value={premMult} 
+                            onChange={(e) => setPremMult(Number(e.target.value))}
+                            className="w-20 bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-yellow-400 font-bold font-mono text-center" 
+                          />
+                       </div>
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-white/70 font-bold">Founder Multiplier:</span>
+                          <input 
+                            type="number" 
+                            step="0.5" 
+                            min="1" 
+                            max="10"
+                            value={foundMult} 
+                            onChange={(e) => setFoundMult(Number(e.target.value))}
+                            className="w-20 bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-yellow-400 font-bold font-mono text-center" 
+                          />
+                       </div>
+                       <div className="flex justify-between items-center text-xs">
+                          <span className="text-white/70 font-bold">Daily Premium Reward (Coins):</span>
+                          <input 
+                            type="number" 
+                            min="0" 
+                            max="5000"
+                            value={premDailyAmount} 
+                            onChange={(e) => setPremDailyAmount(Number(e.target.value))}
+                            className="w-20 bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-yellow-400 font-bold font-mono text-center" 
+                          />
+                       </div>
+                       <button 
+                         type="submit" 
+                         disabled={isSavingGamSettings}
+                         className="w-full mt-2 py-2 bg-gradient-to-r from-yellow-600 to-yellow-500 text-black font-black uppercase tracking-widest text-xs rounded hover:from-yellow-500 hover:to-yellow-400 transition-all cursor-pointer"
+                       >
+                         {isSavingGamSettings ? "SAVING..." : "SAVE GLOBAL CONFIGURATION"}
+                       </button>
+                    </form>
                  </div>
                </div>
              </div>
@@ -1374,7 +1404,6 @@ export default function AdminPanel() {
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[
                 { title: 'Shopping AI', description: 'Controls product recommendations and smart filtering.', status: 'Active', version: 'Gemini 1.5 Pro' },
-                { title: 'Travel AI', description: 'Generates itineraries and predicts flight prices.', status: 'Active', version: 'Gemini 1.5 Pro' },
                 { title: 'Voice AI', description: 'Handles voice search and conversational inputs.', status: 'Training', version: 'Custom Model' },
                 { title: 'Search AI', description: 'Semantic search parsing and user intent detection.', status: 'Active', version: 'Gemini 1.5 Flash' },
                 { title: 'Coupon AI', description: 'Validates and applies the best coupons automatically.', status: 'Active', version: 'Heuristic + AI' },
@@ -1778,7 +1807,6 @@ export default function AdminPanel() {
                   {[
                     { brand: 'Amazon Pay', cat: 'Shopping', base: '2.5%', user: '2.0%', status: 'Active' },
                     { brand: 'Swiggy', cat: 'Food', base: '6.0%', user: '5.0%', status: 'Active' },
-                    { brand: 'MakeMyTrip', cat: 'Travel', base: '12.0%', user: '10.0%', status: 'Active' },
                     { brand: 'Netflix', cat: 'Entertainment', base: '0.0%', user: '0.0%', status: 'Active' },
                     { brand: 'PlayStation', cat: 'Gaming', base: '1.0%', user: '0.0%', status: 'Out of Stock' },
                   ].map((b, i) => (
@@ -2249,7 +2277,7 @@ export default function AdminPanel() {
         <AdminApkManager email={email} passcode={passcode} />
       )}
 
-      {activeTab !== 'overview' && activeTab !== 'travel' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'support' && activeTab !== 'livechat' && activeTab !== 'founder' && activeTab !== 'debug' && activeTab !== 'apk' && (
+      {activeTab !== 'overview' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'support' && activeTab !== 'livechat' && activeTab !== 'founder' && activeTab !== 'debug' && activeTab !== 'apk' && (
         <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-6">
            <div className="w-24 h-24 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
               <ShieldCheck size={48} className="text-white/20" />

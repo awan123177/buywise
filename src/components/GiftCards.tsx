@@ -4,7 +4,7 @@ import { Search, Gift, ShieldCheck, Flame, Star, Wallet, Zap, ExternalLink, Acti
 import toast from 'react-hot-toast';
 import SEO from './SEO';
 
-const CATEGORIES = ["All", "Shopping", "Food", "Gaming", "Entertainment", "Travel"];
+const CATEGORIES = ["All", "Shopping", "Food", "Gaming", "Entertainment"];
 
 const MOCK_GIFT_CARDS = [
   { id: 1, brand: "Amazon", category: "Shopping", color: "from-orange-500 to-yellow-400", logo: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg", discount: 2, featured: true },
@@ -15,8 +15,6 @@ const MOCK_GIFT_CARDS = [
   { id: 6, brand: "Xbox", category: "Gaming", color: "from-green-600 to-green-400", logo: "https://upload.wikimedia.org/wikipedia/commons/d/d7/Xbox_logo_%282019%29.svg", discount: 0 },
   { id: 7, brand: "Netflix", category: "Entertainment", color: "from-red-700 to-red-500", logo: "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg", discount: 0, featured: true },
   { id: 8, brand: "Spotify", category: "Entertainment", color: "from-green-500 to-green-400", logo: "https://upload.wikimedia.org/wikipedia/commons/2/26/Spotify_logo_with_text.svg", discount: 1 },
-  { id: 9, brand: "MakeMyTrip", category: "Travel", color: "from-blue-500 to-cyan-400", logo: "https://upload.wikimedia.org/wikipedia/commons/1/1b/MakeMyTrip_Logo.svg", discount: 10, bestValue: true },
-  { id: 10, brand: "Uber", category: "Travel", color: "from-gray-900 to-gray-700", logo: "https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png", discount: 2 },
   { id: 11, brand: "Nykaa", category: "Shopping", color: "from-pink-600 to-pink-400", logo: "https://upload.wikimedia.org/wikipedia/en/9/97/Nykaa_logo.svg", discount: 3 },
   { id: 12, brand: "Myntra", category: "Shopping", color: "from-fuchsia-600 to-pink-500", logo: "https://upload.wikimedia.org/wikipedia/commons/b/bc/Myntra_Logo.png", discount: 4 },
 ];

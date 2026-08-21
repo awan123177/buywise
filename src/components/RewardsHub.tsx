@@ -4,14 +4,15 @@ import {
   Award, Trophy, Users, Wallet, Calendar, Gift, 
   ChevronRight, Copy, CheckCircle, Search, HelpCircle, 
   ArrowUpRight, AlertTriangle, RefreshCw, BadgePercent,
-  Sparkles, Star, Target, ShieldAlert, Coins
+  Sparkles, Star, Target, ShieldAlert, Coins, Check
 , Ticket } from "lucide-react";
 import { useAuth } from '../contexts/AuthContext';
 import { fetchUserCoupons, fetchGamificationProfile, triggerDailyCheckIn,
   fetchCoinTransactions, fetchAchievements, 
   submitReferral, fetchReferralsDashboard, 
   fetchLeaderboard, redeemCoinReward, logSocialShare, logReviewAction,
-  fetchReviews, submitUserReview, transferCoins, spinWheelDaily, submitMission, api
+  fetchReviews, submitUserReview, voteReviewHelpful, transferCoins, spinWheelDaily, submitMission,
+  fetchPremiumDailyStatus, claimPremiumDailyCoins, fetchFounderMysteryBoxStatus, claimFounderMysteryBox, api
 } from '../lib/api';
 import toast from 'react-hot-toast';
 import { useCurrency } from '../contexts/CurrencyContext';
@@ -37,6 +38,13 @@ export default function RewardsHub() {
   const [claiming, setClaiming] = useState<string | null>(null);
   const [tippingUserId, setTippingUserId] = useState<string | null>(null);
   const [tipAmount, setTipAmount] = useState<string>('50');
+
+  // Premium & Founder Gamification States
+  const [premDailyStatus, setPremDailyStatus] = useState<any>(null);
+  const [claimingPremDaily, setClaimingPremDaily] = useState<boolean>(false);
+  const [founderMysteryStatus, setFounderMysteryStatus] = useState<any>(null);
+  const [claimingFounderMystery, setClaimingFounderMystery] = useState<boolean>(false);
+  const [txnFilter, setTxnFilter] = useState<'ALL' | 'EARNED' | 'SPENT' | 'ADJUSTMENT'>('ALL');
 
   
   const handleRedeemCoupon = async () => {
@@ -149,9 +157,15 @@ export default function RewardsHub() {
 
   // Reviews states
   const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsSummary, setReviewsSummary] = useState<{totalReviews: number, averageRating: number, ratingCounts: any} | null>(null);
+  const [reviewsPage, setReviewsPage] = useState<number>(1);
+  const [hasMoreReviews, setHasMoreReviews] = useState<boolean>(false);
+  const [reviewsSortBy, setReviewsSortBy] = useState<string>('recent');
+  const [loadingMoreReviews, setLoadingMoreReviews] = useState<boolean>(false);
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [reviewComment, setReviewComment] = useState<string>('');
   const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+  const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
 
   // Update Countdown and Redraw Canvas on wheelAngle changes
   useEffect(() => {
@@ -310,27 +324,122 @@ export default function RewardsHub() {
     if (!user) return;
     setLoading(true);
     try {
-      const [profData, couponsData, txnData, achData, refData, lBoardData, reviewsData] = await Promise.all([
+      const [profData, couponsData, txnData, achData, refData, lBoardData, reviewsData, premDaily, founderBox] = await Promise.all([
         fetchGamificationProfile(), fetchUserCoupons(),
         fetchCoinTransactions(),
         fetchAchievements(),
         fetchReferralsDashboard(),
         fetchLeaderboard(leaderboardMetric),
-        fetchReviews()
+        fetchReviews(1, 20, reviewsSortBy),
+        fetchPremiumDailyStatus().catch(() => null),
+        fetchFounderMysteryBoxStatus().catch(() => null)
       ]);
       setProfile(profData);
+      setCoins(profData?.coins || 0);
       if (couponsData && couponsData.success) {
         setCoupons(couponsData.coupons || []);
       }
-      setTransactions(txnData);
-      setAchievements(achData);
-      setReferralStats(refData);
-      setLeaderboard(lBoardData);
-      setReviews(reviewsData || []);
+      setTransactions(txnData || []);
+      setAchievements(achData || []);
+      setReferralStats(refData || null);
+      setLeaderboard(lBoardData || []);
+      setReviews(reviewsData?.reviews || []);
+      setReviewsSummary(reviewsData?.summary || null);
+      setHasMoreReviews(reviewsData?.hasMore || false);
+      setReviewsPage(1);
+      if (premDaily) setPremDailyStatus(premDaily);
+      if (founderBox) setFounderMysteryStatus(founderBox);
     } catch (e) {
       console.error("Failed to load gamification data:", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleClaimPremDaily = async () => {
+    if (claimingPremDaily) return;
+    setClaimingPremDaily(true);
+    try {
+      const result = await claimPremiumDailyCoins();
+      if (result.success) {
+        triggerCoinsRain();
+        await loadData();
+      }
+    } catch (e) {
+      console.error("Claim premium daily error:", e);
+    } finally {
+      setClaimingPremDaily(false);
+    }
+  };
+
+  const handleClaimFounderBox = async () => {
+    if (claimingFounderMystery) return;
+    setClaimingFounderMystery(true);
+    try {
+      const res = await claimFounderMysteryBox();
+      if (res.success) {
+        toast.success(res.message || "Guaranteed 10,000 Founder Coins Awarded!", { icon: "🎁", duration: 8000 });
+        triggerCoinsRain();
+        await loadData();
+      } else {
+        toast.error(res.message || "Failed to claim Forever Founder Mystery Box");
+      }
+    } catch (e: any) {
+      toast.error(e.response?.data?.message || "Failed to claim Founder Mystery Box");
+    } finally {
+      setClaimingFounderMystery(false);
+    }
+  };
+
+  const loadMoreReviews = async () => {
+    if (loadingMoreReviews || !hasMoreReviews) return;
+    setLoadingMoreReviews(true);
+    try {
+      const nextPage = reviewsPage + 1;
+      const reviewsData = await fetchReviews(nextPage, 20, reviewsSortBy);
+      setReviews(prev => [...prev, ...(reviewsData?.reviews || [])]);
+      setHasMoreReviews(reviewsData?.hasMore || false);
+      setReviewsPage(nextPage);
+    } catch (e) {
+      console.error("Failed to load more reviews:", e);
+    } finally {
+      setLoadingMoreReviews(false);
+    }
+  };
+
+  const handleSortChange = async (newSortBy: string) => {
+    setReviewsSortBy(newSortBy);
+    setReviewsPage(1);
+    try {
+      const reviewsData = await fetchReviews(1, 20, newSortBy);
+      setReviews(reviewsData?.reviews || []);
+      setHasMoreReviews(reviewsData?.hasMore || false);
+    } catch (e) {
+      console.error("Failed to sort reviews:", e);
+    }
+  };
+
+  const toggleReviewExpanded = (id: string) => {
+    setExpandedReviews(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleVoteHelpful = async (id: string) => {
+    if (!user) {
+      toast.error("Please login to vote.");
+      return;
+    }
+    try {
+      const result = await voteReviewHelpful(id);
+      if (result.success) {
+        setReviews(prev => prev.map(r => r.id === id ? { ...r, helpfulVotes: result.helpfulVotes, helpfulVoters: r.helpfulVoters?.includes(user.uid) ? r.helpfulVoters.filter((vid: string) => vid !== user.uid) : [...(r.helpfulVoters || []), user.uid] } : r));
+      }
+    } catch (e) {
+      console.error("Failed to vote:", e);
     }
   };
 
@@ -488,6 +597,26 @@ export default function RewardsHub() {
     } else {
       setLoading(false);
     }
+
+    const handleCoins = (e: any) => {
+      if (typeof e.detail?.coins === 'number') {
+        setCoins(e.detail.coins);
+      }
+      if (user?.uid) loadData();
+    };
+    const handleProfile = () => {
+      if (user?.uid) loadData();
+    };
+
+    window.addEventListener('buywiseCoinsUpdated', handleCoins);
+    window.addEventListener('buywiseProfileUpdated', handleProfile);
+    window.addEventListener('buywisePremiumActivated', handleProfile);
+
+    return () => {
+      window.removeEventListener('buywiseCoinsUpdated', handleCoins);
+      window.removeEventListener('buywiseProfileUpdated', handleProfile);
+      window.removeEventListener('buywisePremiumActivated', handleProfile);
+    };
   }, [user?.uid]);
 
   // Load Leaderboard when metric changes
@@ -756,8 +885,13 @@ export default function RewardsHub() {
                   <Wallet size={12} /> COINS BALANCE
                 </div>
                 <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                  {(profile?.multiplier || 1) > 1 && (
+                    <span className="text-[8px] bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 px-2 py-0.5 rounded uppercase font-black tracking-widest font-mono shadow-[0_0_8px_rgba(234,179,8,0.3)] animate-pulse">
+                      ✨ {profile.multiplier}× MULTIPLIER
+                    </span>
+                  )}
                   {profile?.isPremium && (
-                    <span className="text-[8px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded uppercase font-black tracking-widest font-mono shadow-[0_0_8px_rgba(234,179,8,0.2)] animate-pulse">
+                    <span className="text-[8px] bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-2 py-0.5 rounded uppercase font-black tracking-widest font-mono">
                       👑 PREMIUM
                     </span>
                   )}
@@ -778,6 +912,111 @@ export default function RewardsHub() {
                 <div>Saved: <span className="text-yellow-500 font-black">{formatPrice(profile?.totalSaved || 0)}</span></div>
               </div>
             </div>
+
+            {/* Daily Premium Coins Card */}
+            {premDailyStatus?.eligible ? (
+              <div className="bg-gradient-to-r from-amber-950/40 via-yellow-950/20 to-black p-5 rounded-2xl border border-yellow-500/30 space-y-3 relative overflow-hidden group shadow-[0_0_20px_rgba(234,179,8,0.1)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-400 bg-yellow-500/10 px-2.5 py-0.5 rounded-full border border-yellow-500/20">
+                    💎 PREMIUM MEMBER PERK
+                  </span>
+                  <span className="text-[10px] text-yellow-400 font-mono font-bold">
+                    {premDailyStatus.multiplier || 2}× Multiplier
+                  </span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-1.5">
+                    <Sparkles size={16} className="text-yellow-400" /> DAILY PREMIUM COINS
+                  </h4>
+                  <p className="text-[11px] text-white/60 mt-0.5">
+                    Claim +{premDailyStatus.rewardAmount || 50} coins every 24 hours exclusive to active Premium members.
+                  </p>
+                </div>
+
+                {premDailyStatus.claimedToday ? (
+                  <div className="p-3 bg-black/50 border border-white/10 rounded-xl flex items-center justify-between text-xs">
+                    <span className="text-green-400 font-bold flex items-center gap-1 text-[10px] uppercase tracking-wider">
+                      <CheckCircle size={14} /> CLAIMED TODAY
+                    </span>
+                    <span className="text-yellow-400 font-mono font-bold text-[11px]">
+                      NEXT: {countdown || "00:00:00"}
+                    </span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleClaimPremDaily}
+                    disabled={claimingPremDaily}
+                    className="w-full py-2.5 bg-gradient-to-r from-yellow-500 via-amber-400 to-yellow-500 hover:from-yellow-400 hover:to-amber-300 text-black font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_0_15px_rgba(234,179,8,0.3)] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {claimingPremDaily ? (
+                      <RefreshCw className="animate-spin" size={14} />
+                    ) : (
+                      <>
+                        <Gift size={14} /> CLAIM +{premDailyStatus.rewardAmount || 50} PREMIUM COINS
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="bg-gradient-to-r from-white/[0.03] to-white/[0.01] p-5 rounded-2xl border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/50 bg-white/5 px-2.5 py-0.5 rounded-full">
+                    ✨ PREMIUM BENEFITS
+                  </span>
+                  <span className="text-[10px] text-yellow-400 font-mono font-bold">2× EARNING BOOST</span>
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-white uppercase tracking-tight">UPGRADE FOR MORE COINS</h4>
+                  <p className="text-[10px] text-white/50 mt-1 leading-relaxed">
+                    Premium members get <span className="text-yellow-400 font-bold">2× Coin Multiplier</span> on all earning activities plus <span className="text-yellow-400 font-bold">+50 Daily Bonus Coins</span> every single day!
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Forever Founder Mystery Box Banner (If Founder) */}
+            {(profile?.superEnhancedFounderBadge || founderMysteryStatus?.isFounder) && (
+              <div className="bg-gradient-to-br from-red-950/40 via-stone-900 to-black p-5 rounded-2xl border border-red-500/30 space-y-3 relative overflow-hidden group shadow-[0_0_20px_rgba(239,68,68,0.15)]">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-black uppercase tracking-[0.2em] text-red-400 bg-red-500/10 px-2.5 py-0.5 rounded-full border border-red-500/20">
+                    👑 FOREVER FOUNDER PERK
+                  </span>
+                  <span className="text-[10px] text-yellow-400 font-mono font-bold">3× Multiplier</span>
+                </div>
+                <div>
+                  <h4 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-1.5">
+                    <Gift size={16} className="text-yellow-400" /> FOUNDER MYSTERY BOX
+                  </h4>
+                  <p className="text-[11px] text-white/60 mt-0.5">
+                    Guaranteed ONE-TIME reward of 10,000 BuyWise Coins for Forever Founder members.
+                  </p>
+                </div>
+
+                {founderMysteryStatus?.claimed ? (
+                  <div className="p-3 bg-black/60 border border-green-500/30 rounded-xl flex items-center justify-between text-xs">
+                    <span className="text-green-400 font-bold flex items-center gap-1.5 text-[10px] uppercase tracking-wider">
+                      <CheckCircle size={14} /> 10,000 COINS CLAIMED
+                    </span>
+                    <span className="text-white/40 text-[10px] font-mono">LIFETIME STATUS</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleClaimFounderBox}
+                    disabled={claimingFounderMystery}
+                    className="w-full py-2.5 bg-gradient-to-r from-red-600 via-[#FF3B30] to-red-600 text-white font-black uppercase tracking-widest text-xs rounded-xl shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2"
+                  >
+                    {claimingFounderMystery ? (
+                      <RefreshCw className="animate-spin" size={14} />
+                    ) : (
+                      <>
+                        <Gift size={14} /> CLAIM 10,000 FOUNDER COINS 🎁
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Quick Coin Gainers */}
             <div className="bg-white/[0.02] p-5 rounded-xl border border-white/5 space-y-3">
@@ -1072,34 +1311,80 @@ export default function RewardsHub() {
                 </AnimatePresence>
 
                 <div className="bg-white/[0.01] p-6 rounded-2xl border border-white/5 space-y-6">
-                  <div>
-                    <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
-                      <Wallet size={18} className="text-[#FF3B30]" /> COINS TRANSACTION HISTORY
-                    </h3>
-                    <p className="text-xs text-white/40">Detailed ledger of your earnings and redemptions.</p>
-                  </div>
-
-                  {transactions.length === 0 ? (
-                    <div className="text-center py-16 text-white/30 text-xs">
-                      No transactions registered. Complete searches or log in daily to earn coins!
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                      <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+                        <Wallet size={18} className="text-[#FF3B30]" /> COINS TRANSACTION HISTORY
+                      </h3>
+                      <p className="text-xs text-white/40">Authoritative server ledger of your coin movements.</p>
                     </div>
-                  ) : (
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
-                      {transactions.map((t) => (
-                        <div key={t.id} className="p-3 bg-white/[0.02] border border-white/5 rounded-lg flex justify-between items-center text-xs">
-                          <div>
-                            <div className="font-bold text-white/90">{t.reason}</div>
-                            <div className="text-[10px] text-white/40 font-mono mt-0.5">
-                              {new Date(t.timestamp).toLocaleDateString()} {new Date(t.timestamp).toLocaleTimeString()}
-                            </div>
-                          </div>
-                          <div className={`font-mono font-black ${t.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                            {t.amount > 0 ? `+${t.amount}` : t.amount} 🪙
-                          </div>
-                        </div>
+
+                    {/* Filter Pills */}
+                    <div className="flex items-center gap-1 bg-black/40 p-1 rounded-lg border border-white/5 text-[10px] font-black uppercase tracking-wider">
+                      {(['ALL', 'EARNED', 'SPENT', 'ADJUSTMENT'] as const).map((filter) => (
+                        <button
+                          key={filter}
+                          onClick={() => setTxnFilter(filter)}
+                          className={`px-2.5 py-1 rounded transition-colors cursor-pointer ${
+                            txnFilter === filter
+                              ? 'bg-yellow-500 text-black shadow-sm'
+                              : 'text-white/50 hover:text-white'
+                          }`}
+                        >
+                          {filter}
+                        </button>
                       ))}
                     </div>
-                  )}
+                  </div>
+
+                  {(() => {
+                    const filteredTxns = transactions.filter((t) => {
+                      if (txnFilter === 'EARNED') return t.amount > 0 && t.type !== 'ADJUSTMENT';
+                      if (txnFilter === 'SPENT') return t.amount < 0 && t.type !== 'ADJUSTMENT';
+                      if (txnFilter === 'ADJUSTMENT') return t.type === 'ADJUSTMENT' || (t.source && t.source.includes('ADMIN'));
+                      return true;
+                    });
+
+                    if (filteredTxns.length === 0) {
+                      return (
+                        <div className="text-center py-16 text-white/30 text-xs">
+                          No {txnFilter.toLowerCase()} transactions found in ledger. Complete searches or log in daily to earn coins!
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto pr-1">
+                        {filteredTxns.map((t) => (
+                          <div key={t.id || t.referenceId} className="p-3 bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 rounded-xl flex justify-between items-center text-xs transition-colors">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded tracking-widest font-mono ${
+                                  t.amount > 0 
+                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' 
+                                    : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                }`}>
+                                  {t.type || (t.amount > 0 ? 'EARNED' : 'SPENT')}
+                                </span>
+                                {t.multiplierApplied > 1 && (
+                                  <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 font-mono">
+                                    ✨ {t.multiplierApplied}× BOOST
+                                  </span>
+                                )}
+                              </div>
+                              <div className="font-bold text-white/90">{t.reason}</div>
+                              <div className="text-[10px] text-white/40 font-mono">
+                                {new Date(t.timestamp).toLocaleDateString()} {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                            </div>
+                            <div className={`font-mono font-black text-sm ${t.amount > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                              {t.amount > 0 ? `+${t.amount}` : t.amount} 🪙
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
@@ -1671,71 +1956,156 @@ export default function RewardsHub() {
             </form>
 
             {/* Reviews List Feed */}
-            <div className="lg:col-span-3 space-y-3">
-              <h4 className="text-xs font-black uppercase text-white/40 tracking-widest flex items-center justify-between">
-                <span>// RECENT SAVER REVIEWS ({500 + reviews.length})</span>
-                <span className="text-[9px] text-green-400 font-mono tracking-tight flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-ping"></span> Live Synced
-                </span>
-              </h4>
+            <div className="lg:col-span-3 space-y-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white/[0.02] p-4 rounded-xl border border-white/5">
+                <div className="flex items-center gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">
+                      {reviewsSummary?.averageRating || "0.0"}
+                    </div>
+                    <div className="flex text-yellow-500 justify-center">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} size={10} className={i < Math.round(reviewsSummary?.averageRating || 0) ? 'fill-yellow-500' : 'text-white/20'} />
+                      ))}
+                    </div>
+                    <div className="text-[10px] text-white/40 mt-1 font-mono uppercase tracking-widest">
+                      {reviewsSummary?.totalReviews || 0} REVIEWS
+                    </div>
+                  </div>
+                  
+                  {/* Mini distribution bars */}
+                  <div className="hidden sm:flex flex-col gap-1 w-32 border-l border-white/10 pl-4">
+                    {[5, 4, 3, 2, 1].map(stars => {
+                      const count = reviewsSummary?.ratingCounts?.[stars] || 0;
+                      const total = reviewsSummary?.totalReviews || 1;
+                      const pct = Math.round((count / total) * 100);
+                      return (
+                        <div key={stars} className="flex items-center gap-1.5 text-[8px]">
+                          <span className="text-white/40 w-3">{stars}★</span>
+                          <div className="flex-1 h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${pct}%` }}></div>
+                          </div>
+                          <span className="text-white/30 w-4 text-right">{pct}%</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                
+                <div className="w-full sm:w-auto">
+                  <select 
+                    value={reviewsSortBy}
+                    onChange={(e) => handleSortChange(e.target.value)}
+                    className="w-full sm:w-auto bg-black border border-white/10 rounded text-xs text-white p-2 focus:ring-1 focus:ring-[#FF3B30] focus:border-[#FF3B30] outline-none"
+                  >
+                    <option value="recent">Most Recent</option>
+                    <option value="helpful">Most Helpful</option>
+                    <option value="highest">Highest Rated</option>
+                    <option value="lowest">Lowest Rated</option>
+                  </select>
+                </div>
+              </div>
 
-              <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+              <div className="space-y-3">
                 {reviews.length === 0 ? (
                   <div className="text-center py-12 text-white/20 text-xs border border-dashed border-white/5 rounded-xl">
                     No reviews posted yet. Be the first to tell your story!
                   </div>
                 ) : (
-                  reviews.map((rev, idx) => (
-                    <motion.div 
-                      key={rev.id} 
-                      initial={{ opacity: 0, y: 20 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true, margin: "-20px" }}
-                      transition={{ delay: (idx % 10) * 0.08, duration: 0.5, ease: "easeOut" }}
-                      className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-2 relative overflow-hidden group"
-                    >
-                      {/* Top row */}
-                      <div className="flex justify-between items-start gap-4">
-                        <div className="flex items-center gap-2.5">
-                          {/* Avatar fallback */}
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#FF3B30]/20 to-[#FF3B30]/5 border border-[#FF3B30]/20 flex items-center justify-center text-xs text-white font-black uppercase">
-                            {rev.userName ? rev.userName[0] : 'U'}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-white/95 flex items-center gap-1.5">
-                              {rev.userName}
-                              {rev.userId === user?.uid && (
-                                <span className="text-[8px] bg-[#FF3B30]/15 text-[#FF3B30] px-1 rounded font-black">YOU</span>
-                              )}
+                  <>
+                    {reviews.map((rev, idx) => {
+                      const isExpanded = expandedReviews.has(rev.id);
+                      const isLong = rev.comment.length > 200;
+                      const hasVoted = user && rev.helpfulVoters?.includes(user.uid);
+                      
+                      return (
+                        <motion.div 
+                          key={rev.id} 
+                          initial={{ opacity: 0, y: 10 }}
+                          whileInView={{ opacity: 1, y: 0 }}
+                          viewport={{ once: true, margin: "-10px" }}
+                          transition={{ delay: (idx % 10) * 0.05, duration: 0.3, ease: "easeOut" }}
+                          className="p-4 bg-white/[0.01] border border-white/5 rounded-xl space-y-3 relative group"
+                        >
+                          <div className="flex justify-between items-start gap-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#FF3B30]/20 to-[#FF3B30]/5 border border-[#FF3B30]/20 flex items-center justify-center text-xs text-white font-black uppercase shadow-inner">
+                                {rev.userName ? rev.userName[0] : 'U'}
+                              </div>
+                              <div>
+                                <div className="text-xs font-bold text-white/95 flex items-center gap-1.5 flex-wrap">
+                                  {rev.userName}
+                                  {rev.isVerified && (
+                                    <span className="text-[9px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded flex items-center gap-1">
+                                      <Check size={9} /> Verified Purchase
+                                    </span>
+                                  )}
+                                  {rev.userId === user?.uid && (
+                                    <span className="text-[8px] bg-[#FF3B30]/15 text-[#FF3B30] px-1 rounded font-black">YOU</span>
+                                  )}
+                                </div>
+                                <div className="text-[9px] text-white/30 font-mono mt-0.5">
+                                  {new Date(rev.timestamp).toLocaleDateString()}
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-[9px] text-white/30 font-mono">
-                              {new Date(rev.timestamp).toLocaleDateString()} at {new Date(rev.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+
+                            <div className="flex items-center gap-0.5 text-yellow-500">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <Star 
+                                  key={i} 
+                                  size={11} 
+                                  className={i < rev.rating ? 'fill-yellow-500' : 'text-white/10'} 
+                                />
+                              ))}
                             </div>
                           </div>
-                        </div>
 
-                        {/* Stars rating */}
-                        <div className="flex items-center gap-0.5 text-yellow-500">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Star 
-                              key={i} 
-                              size={10} 
-                              className={i < rev.rating ? 'fill-yellow-500' : 'text-white/10'} 
-                            />
-                          ))}
-                        </div>
+                          <div className="text-xs text-white/70 leading-relaxed font-sans">
+                            {isExpanded || !isLong ? rev.comment : `${rev.comment.substring(0, 200)}...`}
+                            {isLong && (
+                              <button 
+                                onClick={() => toggleReviewExpanded(rev.id)}
+                                className="ml-1 text-[#FF3B30] hover:text-white font-bold text-[11px]"
+                              >
+                                {isExpanded ? "Show less" : "Read more"}
+                              </button>
+                            )}
+                          </div>
+
+                          <div className="pt-2 flex flex-wrap items-center justify-between text-[9px] font-mono border-t border-white/5 gap-2">
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleVoteHelpful(rev.id)}
+                                className={`flex items-center gap-1.5 px-2 py-1 rounded transition-colors ${hasVoted ? 'bg-[#FF3B30]/10 text-[#FF3B30] border border-[#FF3B30]/20' : 'bg-white/5 text-white/50 hover:text-white hover:bg-white/10 border border-transparent'}`}
+                              >
+                                <span className={hasVoted ? 'font-bold' : ''}>👍 Helpful</span>
+                                {rev.helpfulVotes > 0 && <span className="bg-black/30 px-1 rounded">{rev.helpfulVotes}</span>}
+                              </button>
+                            </div>
+                            
+                            {rev.coinsEarned > 0 && (
+                              <span className="text-yellow-500 font-bold bg-yellow-500/5 px-2 py-1 rounded border border-yellow-500/10 flex items-center gap-1">
+                                Rewarded: +{rev.coinsEarned} 🪙
+                              </span>
+                            )}
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                    
+                    {hasMoreReviews && (
+                      <div className="flex justify-center pt-4">
+                        <button
+                          onClick={loadMoreReviews}
+                          disabled={loadingMoreReviews}
+                          className="px-6 py-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white text-xs font-bold uppercase tracking-widest rounded transition-colors disabled:opacity-50"
+                        >
+                          {loadingMoreReviews ? "LOADING..." : "LOAD MORE REVIEWS"}
+                        </button>
                       </div>
-
-                      {/* Comment text */}
-                      <p className="text-xs text-white/70 leading-relaxed font-sans">{rev.comment}</p>
-
-                      {/* Bottom meta */}
-                      <div className="pt-1 flex items-center justify-between text-[9px] font-mono border-t border-white/5">
-                        <span className="text-white/30">Verified Sourcing Node</span>
-                        <span className="text-yellow-500 font-bold bg-yellow-500/5 px-1.5 py-0.5 rounded border border-yellow-500/10">Rewarded: +{rev.coinsEarned} 🪙</span>
-                      </div>
-                    </motion.div>
-                  ))
+                    )}
+                  </>
                 )}
               </div>
             </div>

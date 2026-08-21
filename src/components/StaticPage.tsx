@@ -11,13 +11,13 @@ const PAGES = {
     content: (
       <>
         <h3 className="text-xl font-bold mb-4">Company Story</h3>
-        <p className="text-white/70 mb-6">BuyWise was founded with a single mission: to bring absolute transparency to online shopping and travel. The internet is filled with dynamic pricing, hidden fees, and manipulated deals. We built BuyWise to cut through the noise using AI-driven price intelligence.</p>
+        <p className="text-white/70 mb-6">BuyWise was founded with a single mission: to bring absolute transparency to online shopping. The internet is filled with dynamic pricing, hidden fees, and manipulated deals. We built BuyWise to cut through the noise using AI-driven price intelligence.</p>
         
         <h3 className="text-xl font-bold mb-4">Our Vision</h3>
-        <p className="text-white/70 mb-6">To become the world's most trusted AI assistant for consumer purchasing, ensuring no one ever overpays for a product or flight again.</p>
+        <p className="text-white/70 mb-6">To become the world's most trusted AI assistant for consumer purchasing, ensuring no one ever overpays for a product again.</p>
         
         <h3 className="text-xl font-bold mb-4">How BuyWise Works</h3>
-        <p className="text-white/70 mb-6">We aggregate data from across the web in real-time. Whether you are looking for electronics or flights, our intelligence engine scans hundreds of retailers and airlines to find the absolute lowest price, applying hidden coupons and affiliate deals automatically.</p>
+        <p className="text-white/70 mb-6">We aggregate data from across the web in real-time. Whether you are looking for electronics or groceries, our intelligence engine scans hundreds of retailers to find the absolute lowest price, applying hidden coupons and affiliate deals automatically.</p>
       </>
     )
   },
@@ -27,7 +27,7 @@ const PAGES = {
       <>
         <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
           <div className="w-32 h-32 md:w-48 md:h-48 rounded-2xl border border-white/10 bg-[#222222] flex items-center justify-center shrink-0 overflow-hidden relative">
-             <img src="/api/founder-image" alt="Awan Warsi" className="w-full h-full object-cover object-top absolute inset-0" referrerPolicy="no-referrer" />
+             <img src="/api/founder-image" alt="Awan Warsi" className="w-full h-full object-cover object-top absolute inset-0" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = "https://images.unsplash.com/photo-1550745165-9bc0b252726f?auto=format&fit=crop&q=80&w=800"; }} />
              <span className="text-white/40 font-mono text-xl uppercase tracking-widest hidden absolute">AW</span>
           </div>
           <div>
@@ -84,7 +84,7 @@ const PAGES = {
         <h3 className="text-xl font-bold mb-4">Acceptance of Terms</h3>
         <p className="text-white/70 mb-6">By accessing and using BuyWise, you accept and agree to be bound by the terms and provision of this agreement.</p>
         <h3 className="text-xl font-bold mb-4">Service Description</h3>
-        <p className="text-white/70 mb-6">BuyWise provides AI-powered shopping and travel comparison tools. We do not sell products directly and are not responsible for third-party merchant fulfillment.</p>
+        <p className="text-white/70 mb-6">BuyWise provides AI-powered shopping price comparison tools. We do not sell products directly and are not responsible for third-party merchant fulfillment.</p>
       </>
     )
   },
@@ -142,10 +142,10 @@ const PAGES = {
         <p className="text-white/50 mb-8 font-mono text-xs">Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
         
         <h3 className="text-xl font-bold mb-4">Overview</h3>
-        <p className="text-white/70 mb-8">BuyWise provides digital Premium subscriptions and online shopping comparison services. We help users find the real lowest prices across shopping and travel, while offering premium features to enhance the shopping experience.</p>
+        <p className="text-white/70 mb-8">BuyWise provides digital Premium subscriptions and online shopping comparison services. We help users find the real lowest prices across shopping, while offering premium features to enhance the shopping experience.</p>
         
         <h3 className="text-xl font-bold mb-4">Premium Subscription Refund Policy</h3>
-        <p className="text-white/70 mb-8">Because BuyWise Premium is a digital product, payments are generally non-refundable once Premium has been activated. Upon upgrading, users receive immediate access to our advanced AI-driven comparison tools, flight trackers, and rewards hub.</p>
+        <p className="text-white/70 mb-8">Because BuyWise Premium is a digital product, payments are generally non-refundable once Premium has been activated. Upon upgrading, users receive immediate access to our advanced AI-driven comparison tools, product trackers, and rewards hub.</p>
         
         <h3 className="text-xl font-bold mb-4">Duplicate Payment</h3>
         <p className="text-white/70 mb-8">If a customer is charged twice for the same purchase due to a technical error or billing system glitch, BuyWise will thoroughly investigate the issue. Once the duplicate transaction is verified, a refund for the extra charge will be issued immediately.</p>

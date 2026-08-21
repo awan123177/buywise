@@ -1,18 +1,6 @@
-import {StrictMode} from 'react';
-import {createRoot} from 'react-dom/client';
-import { HelmetProvider } from 'react-helmet-async';
-import App from './App.tsx';
-import './index.css';
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <HelmetProvider>
-      <App />
-    </HelmetProvider>
-  </StrictMode>,
-);
-
-
+const fs = require('fs');
+let code = fs.readFileSync('src/main.tsx', 'utf8');
+const unregisterCode = `
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.ready.then(registration => {
     registration.unregister();
@@ -24,4 +12,9 @@ if ('serviceWorker' in navigator) {
       registration.unregister();
     }
   });
+}
+`;
+if (!code.includes('serviceWorker')) {
+  code = code + '\n' + unregisterCode;
+  fs.writeFileSync('src/main.tsx', code);
 }

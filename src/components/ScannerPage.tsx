@@ -718,7 +718,7 @@ export default function ScannerPage() {
                   <div className="flex justify-between items-center">
                     <span className="text-white/40 text-xs font-mono uppercase tracking-wider">LIVE MARKET SPREAD:</span>
                     <span className="text-white font-mono font-black text-sm">
-                      ₹{scanResult.lowestPrice.toLocaleString()} - ₹{scanResult.highestPrice.toLocaleString()}
+                      ₹{(scanResult.lowestPrice || 0).toLocaleString()} - ₹{(scanResult.highestPrice || 0).toLocaleString()}
                     </span>
                   </div>
                   {scanResult.discountPercent > 0 && (
@@ -819,11 +819,11 @@ export default function ScannerPage() {
                   <div className="flex gap-4 text-xs font-mono">
                     <div>
                       <span className="text-white/40 uppercase block text-[9px] tracking-wider">ALL-TIME LOW:</span>
-                      <span className="text-emerald-400 font-bold">₹{scanResult.lowestPriceEver.toLocaleString()}</span>
+                      <span className="text-emerald-400 font-bold">₹{(scanResult.lowestPriceEver || 0).toLocaleString()}</span>
                     </div>
                     <div className="border-l border-white/10 pl-4">
                       <span className="text-white/40 uppercase block text-[9px] tracking-wider">ALL-TIME HIGH:</span>
-                      <span className="text-white/80 font-bold">₹{scanResult.highestPriceEver.toLocaleString()}</span>
+                      <span className="text-white/80 font-bold">₹{(scanResult.highestPriceEver || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

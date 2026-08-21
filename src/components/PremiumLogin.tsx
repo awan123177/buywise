@@ -32,21 +32,38 @@ export default function PremiumLogin() {
     return () => clearInterval(timer);
   }, [step, countdown]);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const lastSendOtpTimeRef = useRef(0);
+
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !email.includes('@')) return toast.error("Please enter a valid email address.");
+
+    const now = Date.now();
+    if (isSubmitting || now - lastSendOtpTimeRef.current < 1200) {
+      return;
+    }
+
+    lastSendOtpTimeRef.current = now;
+    setIsSubmitting(true);
     setIsLoading(true);
+    setErrorMsg('');
     
     try {
       if (hasSupabase) {
-        const { error } = await supabase.auth.signInWithOtp({ email });
-        if (error) throw error;
+        const { error } = await supabase.auth.signInWithOtp({ email: email.trim().toLowerCase() });
+        if (error) {
+          if (error.status === 429 || error.message?.toLowerCase().includes('rate limit') || error.message?.toLowerCase().includes('over_email_send_rate_limit')) {
+            throw new Error("Too many email requests. Please wait a few minutes and try again.");
+          }
+          throw error;
+        }
       } else {
         // Mock sending OTP
         await new Promise(r => setTimeout(r, 1000));
       }
       setStep('otp');
-      setCountdown(30);
+      setCountdown(60);
       toast.success("Verification code sent!");
       
       // Auto focus first OTP input after transition
@@ -55,8 +72,13 @@ export default function PremiumLogin() {
       }, 500);
       
     } catch (err: any) {
-      toast.error(err.message || "Failed to send verification code.");
+      const msg = err.message?.toLowerCase().includes('rate limit')
+        ? "Too many email requests. Please wait a few minutes and try again."
+        : (err.message || "Failed to send verification code.");
+      setErrorMsg(msg);
+      toast.error(msg);
     } finally {
+      setIsSubmitting(false);
       setIsLoading(false);
     }
   };
@@ -86,7 +108,7 @@ export default function PremiumLogin() {
       // We have authenticated successfully.
       // Now check if profile exists
       if (hasSupabase) {
-        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', authUser.id).maybeSingle();
+        const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', authUser.id).single();
         if (!profile || !profile.full_name) {
           // Profile needs completion
           setStep('complete_profile');
@@ -162,7 +184,7 @@ export default function PremiumLogin() {
         email,
         displayName: authUser.user_metadata?.full_name || email.split('@')[0],
         user_metadata: authUser.user_metadata,
-        photoURL: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(email)}`,
+        photoURL: authUser.user_metadata?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
         isPremium: false
       };
       localStorage.setItem('mock_user_' + email, JSON.stringify(mockUser));
@@ -198,7 +220,7 @@ export default function PremiumLogin() {
       if (hasSupabase) {
         const { data: { user: authUser } } = await supabase.auth.getUser();
         if (authUser) {
-           const { error: upsertError } = await supabase.from('profiles').upsert({
+           await supabase.from('profiles').upsert({
              id: authUser.id,
              email,
              full_name: fullName,
@@ -206,7 +228,6 @@ export default function PremiumLogin() {
              country,
              referral_code: referral || null
            });
-           if (upsertError) throw upsertError;
            
            await supabase.auth.updateUser({ data: { full_name: fullName } });
            finishLogin(authUser, null);

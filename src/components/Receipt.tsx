@@ -17,9 +17,12 @@ interface ReceiptData {
   paymentMethod: string;
   paymentProvider: string;
   transactionId: string;
+  orderId?: string;
   paymentStatus: string;
   purchaseDate: string;
   purchaseTimestamp: string;
+  premiumExpiry?: string;
+  isTestMode?: boolean;
 }
 
 export function Receipt() {
@@ -131,14 +134,14 @@ export function Receipt() {
     doc.text("Amount Details", 20, 165);
     
     doc.text("Subtotal:", 20, 180);
-    doc.text(`${receipt.currency} ${receipt.amount.toLocaleString()}`, 150, 180, { align: "right" });
+    doc.text(`${receipt.currency} ${(receipt.amount || 0).toLocaleString()}`, 150, 180, { align: "right" });
     
     doc.text("Tax (18% GST):", 20, 190);
-    doc.text(`${receipt.currency} ${receipt.tax.toLocaleString()}`, 150, 190, { align: "right" });
+    doc.text(`${receipt.currency} ${(receipt.tax || 0).toLocaleString()}`, 150, 190, { align: "right" });
     
     doc.setFont("helvetica", "bold");
     doc.text("Total Paid:", 20, 205);
-    doc.text(`${receipt.currency} ${receipt.totalAmount.toLocaleString()}`, 150, 205, { align: "right" });
+    doc.text(`${receipt.currency} ${(receipt.totalAmount || 0).toLocaleString()}`, 150, 205, { align: "right" });
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
@@ -189,21 +192,38 @@ export function Receipt() {
         </button>
         
         {/* Actions */}
-        <div className="flex justify-end space-x-3 mb-4 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4 print:hidden">
           <button 
-            onClick={handlePrint}
-            className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={() => navigate('/my-receipts')}
+            className="flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors"
           >
-            <Printer className="w-4 h-4 mr-2" />
-            Print
+            ← View All Receipts
           </button>
-          <button 
-            onClick={handleDownload}
-            className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Download PDF
-          </button>
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={handlePrint}
+              className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+              title="Print this receipt"
+            >
+              <Printer className="w-4 h-4 mr-2 text-gray-500" />
+              Print Receipt
+            </button>
+            <button 
+              onClick={handlePrint}
+              className="flex items-center px-4 py-2 bg-white border border-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+              title="Re-print a duplicate copy of this receipt"
+            >
+              <Printer className="w-4 h-4 mr-2 text-blue-600" />
+              Re-print
+            </button>
+            <button 
+              onClick={handleDownload}
+              className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download PDF
+            </button>
+          </div>
         </div>
         
         {/* Receipt Card */}
@@ -266,18 +286,28 @@ export function Receipt() {
             <div className="bg-gray-50 rounded-xl p-5 mb-8">
               <div className="flex justify-between items-center mb-3">
                 <span className="font-medium text-gray-900">{receipt.planName} Plan</span>
-                <span className="font-medium text-gray-900">{receipt.currency} {receipt.amount.toLocaleString()}</span>
+                <span className="font-medium text-gray-900">{receipt.currency} {(receipt.amount || 0).toLocaleString()}</span>
               </div>
               <p className="text-sm text-gray-500 mb-4">Duration: {receipt.planDuration}</p>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-gray-200">
                 <div>
-                  <span className="block text-gray-500 mb-1">Transaction ID</span>
+                  <span className="block text-gray-500 mb-1">Payment Reference ID</span>
                   <span className="font-medium font-mono text-gray-900 break-all">{receipt.transactionId || 'Pending'}</span>
+                </div>
+                <div>
+                  <span className="block text-gray-500 mb-1">Gateway Order ID</span>
+                  <span className="font-medium font-mono text-gray-900 break-all">{receipt.orderId || 'N/A'}</span>
                 </div>
                 <div>
                   <span className="block text-gray-500 mb-1">Payment Method</span>
                   <span className="font-medium text-gray-900">{receipt.paymentMethod}</span>
+                </div>
+                <div>
+                  <span className="block text-gray-500 mb-1">Premium Validity</span>
+                  <span className="font-medium text-green-700">
+                    {receipt.premiumExpiry ? new Date(receipt.premiumExpiry).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' }) : receipt.planDuration} (ACTIVE)
+                  </span>
                 </div>
               </div>
             </div>
@@ -287,15 +317,15 @@ export function Receipt() {
               <div className="w-full md:w-1/2 space-y-3">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
-                  <span>{receipt.currency} {receipt.amount.toLocaleString()}</span>
+                  <span>{receipt.currency} {(receipt.amount || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-gray-600">
                   <span>Tax (18% GST)</span>
-                  <span>{receipt.currency} {receipt.tax.toLocaleString()}</span>
+                  <span>{receipt.currency} {(receipt.tax || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-gray-200">
                   <span className="font-semibold text-gray-900">Total Paid</span>
-                  <span className="text-2xl font-bold text-gray-900">{receipt.currency} {receipt.totalAmount.toLocaleString()}</span>
+                  <span className="text-2xl font-bold text-gray-900">{receipt.currency} {(receipt.totalAmount || 0).toLocaleString()}</span>
                 </div>
               </div>
             </div>

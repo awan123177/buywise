@@ -10,8 +10,8 @@ interface SEOProps {
 }
 
 const SEO: React.FC<SEOProps> = ({ 
-  title = "BuyWise - AI-Powered Shopping & Travel Comparison", 
-  description = "BuyWise uses AI to find you the real lowest prices across shopping and travel. Smart comparisons, affiliate deals, and intelligent recommendations.", 
+  title = "BuyWise - AI-Powered Shopping Price Comparison", 
+  description = "BuyWise uses AI to find you the real lowest prices across shopping. Smart comparisons, affiliate deals, and intelligent recommendations.", 
   canonicalUrl = "https://buywiser.store",
   type = "website",
   image = "https://buywiser.store/icon.png"
@@ -24,7 +24,7 @@ const SEO: React.FC<SEOProps> = ({
         "@id": "https://buywiser.store/#website",
         "url": "https://buywiser.store/",
         "name": "BuyWise",
-        "description": "AI-powered shopping and travel comparison platform.",
+        "description": "AI-powered shopping price comparison platform.",
         "potentialAction": [{
           "@type": "SearchAction",
           "target": {
@@ -60,7 +60,7 @@ const SEO: React.FC<SEOProps> = ({
     <Helmet>
       <title>{title}</title>
       <meta name="description" content={description} />
-      <meta name="keywords" content="BuyWise, AI shopping, travel comparison, best deals, price tracker, discount finder, Awan Warsi" />
+      <meta name="keywords" content="BuyWise, AI shopping, best deals, price tracker, discount finder, Awan Warsi" />
       <link rel="canonical" href={canonicalUrl} />
 
       {/* Open Graph / Facebook */}
