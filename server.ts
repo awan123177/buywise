@@ -7,7 +7,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 
 // Load environment variables immediately on module evaluation
-dotenv.config({ override: true });
+dotenv.config();
 
 import crypto from "crypto";
 import { GoogleGenAI } from "@google/genai";
@@ -108,7 +108,7 @@ import {
   getEmailRateLimitStatus
 } from "./src/server/authRateLimiter.ts";
 
-dotenv.config({ override: true });
+dotenv.config();
 
 // Force sync environment from .env file to override stale container process variables
 if (fs.existsSync(".env")) {
@@ -391,13 +391,32 @@ async function startServer() {
 
   const dodoApiKey = process.env.DODO_PAYMENTS_API_KEY;
   const dodoEnv = process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode';
-  console.log("Dodo Initialization Debug:", {
-    env: dodoEnv,
-    hasApiKey: !!dodoApiKey,
-    keyLength: dodoApiKey ? dodoApiKey.length : 0,
-    firstFourChars: dodoApiKey ? dodoApiKey.substring(0, 4) : "none"
+  
+  console.log("--- START DIAGNOSTICS ---");
+  console.log("DODO_PAYMENTS_API_KEY:", process.env.DODO_PAYMENTS_API_KEY ? "PRESENT" : (process.env.DODO_PAYMENTS_API_KEY === "" ? "EMPTY" : "MISSING"));
+  console.log("DODO_PAYMENTS_WEBHOOK_KEY:", process.env.DODO_PAYMENTS_WEBHOOK_KEY ? "PRESENT" : (process.env.DODO_PAYMENTS_WEBHOOK_KEY === "" ? "EMPTY" : "MISSING"));
+  console.log("DODO_PAYMENTS_ENVIRONMENT:", dodoEnv);
+  console.log("DODO_PAYMENTS_RETURN_URL:", process.env.DODO_PAYMENTS_RETURN_URL ? "PRESENT" : (process.env.DODO_PAYMENTS_RETURN_URL === "" ? "EMPTY" : "MISSING"));
+  console.log("PORT:", process.env.PORT ? process.env.PORT : 3000);
+  console.log("HOST: 0.0.0.0");
+  console.log("--- END DIAGNOSTICS ---");
+
+  let _dodoClientInstance = null;
+  const dodoClient = new Proxy({}, {
+    get(target, prop) {
+      if (!_dodoClientInstance) {
+        const apiKey = process.env.DODO_PAYMENTS_API_KEY;
+        if (!apiKey) {
+          throw new Error("DODO_PAYMENTS_API_KEY environment variable is missing or empty");
+        }
+        _dodoClientInstance = new DodoPayments({
+          bearerToken: apiKey,
+          environment: process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode'
+        });
+      }
+      return _dodoClientInstance[prop];
+    }
   });
-  const dodoClient = new DodoPayments(dodoApiKey, dodoEnv);
 
 
 
@@ -406,7 +425,7 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  const PORT = 3000;
+  const PORT = process.env.PORT || 10000;
 
   // 2. SECURITY HEADERS (HELMET) WITH IFRAME COMPATIBILITY FOR GOOGLE AI STUDIO
   app.use(
