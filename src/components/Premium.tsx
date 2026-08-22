@@ -14,7 +14,7 @@ export default function Premium() {
   const { user, refreshPremium } = useAuth();
   const navigate = useNavigate();
   const { formatPrice } = useCurrency();
-  const [selectedPlan, setSelectedPlan] = useState<'daily' | 'weekly' | 'monthly' | 'yearly' | 'lifetime'>('lifetime');
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | 'lifetime'>('lifetime');
   const [isFounder, setIsFounder] = useState(false);
 
   React.useEffect(() => {
@@ -120,28 +120,12 @@ export default function Premium() {
   
   
   const planPrices = {
-    daily: 10,
-    weekly: 30,
     monthly: 100,
     yearly: 500,
     lifetime: 700
   };
 
   const plans = [
-    {
-      id: 'daily',
-      name: 'Daily Pass',
-      price: formatPrice(planPrices.daily),
-      period: '/day',
-      features: ['Unlimited basic comparisons', 'Limited barcode scans', 'Premium badge', 'Ad-free experience']
-    },
-    {
-      id: 'weekly',
-      name: 'Weekly Pass',
-      price: formatPrice(planPrices.weekly),
-      period: '/week',
-      features: ['Unlimited comparisons', 'Unlimited barcode scans', 'Premium Support']
-    },
     {
       id: 'monthly',
       name: 'Monthly Elite',
@@ -183,7 +167,7 @@ export default function Premium() {
   // Removed PayU redirect status effect and submitPayuForm function
 
   const [isProcessing, setIsProcessing] = useState(false);
-  const handlePurchase = async (planToPurchase: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'lifetime' = selectedPlan) => {
+  const handlePurchase = async (planToPurchase: 'monthly' | 'yearly' | 'lifetime' = selectedPlan) => {
     if (isProcessing) return;
     if (!user) {
       toast.error("Please login to view premium options.");
@@ -195,8 +179,6 @@ export default function Premium() {
     // Call Android Billing Bridge if it exists in WebView
     if (typeof window !== 'undefined' && (window as any).AndroidBillingBridge) {
       const planToProductId: Record<string, string> = {
-        daily: 'buywise_premium_daily',
-        weekly: 'buywise_premium_weekly',
         monthly: 'buywise_premium_monthly',
         yearly: 'buywise_premium_yearly',
         lifetime: 'buywise_founder_forever'
@@ -206,8 +188,34 @@ export default function Premium() {
       (window as any).AndroidBillingBridge.startPurchase(productId);
       setIsProcessing(false);
     } else {
-      toast.info("Payment gateway integration is coming soon! Online purchases will be enabled shortly.");
-      setIsProcessing(false);
+      // Dodo Payments Web Flow
+      try {
+        const response = await fetch('/api/payments/dodo/checkout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': user?.uid || (user as any)?.id || '',
+            'x-user-email': user?.email || '',
+            'x-user-name': user?.displayName || ''
+          },
+          body: JSON.stringify({ planId: planToPurchase })
+        });
+        
+        const data = await response.json();
+        
+        if (data.checkout_url) {
+          // Open in a new tab to bypass Cashfree iframe clickjacking protections
+          window.open(data.checkout_url, '_blank');
+          setIsProcessing(false);
+        } else {
+          toast.error(data.error || "Failed to initialize checkout");
+          setIsProcessing(false);
+        }
+      } catch (err) {
+        console.error("Checkout error:", err);
+        toast.error("Network error during checkout initialization");
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -292,11 +300,7 @@ export default function Premium() {
                     ⭐ POPULAR
                   </div>
                 )}
-                {plan.id === 'daily' && (
-                  <div className="absolute top-0 right-0 bg-white/20 text-white text-[8px] font-black tracking-widest px-3 py-1 rounded-bl-xl uppercase shadow-lg">
-                    QUICK ACCESS
-                  </div>
-                )}
+
                 <div className="flex justify-between items-start mb-6 md:mb-8">
                   <div>
                     <h3 className={`text-lg md:text-xl font-black uppercase tracking-tight ${plan.id === 'lifetime' ? 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-200 via-yellow-400 to-amber-500' : 'text-white'}`}>{plan.name}</h3>
@@ -355,7 +359,7 @@ export default function Premium() {
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
                   <Clock size={13} className="shrink-0" />
-                  <span>BUY NOW — COMING SOON</span>
+                  <span>BUY NOW</span>
                 </button>
               </div>
             </motion.div>

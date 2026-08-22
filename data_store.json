@@ -271,15 +271,15 @@
       "userId": "TmTyOTz6lzQS8Q9XgY6qtldLhPV2",
       "email": "m84390677@gmail.com",
       "name": "Mahira",
-      "coins": 5,
+      "coins": 15,
       "referralCode": "MAHIRA736",
       "referredBy": null,
       "searchesCount": 0,
       "totalSaved": 0,
       "lastSearchDate": null,
-      "lastLoginDate": "2026-08-16",
+      "lastLoginDate": "2026-08-21",
       "streakCount": 1,
-      "lastStreakCheckDate": "2026-08-16",
+      "lastStreakCheckDate": "2026-08-21",
       "achievements": [
         "premium_member"
       ],
@@ -337,15 +337,15 @@
       "userId": "ZsYlT8neuYd1UMt43X09s8Fcqfk2",
       "email": "mohammdsaeed24@gmail.com",
       "name": "Warsi trading Company",
-      "coins": 10000,
+      "coins": 10015,
       "referralCode": "WARSI184",
       "referredBy": null,
       "searchesCount": 0,
       "totalSaved": 0,
       "lastSearchDate": null,
-      "lastLoginDate": null,
-      "streakCount": 0,
-      "lastStreakCheckDate": null,
+      "lastLoginDate": "2026-08-22",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-08-22",
       "achievements": [],
       "notificationsEnabled": true,
       "notificationPreferences": {
@@ -361,21 +361,22 @@
       "isPremium": true,
       "premiumExpiry": "2126-07-23T15:40:54.940Z",
       "activePlanName": "Forever Founder",
-      "activePlanId": "lifetime"
+      "activePlanId": "lifetime",
+      "hasReceived1000PointCoupon": true
     },
     "lNO3GmAVCPMbo1jM8X2t3xo4FlZ2": {
       "userId": "lNO3GmAVCPMbo1jM8X2t3xo4FlZ2",
       "email": "awanwarsi94@gmail.com",
       "name": "Awan Warsi",
-      "coins": 5,
+      "coins": 10,
       "referralCode": "AWAN774",
       "referredBy": null,
       "searchesCount": 0,
       "totalSaved": 0,
       "lastSearchDate": null,
-      "lastLoginDate": "2026-08-16",
+      "lastLoginDate": "2026-08-21",
       "streakCount": 1,
-      "lastStreakCheckDate": "2026-08-16",
+      "lastStreakCheckDate": "2026-08-21",
       "achievements": [],
       "notificationsEnabled": true,
       "notificationPreferences": {
@@ -389,9 +390,220 @@
       "lastSpinDate": null,
       "completedMissions": [],
       "isPremium": false
+    },
+    "mock-uuid-1787328255187": {
+      "userId": "mock-uuid-1787328255187",
+      "email": "mohammdsaeed24@gmail.com",
+      "name": "mohammdsaeed24",
+      "coins": 5,
+      "referralCode": "MOHAMMDSAEED24667",
+      "referredBy": null,
+      "searchesCount": 0,
+      "totalSaved": 0,
+      "lastSearchDate": null,
+      "lastLoginDate": "2026-08-21",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-08-21",
+      "achievements": [],
+      "notificationsEnabled": true,
+      "notificationPreferences": {
+        "morning": true,
+        "afternoon": true,
+        "evening": true
+      },
+      "bannedReferrals": false,
+      "createdAt": "2026-08-21T16:04:15.196Z",
+      "activeBadge": null,
+      "lastSpinDate": null,
+      "completedMissions": [],
+      "isPremium": false
+    },
+    "CgKdr7mOuKPIZrA8pkon58w03jI2": {
+      "userId": "CgKdr7mOuKPIZrA8pkon58w03jI2",
+      "email": "awanwarsi790@gmail.com",
+      "name": "Awan Warsi",
+      "coins": 0,
+      "referralCode": "AWAN792",
+      "referredBy": null,
+      "searchesCount": 0,
+      "totalSaved": 0,
+      "lastSearchDate": null,
+      "lastLoginDate": null,
+      "streakCount": 0,
+      "lastStreakCheckDate": null,
+      "achievements": [],
+      "notificationsEnabled": true,
+      "notificationPreferences": {
+        "morning": true,
+        "afternoon": true,
+        "evening": true
+      },
+      "bannedReferrals": false,
+      "createdAt": "2026-08-22T03:53:15.130Z",
+      "activeBadge": null,
+      "lastSpinDate": null,
+      "completedMissions": [],
+      "isPremium": false
+    },
+    "mock-uuid-1787371048370": {
+      "userId": "mock-uuid-1787371048370",
+      "email": "mohammdsaeed24@gmail.com",
+      "name": "mohammdsaeed24",
+      "coins": 5,
+      "referralCode": "MOHAMMDSAEED24918",
+      "referredBy": null,
+      "searchesCount": 0,
+      "totalSaved": 0,
+      "lastSearchDate": null,
+      "lastLoginDate": "2026-08-22",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-08-22",
+      "achievements": [],
+      "notificationsEnabled": true,
+      "notificationPreferences": {
+        "morning": true,
+        "afternoon": true,
+        "evening": true
+      },
+      "bannedReferrals": false,
+      "createdAt": "2026-08-22T03:57:23.630Z",
+      "activeBadge": null,
+      "lastSpinDate": null,
+      "completedMissions": [],
+      "isPremium": false
+    },
+    "mohammdsaeed24": {
+      "userId": "mohammdsaeed24",
+      "email": "unknown@buywise.in",
+      "name": "User",
+      "coins": 0,
+      "referralCode": "ANONYMOUS754",
+      "referredBy": null,
+      "searchesCount": 0,
+      "totalSaved": 0,
+      "lastSearchDate": null,
+      "lastLoginDate": null,
+      "streakCount": 0,
+      "lastStreakCheckDate": null,
+      "achievements": [
+        "premium_member"
+      ],
+      "notificationsEnabled": true,
+      "notificationPreferences": {
+        "morning": true,
+        "afternoon": true,
+        "evening": true
+      },
+      "bannedReferrals": false,
+      "createdAt": "2026-08-22T04:12:55.066Z",
+      "activeBadge": null,
+      "lastSpinDate": null,
+      "completedMissions": [],
+      "isPremium": true,
+      "premiumExpiry": "2626-03-30T04:12:55.067Z",
+      "activePlanName": "lifetime",
+      "lastPaymentDate": "2026-08-22T04:34:47.514Z"
+    },
+    "mock-uuid-1787373790895": {
+      "userId": "mock-uuid-1787373790895",
+      "email": "mohammdsaeed24@gmail.com",
+      "name": "mohammdsaeed24",
+      "coins": 5,
+      "referralCode": "MOHAMMDSAEED24135",
+      "referredBy": null,
+      "searchesCount": 0,
+      "totalSaved": 0,
+      "lastSearchDate": null,
+      "lastLoginDate": "2026-08-22",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-08-22",
+      "achievements": [
+        "premium_member"
+      ],
+      "notificationsEnabled": true,
+      "notificationPreferences": {
+        "morning": true,
+        "afternoon": true,
+        "evening": true
+      },
+      "bannedReferrals": false,
+      "createdAt": "2026-08-22T04:43:05.927Z",
+      "activeBadge": null,
+      "lastSpinDate": null,
+      "completedMissions": [],
+      "isPremium": true,
+      "premiumExpiry": "2028-01-14T04:43:39.364Z",
+      "activePlanName": "monthly",
+      "lastPaymentDate": "2026-08-22T04:44:38.731Z"
     }
   },
   "transactions": [
+    {
+      "id": "txn_1787373819001_590",
+      "userId": "mock-uuid-1787373790895",
+      "amount": 5,
+      "reason": "Daily login reward",
+      "timestamp": "2026-08-22T04:43:39.001Z",
+      "type": "EARNED",
+      "source": "SEARCH_REWARD",
+      "description": "Daily login reward",
+      "multiplierApplied": 1
+    },
+    {
+      "id": "txn_1787371191526_645",
+      "userId": "mock-uuid-1787371048370",
+      "amount": 5,
+      "reason": "Daily login reward",
+      "timestamp": "2026-08-22T03:59:51.526Z",
+      "type": "EARNED",
+      "source": "SEARCH_REWARD",
+      "description": "Daily login reward",
+      "multiplierApplied": 1
+    },
+    {
+      "id": "txn_1787370997324_478",
+      "userId": "ZsYlT8neuYd1UMt43X09s8Fcqfk2",
+      "amount": 15,
+      "reason": "Daily login reward (3× Multiplier)",
+      "timestamp": "2026-08-22T03:56:37.324Z",
+      "type": "EARNED",
+      "source": "SEARCH_REWARD",
+      "description": "Daily login reward",
+      "multiplierApplied": 3
+    },
+    {
+      "id": "txn_1787332597879_731",
+      "userId": "lNO3GmAVCPMbo1jM8X2t3xo4FlZ2",
+      "amount": 5,
+      "reason": "Daily login reward (Streak reset)",
+      "timestamp": "2026-08-21T17:16:37.879Z",
+      "type": "EARNED",
+      "source": "SEARCH_REWARD",
+      "description": "Daily login reward (Streak reset)",
+      "multiplierApplied": 1
+    },
+    {
+      "id": "txn_1787332561018_110",
+      "userId": "TmTyOTz6lzQS8Q9XgY6qtldLhPV2",
+      "amount": 10,
+      "reason": "Daily login reward (Streak reset) (2× Multiplier)",
+      "timestamp": "2026-08-21T17:16:01.018Z",
+      "type": "EARNED",
+      "source": "SEARCH_REWARD",
+      "description": "Daily login reward (Streak reset)",
+      "multiplierApplied": 2
+    },
+    {
+      "id": "txn_1787328417401_549",
+      "userId": "mock-uuid-1787328255187",
+      "amount": 5,
+      "reason": "Daily login reward",
+      "timestamp": "2026-08-21T16:06:57.401Z",
+      "type": "EARNED",
+      "source": "SEARCH_REWARD",
+      "description": "Daily login reward",
+      "multiplierApplied": 1
+    },
     {
       "id": "txn_1787143007774_503",
       "userId": "18a7916e-380e-405e-82f9-1388d0a28699",
@@ -476,13 +688,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 154,
-    "totalUsers": 16,
-    "productsCompared": 464,
-    "priceAlertsTriggered": 25,
+    "totalSearches": 253,
+    "totalUsers": 22,
+    "productsCompared": 769,
+    "priceAlertsTriggered": 38,
     "dealsFoundToday": 0,
     "activePremiumUsers": 0,
-    "totalSavedAmount": 2935
+    "totalSavedAmount": 4944
   },
   "bannedUsers": [],
   "reviews": [
@@ -3147,7 +3359,22 @@
       "paymentStatus": "created"
     }
   },
-  "coupons": [],
+  "coupons": [
+    {
+      "id": "coup_1787370997324_779",
+      "code": "BUYWISE-64BOKL",
+      "userId": "ZsYlT8neuYd1UMt43X09s8Fcqfk2",
+      "discountPercent": 10,
+      "status": "active",
+      "createdAt": "2026-08-22T03:56:37.324Z",
+      "expiresAt": "2026-09-21T03:56:37.324Z",
+      "eligiblePlans": [
+        "monthly",
+        "yearly",
+        "lifetime"
+      ]
+    }
+  ],
   "gamificationSettings": {
     "premiumMultiplier": 2,
     "founderMultiplier": 3,

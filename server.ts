@@ -1,3 +1,4 @@
+import DodoPayments from 'dodopayments';
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -131,7 +132,7 @@ if (fs.existsSync(".env")) {
 function getSupabaseClient() {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const key = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key || url.includes("placeholder") || key.includes("placeholder")) {
+  if (!url || !key || url.includes("placeholder") || key.includes("placeholder") || !url.startsWith("http")) {
     return null;
   }
   try {
@@ -345,7 +346,8 @@ async function resolveRedirect(urlStr: string): Promise<string> {
       timeout: 5000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
+    },
+
     });
     return response.request?.res?.responseUrl || response.config?.url || urlStr;
   } catch (err: any) {
@@ -355,7 +357,8 @@ async function resolveRedirect(urlStr: string): Promise<string> {
         timeout: 5000,
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
+      },
+
       });
       return response.request?.res?.responseUrl || response.config?.url || urlStr;
     } catch (innerErr: any) {
@@ -385,6 +388,18 @@ async function startServer() {
   }
 
   const app = express();
+
+  const dodoApiKey = process.env.DODO_PAYMENTS_API_KEY;
+  const dodoEnv = process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode';
+  console.log("Dodo Initialization Debug:", {
+    env: dodoEnv,
+    hasApiKey: !!dodoApiKey,
+    keyLength: dodoApiKey ? dodoApiKey.length : 0,
+    firstFourChars: dodoApiKey ? dodoApiKey.substring(0, 4) : "none"
+  });
+  const dodoClient = new DodoPayments(dodoApiKey, dodoEnv);
+
+
 
   // Health check route
   app.get("/api/health", (req, res) => {
@@ -443,12 +458,291 @@ async function startServer() {
             "https://ais-dev-*.run.app",
             "https://ais-pre-*.run.app",
           ],
-        },
       },
+
+    },
+
       crossOriginEmbedderPolicy: false,
       frameguard: false, // We use CSP frameAncestors to allow rendering in the AI Studio preview window
     })
   );
+
+  
+app.post('/api/auth/google', async (req: any, res: any) => {
+  try {
+    const { token, email: clientEmail, name: clientName, uid: clientUid, photo: clientPhoto } = req.body;
+    let email = clientEmail;
+    let name = clientName;
+    let picture = clientPhoto;
+    let uid = clientUid;
+
+    let adminApp;
+    try {
+      const admin = await import('firebase-admin');
+      if (process.env.FIREBASE_PRIVATE_KEY) {
+        if (!(((admin as any).apps?.length) || ((admin.default as any)?.apps?.length))) {
+          ((admin as any).initializeApp || (admin.default as any).initializeApp)({
+            credential: ((admin as any).credential || (admin.default as any).credential).cert({
+              projectId: process.env.FIREBASE_PROJECT_ID,
+              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            })
+          });
+        }
+        const decodedToken = await ((admin as any).auth || (admin.default as any).auth)().verifyIdToken(token);
+        email = decodedToken.email || email;
+        name = decodedToken.name || name;
+        picture = decodedToken.picture || picture;
+        uid = decodedToken.uid || uid;
+      }
+    } catch(e) {
+      console.warn("Firebase admin verification skipped or failed", e.message);
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // 1. Stable internal ID by email
+    const { getOrCreateProfile } = await import('./src/server/gamificationDb.ts');
+    
+    // Check Supabase
+    let buywiseUserId = uid; // default to firebase uid if no supabase
+    const supabaseClient = getSupabaseClient();
+    if (supabaseClient) {
+      const { data: existingProfiles } = await supabaseClient.from('profiles').select('*').eq('email', email);
+      if (existingProfiles && existingProfiles.length > 0) {
+         buywiseUserId = existingProfiles[0].id;
+      } else {
+         // Create stable ID if new
+         buywiseUserId = 'bw_' + crypto.randomUUID().replace(/-/g, '');
+      }
+    }
+
+    // 2. Memory Check (Prevent duplicates by email)
+    const profile = getOrCreateProfile(buywiseUserId, email, name);
+    buywiseUserId = profile.userId; // Lock to existing in-memory ID if it existed
+
+    // 3. Supabase Authoritative
+    if (supabaseClient) {
+      const profileData = {
+        id: buywiseUserId,
+        email: email,
+        full_name: name,
+        avatar_url: picture,
+        google_provider_id: uid,
+        last_login: new Date().toISOString()
+      };
+      await supabaseClient.from('profiles').upsert(profileData);
+    }
+
+    // 4. Firebase Secondary
+    try {
+      const admin = await import('firebase-admin');
+      if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
+         await ((admin as any).firestore || (admin.default as any).firestore)().collection('users').doc(buywiseUserId).set({
+           email,
+           full_name: name,
+           avatar_url: picture,
+           google_provider_id: uid,
+           last_login: new Date().toISOString()
+       },
+ { merge: true });
+      }
+    } catch(e) {
+      console.error("Firebase secondary sync failed:", e.message);
+    }
+
+    res.json({
+      success: true,
+      sessionUser: {
+        id: buywiseUserId,
+        email,
+        displayName: name,
+        user_metadata: { full_name: name, avatar_url: picture }
+    },
+
+      token: "session_token_" + buywiseUserId
+    });
+  } catch (error: any) {
+    console.error("Auth google error", error);
+    res.status(401).json({ error: "Unauthorized" });
+  }
+});
+
+
+  app.post('/api/webhooks/dodo', express.text({ type: '*/*' }), async (req: any, res: any) => {
+  try {
+    const webhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
+    if (!webhookKey) {
+      console.error("Missing DODO_PAYMENTS_WEBHOOK_KEY");
+      return res.status(500).send("Server config error");
+    }
+
+    const payload = req.body;
+    
+    // Convert headers to a standard object with string values
+    const headers: Record<string, string> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (Array.isArray(value)) {
+        headers[key.toLowerCase()] = value[0];
+      } else if (typeof value === 'string') {
+        headers[key.toLowerCase()] = value;
+      }
+    }
+
+    let event;
+    try {
+      event = dodoClient.webhooks.unwrap(payload, { headers, key: webhookKey });
+
+  
+    } catch (err: any) {
+      console.error("Webhook verification failed:", err);
+      return res.status(400).send("Webhook verification failed");
+    }
+
+    console.log("Dodo webhook event received:", event.type);
+    
+    const { db } = await import('./src/lib/firebase.js');
+    const { doc, updateDoc, setDoc, getDoc } = await import('firebase/firestore');
+
+    // Idempotency check
+    const eventId = event.webhook_event_id || event.event_id || `dodo_${Date.now()}`;
+    const eventRef = doc(db, 'webhook_events', eventId);
+    const eventSnap = await getDoc(eventRef);
+    if (eventSnap.exists()) {
+       console.log("Event already processed:", eventId);
+       return res.json({ received: true, cached: true });
+    }
+    await setDoc(eventRef, {
+       type: event.type,
+       processedAt: new Date().toISOString()
+    });
+
+    const handlePremiumActivation = async (metadata: any, subscriptionId: string, paymentId: string) => {
+      const { userId, planId } = metadata || {};
+      if (!userId || !planId) {
+        console.warn("No userId or planId in metadata", metadata);
+        return;
+      }
+
+      const planDurationMap: Record<string, number> = {
+        monthly: 30,
+        yearly: 365,
+        lifetime: 36500
+      };
+
+      const subDays = planDurationMap[planId] || 0;
+      const expirationDate = new Date(Date.now() + subDays * 24 * 60 * 60 * 1000);
+
+      // 1. Supabase Authoritative Update
+      const supabaseClient = getSupabaseClient();
+      if (supabaseClient) {
+         try {
+            await supabaseClient.from('profiles').update({
+              premium: true,
+              premium_expiry: expirationDate.toISOString(),
+              active_plan_id: planId,
+              active_plan_name: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId
+            }).eq('id', userId);
+            
+            await supabaseClient.from('subscriptions').upsert({
+              id: subscriptionId || paymentId || `dodo_${Date.now()}`,
+              user_id: userId,
+              plan_id: planId,
+              payment_id: paymentId,
+              subscription_id: subscriptionId,
+              status: 'active',
+              provider: 'dodo'
+            });
+         } catch(e) {
+            console.error("Supabase webhook update failed", e);
+         }
+      }
+
+      // 2. Firebase Secondary (No rollback if this fails)
+      try {
+        const admin = await import('firebase-admin');
+        if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
+          const dbRef = ((admin as any).firestore || (admin.default as any).firestore)();
+          const orderId = subscriptionId || paymentId || `dodo_${Date.now()}`;
+          await dbRef.collection('orders').doc(orderId).set({
+            userId, planId, paymentId, subscriptionId,
+            status: 'completed', provider: 'dodo', createdAt: new Date().toISOString()
+        },
+ { merge: true });
+
+          await dbRef.collection('users').doc(userId).set({
+            premiumStatus: 'active',
+            premiumPlan: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId,
+            premiumSince: new Date().toISOString(),
+            premiumExpiration: expirationDate.toISOString(),
+        },
+ { merge: true });
+        }
+      } catch(e) {
+        console.error("Firebase secondary webhook update failed", e.message);
+      }
+
+      // 3. Update memory state so the app works synchronously
+      try {
+         const { activateUserPremium, claimFounderMysteryBox } = await import('./src/server/gamificationDb.ts');
+         activateUserPremium(userId, "unknown@buywise.in", "User", subDays, planId);
+         if (planId === 'lifetime' || planId === 'buywise_founder_forever') {
+            try {
+               claimFounderMysteryBox(userId);
+               console.log(`Successfully triggered Forever Founder Mystery Box for ${userId}`);
+            } catch (err: any) {
+               console.log(`Mystery Box already claimed or error for ${userId}:`, err.message);
+            }
+         }
+      } catch(e: any) {
+         console.error("Memory update failed", e.message);
+      }
+
+      console.log(`Activated premium ${planId} for user ${userId}`);
+    };
+
+    switch (event.type) {
+      case 'payment.succeeded': {
+        const payment = event.data;
+        // For one-time payments (lifetime)
+        if (payment.metadata && payment.metadata.userId) {
+          await handlePremiumActivation(payment.metadata, '', payment.payment_id);
+        }
+        break;
+      }
+      case 'subscription.active':
+      case 'subscription.renewed': {
+        const subscription = event.data;
+        if (subscription.metadata && subscription.metadata.userId) {
+          await handlePremiumActivation(subscription.metadata, subscription.subscription_id, '');
+        }
+        break;
+      }
+      case 'subscription.failed':
+      case 'subscription.expired':
+      case 'subscription.cancelled': {
+        const subscription = event.data;
+        if (subscription.metadata && subscription.metadata.userId) {
+           await updateDoc(doc(db, 'users', subscription.metadata.userId), {
+              premiumStatus: 'inactive'
+           });
+           console.log(`Deactivated premium for user ${subscription.metadata.userId} due to ${event.type}`);
+        }
+        break;
+      }
+      default:
+        console.log(`Unhandled webhook event type: ${event.type}`);
+    }
+
+    res.json({ received: true });
+  } catch (error) {
+    console.error("Webhook processing error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
   app.use(express.json({ limit: "15mb" }));
   app.use(express.urlencoded({ limit: "15mb", extended: true }));
@@ -824,45 +1118,316 @@ async function startServer() {
     priceInr: number;
     amountPaise: number;
   }> = {
-    daily: {
-      name: "Daily Pass",
-      duration: "1 Day",
-      days: 1,
-      priceInr: 10,
-      amountPaise: 1000,
-    },
-    weekly: {
-      name: "Weekly Pass",
-      duration: "7 Days",
-      days: 7,
-      priceInr: 30,
-      amountPaise: 3000,
-    },
+    
     monthly: {
       name: "Monthly Elite",
       duration: "30 Days",
       days: 30,
       priceInr: 100,
       amountPaise: 10000,
-    },
+  },
+
     yearly: {
       name: "Yearly Pro",
       duration: "1 Year",
       days: 365,
       priceInr: 500,
       amountPaise: 50000,
-    },
+  },
+
     lifetime: {
       name: "Forever Founder",
       duration: "Lifetime",
       days: 36500,
       priceInr: 700,
       amountPaise: 70000,
-    },
+},
+};
+const getDodoPlanMap = () => {
+  const isLive = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode';
+  if (isLive) {
+    return {
+      monthly: 'pdt_0NlsfvmdNk8MOUZDAPwFC',
+      yearly: 'pdt_0NlsgR5lg7OyWQ7hPFPO9',
+      lifetime: 'pdt_0NlsgAgxtmImcGR7BFMmx'
+    };
+  }
+  return {
+    monthly: 'pdt_0Nlt1WQA2BzUbLbetJ4pm',
+    yearly: 'pdt_0Nlt1WS3rbm20BWDim4ZQ',
+    lifetime: 'pdt_0Nlt1WTtCUeiKeKnQRwsP'
   };
+};
 
-  // Receipts API Endpoints
-  app.get("/api/receipts/:receiptId", getUserContext, (req: any, res: any) => {
+
+app.post("/api/gamification/premium/verify-test", getUserContext, async (req: any, res: any) => {
+    const { userId } = req.userContext;
+    try {
+      const storePath = path.join(process.cwd(), "data_store.json");
+      if (!fs.existsSync(storePath)) return res.json({ success: false, reason: "No data store" });
+      const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+      const pending = raw.pendingCheckouts?.[userId];
+      
+      if (!pending) {
+         return res.json({ success: false, reason: "No pending checkout found." });
+      }
+
+      const sessionStatus = await dodoClient.checkoutSessions.retrieve(pending.sessionId);
+      
+      if (sessionStatus.payment_status === "succeeded" || sessionStatus.payment_status === "complete") {
+         const planId = pending.planId;
+         const planDurationMap: Record<string, number> = {
+           monthly: 30,
+           yearly: 365,
+           lifetime: 36500
+         };
+         const subDays = planDurationMap[planId] || 0;
+         const expirationDate = new Date(Date.now() + subDays * 24 * 60 * 60 * 1000);
+
+         const supabaseClient = getSupabaseClient();
+         if (supabaseClient) {
+            await supabaseClient.from('profiles').update({
+              premium: true,
+              premium_expiry: expirationDate.toISOString(),
+              active_plan_id: planId,
+              active_plan_name: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId
+            }).eq('id', userId);
+         }
+         
+         const profile = getOrCreateProfile(userId, "", "");
+         profile.isPremium = true;
+         profile.premiumExpiry = expirationDate.toISOString();
+         profile.activePlanId = planId;
+         
+         delete raw.pendingCheckouts[userId];
+         fs.writeFileSync(storePath, JSON.stringify(raw, null, 2));
+
+         return res.json({ success: true, verified: true });
+      }
+      return res.json({ success: true, verified: false, status: sessionStatus.payment_status });
+    } catch(e) {
+      console.error("Manual test verify error:", e);
+      return res.status(500).json({ error: "Verification failed." });
+    }
+  });
+
+  app.post('/api/payments/dodo/checkout', getUserContext, async (req: any, res: any) => {
+  console.log("Dodo Checkout requested:", {
+    body: req.body,
+    env: process.env.DODO_PAYMENTS_ENVIRONMENT,
+    hasApiKey: !!process.env.DODO_PAYMENTS_API_KEY
+  });
+  try {
+    const userId = req.userContext?.userId || req.userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { planId } = req.body;
+    const dodoPlanMap = getDodoPlanMap();
+    if (!planId || !dodoPlanMap[planId]) {
+      return res.status(400).json({ error: "Invalid plan ID" });
+    }
+
+    const productId = dodoPlanMap[planId];
+    
+    // Optional: fetch user data to attach to customer if possible
+    let email = req.userContext?.email || "user_" + userId + "@example.com";
+    let name = req.userContext?.name || "BuyWise User";
+
+        let returnUrl = process.env.DODO_PAYMENTS_RETURN_URL || 'https://buywiser.store/premium/success';
+    const isTestMode = (process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode') === 'test_mode';
+    
+    if (isTestMode) {
+      let reqOrigin = req.get('origin');
+      if (!reqOrigin && req.get('referer')) {
+        try { reqOrigin = new URL(req.get('referer')).origin; } catch (e) {}
+      }
+      if (reqOrigin && (reqOrigin.endsWith('.run.app') || reqOrigin.startsWith('http://localhost') || reqOrigin.startsWith('https://localhost'))) {
+        returnUrl = `${reqOrigin}/premium/success`;
+      }
+    }
+
+    const session = await dodoClient.checkoutSessions.create({
+      product_cart: [{ product_id: productId, quantity: 1 }],
+      customer: { email, name },
+      return_url: returnUrl,
+      metadata: { userId, planId, source: "buywise" },
+      feature_flags: { allow_discount_code: true }
+    });
+    
+    // Write to data_store.json for preview environment verification
+    try {
+      const storePath = path.join(process.cwd(), "data_store.json");
+      if (fs.existsSync(storePath)) {
+         const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
+         if (!raw.pendingCheckouts) raw.pendingCheckouts = {};
+         raw.pendingCheckouts[userId] = { sessionId: session.session_id, planId: planId, timestamp: Date.now() };
+         fs.writeFileSync(storePath, JSON.stringify(raw, null, 2));
+      }
+    } catch (e) {
+      console.error("Failed to store pending checkout", e);
+    }
+
+    // Tracking disabled due to localStorage mock
+
+    res.json({ checkout_url: session.checkout_url, session_id: session.session_id });
+  } catch (error: any) {
+    console.error("Dodo checkout error details:", {
+      status: error.status,
+      message: error.message,
+      dodoError: error.error,
+      planId: req.body?.planId,
+      env: process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode'
+    });
+    res.status(500).json({ error: "Checkout could not be created. Please try again." });
+  }
+});
+
+
+app.post("/api/payments/verify", getUserContext, async (req: any, res: any) => {
+  console.log("--- VERIFY ENDPOINT CALLED ---");
+  console.log("Body:", req.body);
+  console.log("Headers:", { uid: req.headers['x-user-id'], email: req.headers['x-user-email'] });
+  
+  try {
+    const userId = req.userContext?.userId || req.userId;
+    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+    let { session_id, payment_id, subscription_id } = req.body;
+    session_id = session_id === 'null' ? null : session_id;
+    payment_id = payment_id === 'null' ? null : payment_id;
+    subscription_id = subscription_id === 'null' ? null : subscription_id;
+    if (!session_id && !payment_id && !subscription_id) {
+       return res.status(400).json({ error: "Missing checkout parameters" });
+    }
+
+    let planId = null;
+    let isSuccess = false;
+    let subId = subscription_id || '';
+    let payId = payment_id || '';
+
+    if (session_id) {
+       const sess = await dodoClient.checkoutSessions.retrieve(session_id);
+       if (sess.metadata?.planId) planId = sess.metadata.planId;
+       
+       if (sess.payment_status === 'succeeded' || sess.payment_status === 'paid') {
+          isSuccess = true;
+          payId = sess.payment_id || payId;
+       }
+       if (sess.subscription_data?.subscription_id) {
+          subId = sess.subscription_data.subscription_id;
+       }
+    } 
+    
+    if (subId && !isSuccess) {
+       const sub = await dodoClient.subscriptions.retrieve(subId);
+       if (sub.status === 'active' || sub.status === 'trialing') {
+          isSuccess = true;
+       }
+       if (sub.metadata?.planId) planId = sub.metadata.planId;
+    } 
+    
+    if (payId && !isSuccess) {
+       console.log("Retrieving payment with payId:", payId);
+       const pay = await dodoClient.payments.retrieve(payId);
+       console.log("Retrieved payment status:", pay.status);
+       if (pay.status === 'succeeded') {
+          isSuccess = true;
+       }
+       if (pay.metadata?.planId) planId = pay.metadata.planId;
+    }
+
+    if (!isSuccess) {
+       let currentStatus = 'pending';
+       if (session_id) {
+          const sess = await dodoClient.checkoutSessions.retrieve(session_id);
+          currentStatus = sess.payment_status || 'pending';
+       } else if (subId) {
+          const sub = await dodoClient.subscriptions.retrieve(subId);
+          currentStatus = sub.status || 'pending';
+       } else if (payId) {
+          const pay = await dodoClient.payments.retrieve(payId);
+          currentStatus = pay.status || 'pending';
+       }
+       return res.json({ verified: false, status: currentStatus });
+    }
+    
+    if (!planId) {
+      planId = 'monthly';
+    }
+
+    const planDurationMap: Record<string, number> = {
+      monthly: 30,
+      yearly: 365,
+      lifetime: 36500
+    };
+    const subDays = planDurationMap[planId] || 30;
+    const expirationDate = new Date(Date.now() + subDays * 24 * 60 * 60 * 1000);
+
+    // 1. Supabase Authoritative Update
+    const supabaseClient = getSupabaseClient();
+    if (supabaseClient) {
+       try {
+          await supabaseClient.from('profiles').update({
+            premium: true,
+            premium_expiry: expirationDate.toISOString(),
+            active_plan_id: planId,
+            active_plan_name: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId
+          }).eq('id', userId);
+          
+          await supabaseClient.from('subscriptions').upsert({
+            id: subId || payId || session_id || `dodo_${Date.now()}`,
+            user_id: userId,
+            plan_id: planId,
+            payment_id: payId,
+            subscription_id: subId,
+            status: 'active',
+            provider: 'dodo'
+          });
+       } catch(e) { console.error("Verify endpoint supabase error", e); }
+    }
+
+    // 2. Firebase Secondary
+    try {
+      const admin = await import('firebase-admin');
+      if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
+        const dbRef = ((admin as any).firestore || (admin.default as any).firestore)();
+        const orderId = subId || payId || session_id || `dodo_${Date.now()}`;
+        await dbRef.collection('orders').doc(orderId).set({
+          userId, planId, paymentId: payId, subscriptionId: subId,
+          status: 'completed', provider: 'dodo', createdAt: new Date().toISOString()
+      },
+ { merge: true });
+        await dbRef.collection('users').doc(userId).set({
+          premiumStatus: 'active',
+          premiumPlan: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId,
+          premiumSince: new Date().toISOString(),
+          premiumExpiration: expirationDate.toISOString(),
+      },
+ { merge: true });
+      }
+    } catch(e: any) { console.error("Firebase secondary verify error", e.message); }
+
+    // 3. Update memory state
+    try {
+       const { activateUserPremium, claimFounderMysteryBox } = await import('./src/server/gamificationDb.ts');
+       activateUserPremium(userId, "unknown@buywise.in", req.userContext?.name || "User", subDays, planId);
+       if (planId === 'lifetime' || planId === 'buywise_founder_forever') {
+            try {
+               claimFounderMysteryBox(userId);
+            } catch (err: any) {
+               console.log(`Mystery Box already claimed or error for ${userId}:`, err.message);
+            }
+       }
+    } catch(e: any) { console.error("Memory verify error", e.message); }
+
+    res.json({ verified: true, status: 'success' });
+  } catch (error: any) {
+    console.error("Dodo verify error:", error.message);
+    res.status(500).json({ error: "Verification failed." });
+  }
+});
+
+app.get("/api/receipts/:receiptId", getUserContext, (req: any, res: any) => {
     try {
       const { receiptId } = req.params;
       const receipt = getReceiptById(receiptId);
@@ -899,8 +1464,6 @@ async function startServer() {
       }
 
       const planDaysMap: Record<string, number> = {
-        daily: 1,
-        weekly: 7,
         monthly: 30,
         yearly: 365,
         lifetime: 36500
@@ -984,7 +1547,8 @@ async function startServer() {
         profile: {
           ...profile,
           multiplier
-        },
+      },
+
         ...profile,
         multiplier
       });
@@ -1372,7 +1936,8 @@ async function startServer() {
           { date: "May", price: 24990 },
           { date: "Jun", price: 24990 }
         ]
-      },
+    },
+
       {
         productName: "Apple iPhone 15 Pro (128 GB) - Natural Titanium",
         brand: "Apple",
@@ -1401,7 +1966,8 @@ async function startServer() {
           { date: "May", price: 124900 },
           { date: "Jun", price: 124900 }
         ]
-      },
+    },
+
       {
         productName: "boAt Nirvana Ion True Wireless Earbuds",
         brand: "boAt",
@@ -1430,7 +1996,8 @@ async function startServer() {
           { date: "May", price: 1999 },
           { date: "Jun", price: 1999 }
         ]
-      },
+    },
+
       {
         productName: "Bose QuietComfort Ultra Wireless Headphones",
         brand: "Bose",
@@ -1459,7 +2026,8 @@ async function startServer() {
           { date: "May", price: 35900 },
           { date: "Jun", price: 35900 }
         ]
-      },
+    },
+
       {
         productName: "Sony PlayStation 5 Slim Console",
         brand: "Sony",
@@ -1488,7 +2056,8 @@ async function startServer() {
           { date: "May", price: 44990 },
           { date: "Jun", price: 44990 }
         ]
-      },
+    },
+
       {
         productName: "MacBook Air 13-inch M3 Chip (8GB Unified, 256GB SSD)",
         brand: "Apple",
@@ -1521,7 +2090,7 @@ async function startServer() {
     ];
 
     const chosen = fallbacks[seed % fallbacks.length];
-    return {
+return {
       ...chosen,
       barcode
     };
@@ -1877,7 +2446,7 @@ Telegram Message:
         }
       }
 
-      return {
+  return {
         title: (text.length > 60 ? text.substring(0, 60) + "..." : text).replace(/\n/g, ' '),
         category: "electronics",
         oldPrice,
@@ -2126,7 +2695,8 @@ Telegram Message:
           uploadedAt: activeApk.uploadedAt,
           publicUrl: "https://buywiser.store/downloads/buywise.apk",
           downloadCount: activeApk.downloadCount,
-        },
+      },
+
       });
     } catch (e: any) {
       return res.status(500).json({ error: "Failed to retrieve current APK info." });
@@ -2371,7 +2941,8 @@ Telegram Message:
                   mimeType: mime,
                   data: cleanB64,
                 }
-              },
+            },
+
               {
                 text: `You are BuyWise Store Scanner & AI Product Vision System.
 Analyze this photo captured by a user in a physical store or uploaded from gallery.
@@ -2564,7 +3135,8 @@ If the image is pitch black, extremely blurry, or shows no consumer product, set
           model: "gemini-3.6-flash",
           config: {
             systemInstruction: "You are an elite hardware/software analyst."
-          },
+        },
+
           contents: `Provide exactly 3 hyper-concise, highly technical features (max 5 words each) for the product: "${productName}". Example format: "A17 Pro Bionic Chip, Titanium Aerospace Frame, 120Hz ProMotion Display". Separate by commas.`,
         });
         const text = response.text?.trim() || "";
@@ -2644,7 +3216,8 @@ The JSON must follow this exact structure:
             systemInstruction: systemInstruction,
             temperature: 0.2,
             responseMimeType: "application/json"
-          },
+        },
+
           contents: `User Query: "${query}"`,
         });
         planJsonStr = response.text?.trim() || "";
@@ -2677,7 +3250,8 @@ The JSON must follow this exact structure:
               delivery: "Tomorrow",
               recommendation: "Perfect screen real estate and color accuracy for your budget.",
               link: "https://amazon.in/"
-            },
+          },
+
             {
               id: "fallback_2",
               name: "Ergonomic Office Chair",
@@ -2771,7 +3345,8 @@ Always respond professionally with genius-level insight. If analyzing product se
           model: "gemini-3.6-flash",
           config: {
             systemInstruction: systemInstruction,
-          },
+        },
+
           contents: `User Query: "${query}"\n\nMarket Search Results Data: ${JSON.stringify(results?.slice(0, 5) || [])}`,
         });
         advice = response.text?.trim() || "Analyzing macro-economic market vectors...";
@@ -2846,7 +3421,8 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
           model: "gemini-3.6-flash",
           config: {
             systemInstruction: "You are BuyWise Predictor, an elite AI market analyst."
-          },
+        },
+
           contents: `Analyze the price trend for "${productTitle}" currently priced at "${currentPriceStr}".
           Predict its future price trend and give a 1-sentence explanation.
           Return EXACTLY IN THIS JSON FORMAT, NO MARKDOWN, JUST RAW JSON:
@@ -2914,7 +3490,7 @@ CORE MANDATE & PERSONALITY:
 
 COVERED SUPPORT TOPICS & SOLUTIONS:
 1. **Premium Subscriptions & Upgrade**:
-   - Weekly Pass (₹30), Monthly Elite (₹100), Forever Founder (₹700).
+   - Monthly Elite (₹100), Yearly Pro (₹500), Forever Founder (₹700).
    - Paid via UPI QR code. User submits 12-digit UTR. Verification takes 5-10 mins on weekends, 15-30 mins during weekday hours (9 AM - 3 PM IST).
 2. **Rewards & BuyWise Coins**:
    - Explain how users earn coins through searches, referrals, and daily logins, and how coins can be redeemed for vouchers or discount coupons.
@@ -2953,7 +3529,8 @@ Current logged-in user email: ${userEmail || "guest@buywise.app"}`;
           model: "gemini-3.6-flash",
           config: {
             systemInstruction: systemInstruction,
-          },
+        },
+
           contents: contents,
         });
         chatText = response.text?.trim() || "I am here to help you resolve your issue. Could you tell me a bit more about what you need assistance with?";
@@ -2963,7 +3540,7 @@ Current logged-in user email: ${userEmail || "guest@buywise.app"}`;
         const lastUserMessage = messages[messages.length - 1]?.text || "";
         const lowerInput = lastUserMessage.toLowerCase();
 
-        if (lowerInput.includes("premium") || lowerInput.includes("plan") || lowerInput.includes("weekly") || lowerInput.includes("monthly") || lowerInput.includes("elite") || lowerInput.includes("founder") || lowerInput.includes("upgrade")) {
+        if (lowerInput.includes("premium") || lowerInput.includes("plan") || lowerInput.includes("monthly") || lowerInput.includes("elite") || lowerInput.includes("founder") || lowerInput.includes("upgrade")) {
           chatText = `I would be happy to help you with **BuyWise Premium**! 🌟
 
 We offer 3 flexible plans:
@@ -3053,7 +3630,8 @@ What can I assist you with today?`;
         headers: {
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
           "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
-        },
+      },
+
       });
       res.setHeader("Content-Type", String(response.headers["content-type"] || "image/jpeg"));
       res.setHeader("Cache-Control", "public, max-age=86400");
@@ -3158,7 +3736,8 @@ What can I assist you with today?`;
             headers: {
               "x-rapidapi-key": rapidApiKey,
               "x-rapidapi-host": "real-time-amazon-data.p.rapidapi.com"
-            },
+          },
+
             timeout: 5000
           }).then(res => ({ source: "rapidapi", res, duration: Date.now() - rapidStart }))
             .catch(err => ({ source: "rapidapi", err, duration: Date.now() - rapidStart }))
@@ -4389,8 +4968,6 @@ What can I assist you with today?`;
       if (entitlementVerified) {
         // Activate Premium logic
         const planMap: Record<string, number> = {
-          'buywise_premium_daily': 1,
-          'buywise_premium_weekly': 7,
           'buywise_premium_monthly': 30,
           'buywise_premium_yearly': 365,
           'buywise_founder_forever': 36500, // 100 years
@@ -4575,7 +5152,8 @@ What can I assist you with today?`;
       } finally {
         isPolling = false;
       }
-    }, 5000);
+  },
+ 5000);
   }
 
   // Vite middleware for development
@@ -4607,4 +5185,5 @@ What can I assist you with today?`;
 startServer().catch((err) => {
   console.error("Server failed to start:", err);
 });
+
 

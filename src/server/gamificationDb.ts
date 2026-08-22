@@ -742,7 +742,7 @@ export function awardCoins(
       status: "active",
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      eligiblePlans: ["daily", "weekly", "monthly", "yearly", "lifetime"]
+      eligiblePlans: ["monthly", "yearly", "lifetime"]
     };
     if (!dbData.coupons) dbData.coupons = [];
     dbData.coupons.push(newCoupon);
@@ -1957,7 +1957,7 @@ export function generateCouponForUser(userId: string, discountPercent: number, e
     status: "active",
     createdAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-    eligiblePlans: eligiblePlans || ["daily", "weekly", "monthly", "yearly", "lifetime"]
+    eligiblePlans: eligiblePlans || ["monthly", "yearly", "lifetime"]
   };
   if (!dbData.coupons) dbData.coupons = [];
   dbData.coupons.push(newCoupon);

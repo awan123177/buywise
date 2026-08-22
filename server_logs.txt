@@ -1,0 +1,11 @@
+Database successfully loaded from with product photos mapped, /app/applet/data_store.json
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+◇ injected env (0) from .env // tip: ⌘ multiple files { path: ['.env.local', '.env'] }
+WARNING: TELEGRAM_BOT_TOKEN is not configured. Telegram channel features and updates polling will be disabled.
+Server failed to start: ReferenceError: getUserContext is not defined
+    at startServer (/app/applet/server.ts:1050:37)
+    at <anonymous> (/app/applet/server.ts:4792:1)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+Fetched Cloud Project ID from metadata server: ais-asia-east1-7f4152bfb94e4ec

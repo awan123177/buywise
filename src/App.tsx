@@ -7,6 +7,7 @@ import PremiumLogin from './components/PremiumLogin';
 import AdminPanel from './components/AdminPanel';
 import Radar from './components/Radar';
 import Premium from './components/Premium';
+import PremiumSuccess from './components/PremiumSuccess';
 import GiftCards from './components/GiftCards';
 import DealsPage from './components/DealsPage';
 import RewardsHub from './components/RewardsHub';
@@ -64,6 +65,7 @@ export default function App() {
               <Route path="/admin" element={<AdminPanel />} />
               <Route path="/radar" element={<Radar />} />
               <Route path="/premium" element={<Premium />} />
+              <Route path="/premium/success" element={<PremiumSuccess />} />
               <Route path="/gifts" element={<GiftCards />} />
               <Route path="/deals" element={<DealsPage />} />
               <Route path="/rewards" element={<RewardsHub />} />

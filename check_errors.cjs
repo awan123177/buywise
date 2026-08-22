@@ -1,6 +1,6 @@
-const http = require('http');
-http.get('http://localhost:3000', (res) => {
-  let data = '';
-  res.on('data', (chunk) => data += chunk);
-  res.on('end', () => console.log('Loaded:', data.substring(0, 50)));
-}).on('error', (err) => console.error(err));
+const fs = require('fs');
+const code = fs.readFileSync('server.ts', 'utf8');
+const getUserContextPos = code.indexOf('const getUserContext =');
+const receiptPos = code.indexOf('app.get("/api/receipts/:receiptId"');
+console.log('getUserContext:', getUserContextPos);
+console.log('receiptPos:', receiptPos);
