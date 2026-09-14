@@ -562,9 +562,47 @@
       "lastSpinDate": null,
       "completedMissions": [],
       "isPremium": false
+    },
+    "mock-uuid-1789361413585": {
+      "userId": "mock-uuid-1789361413585",
+      "email": "mohammdsaeed24@gmail.com",
+      "name": "mohammdsaeed24",
+      "coins": 5,
+      "referralCode": "MOHAMMDSAEED24748",
+      "referredBy": null,
+      "searchesCount": 0,
+      "totalSaved": 0,
+      "lastSearchDate": null,
+      "lastLoginDate": "2026-09-14",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-09-14",
+      "achievements": [],
+      "notificationsEnabled": true,
+      "notificationPreferences": {
+        "morning": true,
+        "afternoon": true,
+        "evening": true
+      },
+      "bannedReferrals": false,
+      "createdAt": "2026-09-14T04:50:12.913Z",
+      "activeBadge": null,
+      "lastSpinDate": null,
+      "completedMissions": [],
+      "isPremium": false
     }
   },
   "transactions": [
+    {
+      "id": "txn_1789361432154_365",
+      "userId": "mock-uuid-1789361413585",
+      "amount": 5,
+      "reason": "Daily login reward",
+      "timestamp": "2026-09-14T04:50:32.154Z",
+      "type": "EARNED",
+      "source": "SEARCH_REWARD",
+      "description": "Daily login reward",
+      "multiplierApplied": 1
+    },
     {
       "id": "txn_1787385548864_752",
       "userId": "mock-uuid-1787333138184",
@@ -726,13 +764,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 304,
-    "totalUsers": 24,
-    "productsCompared": 916,
-    "priceAlertsTriggered": 43,
+    "totalSearches": 335,
+    "totalUsers": 25,
+    "productsCompared": 1006,
+    "priceAlertsTriggered": 48,
     "dealsFoundToday": 0,
     "activePremiumUsers": 0,
-    "totalSavedAmount": 5895
+    "totalSavedAmount": 6424
   },
   "bannedUsers": [],
   "reviews": [

@@ -74,7 +74,8 @@ export default function Premium() {
         
         if (data.success && data.verified) {
           toast.success("Premium activated successfully!");
-          setTimeout(() => window.location.reload(), 1500);
+          await refreshPremium();
+          navigate('/premium/success?status=success', { replace: true });
         } else if (data.pending) {
           toast.loading("Purchase is pending Google Play confirmation...");
         } else {
@@ -170,29 +171,46 @@ export default function Premium() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const loadRazorpayScript = () => {
-    return new Promise((resolve) => {
+    return new Promise<boolean>((resolve) => {
+      if (typeof window === 'undefined') {
+        console.warn("[Razorpay Script Loader] window is undefined. Resolve false.");
+        resolve(false);
+        return;
+      }
+      
       if ((window as any).Razorpay) {
+        console.log("[Razorpay Script Loader] window.Razorpay already exists. Resolve true.");
         resolve(true);
         return;
       }
-      const existingScript = document.querySelector('script[src*="razorpay.com"]');
+
+      // Check for any previous script tag pointing to Razorpay
+      const existingScript = document.querySelector('script[src*="razorpay.com"]') as HTMLScriptElement;
       if (existingScript) {
-        existingScript.addEventListener('load', () => resolve(true));
-        existingScript.addEventListener('error', () => {
-          resolve(false);
-        });
-        if ((window as any).Razorpay) {
-          resolve(true);
-          return;
-        }
+        console.log("[Razorpay Script Loader] Existing Razorpay script tag detected. Removing stale element to perform fresh load.");
+        existingScript.remove();
       }
+
+      console.log("[Razorpay Script Loader] Creating and appending a fresh script element for checkout.js");
       const script = document.createElement('script');
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
-      script.onload = () => resolve(true);
-      script.onerror = () => {
+      
+      script.onload = () => {
+        if ((window as any).Razorpay) {
+          console.log("[Razorpay Script Loader] Script loaded successfully. window.Razorpay initialized.");
+          resolve(true);
+        } else {
+          console.error("[Razorpay Script Loader] Script loaded but window.Razorpay is still undefined.");
+          resolve(false);
+        }
+      };
+
+      script.onerror = (err) => {
+        console.error("[Razorpay Script Loader] Script load failed. This is typically a CSP block or Network reachability issue.", err);
         resolve(false);
       };
+
       document.head.appendChild(script);
     });
   };
@@ -205,28 +223,16 @@ export default function Premium() {
     }
     
     setIsProcessing(true);
+    
+    // Razorpay Web Flow (Primary Gateway)
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setScriptLoadError(true);
+        throw new Error("Unable to load the Razorpay checkout script. Please check your internet connection and try again.");
+      }
 
-    // Call Android Billing Bridge if it exists in WebView
-    if (typeof window !== 'undefined' && (window as any).AndroidBillingBridge) {
-      const planToProductId: Record<string, string> = {
-        monthly: 'buywise_premium_monthly',
-        yearly: 'buywise_premium_yearly',
-        lifetime: 'buywise_founder_forever'
-      };
-      
-      const productId = planToProductId[planToPurchase];
-      (window as any).AndroidBillingBridge.startPurchase(productId);
-      setIsProcessing(false);
-    } else {
-      // Razorpay Web Flow (Primary Gateway)
-      try {
-        const scriptLoaded = await loadRazorpayScript();
-        if (!scriptLoaded) {
-          setScriptLoadError(true);
-          throw new Error("Unable to load the Razorpay checkout script. Please check your internet connection and try again.");
-        }
-
-        const response = await fetch('/api/payments/razorpay/checkout', {
+      const response = await fetch('/api/payments/razorpay/checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -279,9 +285,9 @@ export default function Premium() {
               
               if (verifyResult.success && verifyResult.verified) {
                 toast.success("Premium activated successfully!");
-                setTimeout(() => {
-                  window.location.href = 'https://buywiser.store/premium/success';
-                }, 1500);
+                await refreshPremium();
+                setIsProcessing(false);
+                navigate('/premium/success?status=success', { replace: true });
               } else {
                 toast.error("Payment verification failed. Please try again.");
                 setIsProcessing(false);
@@ -313,7 +319,6 @@ export default function Premium() {
         toast.error(rzpErr.message || "Failed to initialize payment. Please try again.");
         setIsProcessing(false);
       }
-    }
   };
 
   return (

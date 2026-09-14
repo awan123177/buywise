@@ -13,6 +13,7 @@ export default function PremiumSuccess() {
   const urlStatus = searchParams.get('status');
 
   const [status, setStatus] = useState<'pending' | 'success' | 'failed' | 'cancelled'>(() => {
+    if (urlStatus === 'success') return 'success';
     if (urlStatus === 'failed') return 'failed';
     if (urlStatus === 'cancelled') return 'cancelled';
     return 'pending';
@@ -30,7 +31,7 @@ export default function PremiumSuccess() {
     if (hasVerified.current) return;
 
     // 1. Immediately handle terminal status from URL (already initialized in state)
-    if (status === 'failed' || status === 'cancelled') {
+    if (status === 'success' || status === 'failed' || status === 'cancelled') {
         hasVerified.current = true;
         return;
     }

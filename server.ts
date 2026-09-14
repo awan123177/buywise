@@ -417,7 +417,8 @@ async function startServer() {
             "https://*.google.com",
             "https://*.googleapis.com",
             "https://*.firebaseapp.com",
-            "https://*.googleadservices.com"
+            "https://*.googleadservices.com",
+            "https://checkout.razorpay.com"
           ],
           connectSrc: [
             "'self'",
@@ -432,8 +433,19 @@ async function startServer() {
             "https://*.run.app",
             "https://ais-dev-*.run.app",
             "https://ais-pre-*.run.app",
+            "https://api.razorpay.com",
+            "https://lumberjack.razorpay.com",
+            "https://lumberjack-cx.razorpay.com"
           ],
-          imgSrc: ["'self'", "data:", "blob:", "https://*", "http://*"],
+          imgSrc: [
+            "'self'", 
+            "data:", 
+            "blob:", 
+            "https://*", 
+            "http://*",
+            "https://*.razorpay.com",
+            "https://razorpay.com"
+          ],
           styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
           fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
           frameSrc: [
@@ -441,7 +453,10 @@ async function startServer() {
             "https://*.google.com",
             "https://*.googleapis.com",
             "https://*.firebaseapp.com",
-            "https://*.googleadservices.com"
+            "https://*.googleadservices.com",
+            "https://api.razorpay.com",
+            "https://checkout.razorpay.com",
+            "https://custom-i.razorpay.com"
           ],
           frameAncestors: [
             "'self'",
@@ -992,6 +1007,7 @@ const getRazorpayInstance = () => {
 };
 
 const processedWebhookIds = new Set<string>();
+const inProgressVerifications = new Set<string>();
 
 const isOrderAlreadyCompleted = async (referenceId: string) => {
   if (processedWebhookIds.has(referenceId)) return true;
@@ -1155,7 +1171,7 @@ app.post('/api/payments/razorpay/checkout', getUserContext, async (req: any, res
         }
       });
     } else {
-      const rzpPlanId = planId === 'monthly' ? 'plan_TbmNWzRVUXZQtO' : 'plan_ThmPgmFcSSWfk';
+      const rzpPlanId = planId === 'monthly' ? 'plan_TbmNWzRVUXZQt0' : 'plan_TbmPgmNfCSSWfk';
       const subscription = await razorpay.subscriptions.create({
         plan_id: rzpPlanId,
         total_count: planId === 'monthly' ? 120 : 10,
@@ -1186,7 +1202,8 @@ app.post('/api/payments/razorpay/checkout', getUserContext, async (req: any, res
     }
   } catch (error: any) {
     console.error("Razorpay checkout error:", error);
-    res.status(500).json({ error: error.message || "Failed to initialize Razorpay checkout" });
+    const detailMessage = error.error?.description || error.description || error.message || "Failed to initialize Razorpay checkout";
+    res.status(500).json({ error: detailMessage });
   }
 });
 
@@ -1242,20 +1259,30 @@ app.post('/api/payments/razorpay/verify', getUserContext, async (req: any, res: 
 
     const verifiedPlanId = planId || (razorpay_order_id ? 'lifetime' : 'monthly');
     const referenceId = razorpay_subscription_id || razorpay_order_id || razorpay_payment_id;
+    
+    if (inProgressVerifications.has(referenceId)) {
+      return res.json({ success: true, verified: true, status: "success", note: "already processing" });
+    }
+    
     const isCompleted = await isOrderAlreadyCompleted(referenceId);
 
     if (!isCompleted) {
-      await activateUserEntitlement(
-        userId,
-        verifiedPlanId,
-        referenceId,
-        razorpay_payment_id,
-        razorpay_subscription_id || "",
-        "razorpay",
-        req.userContext?.name,
-        req.userContext?.email
-      );
-      processedWebhookIds.add(referenceId);
+      inProgressVerifications.add(referenceId);
+      try {
+        await activateUserEntitlement(
+          userId,
+          verifiedPlanId,
+          referenceId,
+          razorpay_payment_id,
+          razorpay_subscription_id || "",
+          "razorpay",
+          req.userContext?.name,
+          req.userContext?.email
+        );
+        processedWebhookIds.add(referenceId);
+      } finally {
+        inProgressVerifications.delete(referenceId);
+      }
     }
 
     res.json({ success: true, verified: true, status: "success" });
@@ -1299,20 +1326,29 @@ app.post('/api/webhooks/razorpay', async (req: any, res: any) => {
         const payId = paymentEntity?.id || "";
 
         if (userId) {
-          const isCompleted = await isOrderAlreadyCompleted(rzpSubId);
-          if (!isCompleted) {
-            await activateUserEntitlement(
-              userId,
-              planId,
-              rzpSubId,
-              payId,
-              rzpSubId,
-              "razorpay",
-              subEntity.notes?.name,
-              subEntity.notes?.email
-            );
-            processedWebhookIds.add(rzpSubId);
-            console.log(`Successfully activated/renewed subscription ${rzpSubId} for user ${userId} via webhook`);
+          if (inProgressVerifications.has(rzpSubId)) {
+            console.log(`Subscription ${rzpSubId} is already being verified by another request.`);
+          } else {
+            const isCompleted = await isOrderAlreadyCompleted(rzpSubId);
+            if (!isCompleted) {
+              inProgressVerifications.add(rzpSubId);
+              try {
+                await activateUserEntitlement(
+                  userId,
+                  planId,
+                  rzpSubId,
+                  payId,
+                  rzpSubId,
+                  "razorpay",
+                  subEntity.notes?.name,
+                  subEntity.notes?.email
+                );
+                processedWebhookIds.add(rzpSubId);
+                console.log(`Successfully activated/renewed subscription ${rzpSubId} for user ${userId} via webhook`);
+              } finally {
+                inProgressVerifications.delete(rzpSubId);
+              }
+            }
           }
         }
       }
@@ -1327,20 +1363,29 @@ app.post('/api/webhooks/razorpay', async (req: any, res: any) => {
 
       if (userId && payId) {
         const referenceId = orderId || payId;
-        const isCompleted = await isOrderAlreadyCompleted(referenceId);
-        if (!isCompleted) {
-          await activateUserEntitlement(
-            userId,
-            planId,
-            referenceId,
-            payId,
-            "",
-            "razorpay",
-            paymentEntity?.notes?.name || orderEntity?.notes?.name,
-            paymentEntity?.notes?.email || orderEntity?.notes?.email
-          );
-          processedWebhookIds.add(referenceId);
-          console.log(`Successfully completed payment ${payId} for user ${userId} via webhook`);
+        if (inProgressVerifications.has(referenceId)) {
+          console.log(`Payment ${referenceId} is already being verified by another request.`);
+        } else {
+          const isCompleted = await isOrderAlreadyCompleted(referenceId);
+          if (!isCompleted) {
+            inProgressVerifications.add(referenceId);
+            try {
+              await activateUserEntitlement(
+                userId,
+                planId,
+                referenceId,
+                payId,
+                "",
+                "razorpay",
+                paymentEntity?.notes?.name || orderEntity?.notes?.name,
+                paymentEntity?.notes?.email || orderEntity?.notes?.email
+              );
+              processedWebhookIds.add(referenceId);
+              console.log(`Successfully completed payment ${payId} for user ${userId} via webhook`);
+            } finally {
+              inProgressVerifications.delete(referenceId);
+            }
+          }
         }
       }
     } else if (event === 'subscription.cancelled' || event === 'subscription.halted') {
