@@ -27,6 +27,12 @@ export default function PremiumSuccess() {
   const hasVerified = useRef(false);
 
   useEffect(() => {
+    if (status === 'success') {
+       refreshPremium();
+    }
+  }, [status]);
+
+  useEffect(() => {
     if (!user) return;
     if (hasVerified.current) return;
 

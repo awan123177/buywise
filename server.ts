@@ -538,7 +538,7 @@ app.post('/api/auth/google', async (req: any, res: any) => {
     if (supabaseClient) {
       const profileData = {
         id: buywiseUserId,
-        email: email,
+        email,
         full_name: name,
         avatar_url: picture,
         google_provider_id: uid,
@@ -553,7 +553,7 @@ app.post('/api/auth/google', async (req: any, res: any) => {
       if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
          await ((admin as any).firestore || (admin.default as any).firestore)().collection('users').doc(buywiseUserId).set({
            email,
-           full_name: name,
+        full_name: name,
            avatar_url: picture,
            google_provider_id: uid,
            last_login: new Date().toISOString()
@@ -1150,8 +1150,8 @@ app.post('/api/payments/razorpay/checkout', getUserContext, async (req: any, res
         notes: {
           userId: userId,
           planId: 'lifetime',
-          email: email,
-          name: name
+          email,
+        name: name
         }
       });
 
@@ -1181,8 +1181,8 @@ app.post('/api/payments/razorpay/checkout', getUserContext, async (req: any, res
         notes: {
           userId: userId,
           planId: planId,
-          email: email,
-          name: name
+          email,
+        name: name
         }
       });
 
@@ -1258,7 +1258,33 @@ app.post('/api/payments/razorpay/verify', getUserContext, async (req: any, res: 
       return res.json({ verified: false, status: paymentInfo.status });
     }
 
-    const verifiedPlanId = planId || (razorpay_order_id ? 'lifetime' : 'monthly');
+    let verifiedPlanId = 'monthly';
+    
+    if (razorpay_order_id) {
+       if (paymentInfo.amount !== 70000) {
+           return res.status(400).json({ error: "Invalid payment amount for Founder plan." });
+       }
+       const orderInfo = await razorpay.orders.fetch(razorpay_order_id);
+       if (orderInfo.notes?.userId !== userId && paymentInfo.notes?.userId !== userId) {
+           return res.status(403).json({ error: "Payment ownership mismatch." });
+       }
+       verifiedPlanId = 'lifetime';
+    } else if (razorpay_subscription_id) {
+       const subInfo = await razorpay.subscriptions.fetch(razorpay_subscription_id);
+       if (subInfo.notes?.userId !== userId && paymentInfo.notes?.userId !== userId) {
+           return res.status(403).json({ error: "Subscription ownership mismatch." });
+       }
+       if (subInfo.plan_id === 'plan_TbmPgmNfCSSWfk') {
+           verifiedPlanId = 'yearly';
+       } else if (subInfo.plan_id === 'plan_TbmNWzRVUXZQt0') {
+           verifiedPlanId = 'monthly';
+       } else {
+           return res.status(400).json({ error: "Unrecognized Razorpay plan ID." });
+       }
+    } else {
+       return res.status(400).json({ error: "Missing order or subscription ID." });
+    }
+
     const referenceId = razorpay_subscription_id || razorpay_order_id || razorpay_payment_id;
     
     if (inProgressVerifications.has(referenceId)) {
@@ -1469,79 +1495,35 @@ app.get("/api/receipts/:receiptId", getUserContext, (req: any, res: any) => {
     }
   });
 
-  // Direct Plan Activation Endpoint
-  app.post("/api/payments/direct-activate", getUserContext, (req: any, res: any) => {
-    try {
-      const { userId, email, name } = req.userContext;
-      const { planId, planName, amount } = req.body;
-
-      if (!userId) {
-        return res.status(401).json({ success: false, error: "Unauthorized user." });
-      }
-
-      const planDaysMap: Record<string, number> = {
-        monthly: 30,
-        yearly: 365,
-        lifetime: 36500
-      };
-
-      const days = planDaysMap[planId] || 30;
-      const { profile, expiry } = activateUserPremium(
-        userId,
-        email || 'customer@buywise.in',
-        name || 'BuyWise Member',
-        days,
-        planName || 'BuyWise Premium',
-        planId || 'monthly'
-      );
-
-      const transactionId = `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-      const receiptId = `rcpt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-      const nowIso = new Date().toISOString();
-      const numAmount = Number(amount) || 100;
-      const receiptRecord: ReceiptRecord = {
-        receiptId,
-        transactionId,
-        orderId: `order_${Date.now()}`,
-        userId,
-        customerEmail: email || 'customer@buywise.in',
-        customerName: name || 'BuyWise Member',
-        planId: planId || 'monthly',
-        planName: planName || 'BuyWise Premium',
-        planDuration: `${days} Days`,
-        amount: numAmount,
-        tax: 0,
-        totalAmount: numAmount,
-        currency: 'INR',
-        paymentStatus: 'PAID',
-        paymentMethod: 'Direct Activation',
-        paymentProvider: 'System Direct',
-        purchaseDate: nowIso,
-        purchaseTimestamp: nowIso,
-        premiumExpiry: expiry
-      };
-
-      recordReceipt(receiptRecord);
-
-      res.json({
-        success: true,
-        message: `${planName || 'Premium'} activated successfully!`,
-        profile,
-        expiry,
-        receiptId
-      });
-    } catch (e: any) {
-      console.error("Direct activation error:", e);
-      res.status(500).json({ success: false, error: e.message || "Failed to activate plan." });
-    }
-  });
-
   // Get or Create User Profile
-  app.get("/api/gamification/profile", getUserContext, (req: any, res: any) => {
+  app.get("/api/gamification/profile", getUserContext, async (req: any, res: any) => {
     const { userId, email, name } = req.userContext;
     try {
       const profile = getOrCreateProfile(userId, email, name);
+      
+      const supabaseClient = getSupabaseClient();
+      if (supabaseClient) {
+         try {
+             const { data } = await supabaseClient.from('profiles').select('premium, premium_expiry, active_plan_id, active_plan_name').eq('id', userId).single();
+             if (data) {
+                 const isLife = data.active_plan_id === 'lifetime' || data.active_plan_name === 'Forever Founder';
+                 const expiry = data.premium_expiry ? new Date(data.premium_expiry).getTime() : 0;
+                 const isValid = isLife || (!isNaN(expiry) && expiry > Date.now());
+                 
+                 if (data.premium && isValid) {
+                     profile.isPremium = true;
+                     profile.premiumExpiry = data.premium_expiry;
+                     profile.activePlanId = data.active_plan_id;
+                     profile.activePlanName = data.active_plan_name;
+                 } else if (!isValid && profile.isPremium && !isLife) {
+                     profile.isPremium = false;
+                 }
+             }
+         } catch(e) {
+             console.error("Error syncing premium from supabase:", e);
+         }
+      }
+
       const multiplier = getUserCoinMultiplier(userId);
       res.json({
         ...profile,
@@ -3517,7 +3499,8 @@ COVERED SUPPORT TOPICS & SOLUTIONS:
 5. **Account & Login**:
    - Assist with password resets, Google login issues, guest session data, or profile updates.
 6. **Payments & Refunds**:
-   - Explain UTR verification steps. For double charges or refund requests, gather details (email, UTR, amount) and offer to transfer to human support for manual bank verification.
+   - Explain UTR verification steps. For double charges or refund requests, gather details (email
+           UTR, amount) and offer to transfer to human support for manual bank verification.
 7. **Bugs & Feature Requests**:
    - Thank the customer warmly for reporting bugs or suggesting features. Log the details and offer to pass them to creator/owner Awanwarsi.
 
@@ -4343,7 +4326,7 @@ What can I assist you with today?`;
             id: t.id || 'tkt_' + Date.now(),
             name: t.name || 'User',
             email: t.email || email,
-            phone: t.phone || '',
+        phone: t.phone || '',
             subject: t.subject || 'Support Ticket',
             message: t.message || '',
             browser: t.browser || '',
@@ -4423,7 +4406,7 @@ What can I assist you with today?`;
           id,
           name: email.split('@')[0] || 'Customer',
           email,
-          subject: 'Live Chat Support Request',
+        subject: 'Live Chat Support Request',
           message: text,
           status: 'open',
           createdAt: new Date().toISOString(),
@@ -4514,7 +4497,7 @@ What can I assist you with today?`;
           id: ticket.id,
           name: ticket.name,
           email: ticket.email,
-          phone: ticket.phone,
+        phone: ticket.phone,
           subject: ticket.subject,
           message: ticket.message,
           browser: ticket.browser,
@@ -4535,7 +4518,7 @@ What can I assist you with today?`;
             id: ticket.id,
             name: ticket.name,
             email: ticket.email,
-            phone: ticket.phone,
+        phone: ticket.phone,
             subject: ticket.subject,
             message: ticket.message,
             browser: ticket.browser,
@@ -4587,8 +4570,7 @@ What can I assist you with today?`;
         id: 'creator_' + Date.now(),
         name,
         phone,
-        email,
-        instagram,
+        email, instagram,
         photo: photo || '',
         portfolio: portfolio || '',
         bio: bio || '',
@@ -4613,7 +4595,7 @@ What can I assist you with today?`;
             name: application.name,
             phone: application.phone,
             email: application.email,
-            instagram: application.instagram,
+        instagram: application.instagram,
             photo: application.photo,
             portfolio: application.portfolio,
             bio: application.bio,
@@ -4654,7 +4636,7 @@ What can I assist you with today?`;
               name: a.name,
               phone: a.phone,
               email: a.email,
-              instagram: a.instagram,
+        instagram: a.instagram,
               photo: a.photo,
               portfolio: a.portfolio,
               bio: a.bio,

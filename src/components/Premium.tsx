@@ -10,6 +10,91 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import TiltedCard from './TiltedCard';
 import FounderMysteryBox from './FounderMysteryBox';
 
+let razorpayLoadPromise: Promise<boolean> | null = null;
+
+const loadRazorpayScript = (): Promise<boolean> => {
+  if (typeof window === 'undefined') {
+    return Promise.resolve(false);
+  }
+
+  if (window && typeof (window as any).Razorpay === 'function') {
+    console.log("[RazorpayLoader] window.Razorpay already exists.");
+    return Promise.resolve(true);
+  }
+
+  if (razorpayLoadPromise) {
+    console.log("[RazorpayLoader] Returning existing load promise.");
+    return razorpayLoadPromise;
+  }
+
+  razorpayLoadPromise = new Promise<boolean>((resolve, reject) => {
+    console.log("[RazorpayLoader] Starting Razorpay script load process...");
+    const scriptId = 'razorpay-checkout-js';
+    let script = document.getElementById(scriptId) as HTMLScriptElement | null;
+
+    if (script && script.getAttribute('data-state') === 'failed') {
+      console.log("[RazorpayLoader] Removing previously failed script tag.");
+      script.remove();
+      script = null;
+    }
+
+    if (!script) {
+      console.log("[RazorpayLoader] Creating new script tag...");
+      script = document.createElement('script');
+      script.id = scriptId;
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.setAttribute('data-state', 'loading');
+      document.body.appendChild(script);
+    } else {
+      console.log("[RazorpayLoader] Using existing script tag in state:", script.getAttribute('data-state'));
+    }
+
+    let timeoutId: NodeJS.Timeout;
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      if (script) {
+        script.removeEventListener('load', onLoad);
+        script.removeEventListener('error', onError);
+      }
+      razorpayLoadPromise = null;
+    };
+
+    const onLoad = () => {
+      console.log("[RazorpayLoader] checkout.js load event fired.");
+      if (script) script.setAttribute('data-state', 'loaded');
+      cleanup();
+      if (window && typeof (window as any).Razorpay === 'function') {
+        resolve(true);
+      } else {
+        reject(new Error("Razorpay loaded but unavailable."));
+      }
+    };
+
+    const onError = (e: Event | string) => {
+      console.error("[RazorpayLoader] Script error event fired:", e);
+      if (script) script.setAttribute('data-state', 'failed');
+      cleanup();
+      reject(new Error("Failed to load Razorpay Checkout script."));
+    };
+
+    script.addEventListener('load', onLoad);
+    script.addEventListener('error', onError);
+
+    timeoutId = setTimeout(() => {
+      console.error("[RazorpayLoader] 10-second timeout reached while loading script.");
+      if (script && script.getAttribute('data-state') === 'loading') {
+         script.setAttribute('data-state', 'failed');
+      }
+      cleanup();
+      reject(new Error("Razorpay loader timed out after 10 seconds."));
+    }, 10000);
+  });
+
+  return razorpayLoadPromise;
+};
+
 export default function Premium() {
   const { user, refreshPremium } = useAuth();
   const navigate = useNavigate();
@@ -170,84 +255,6 @@ export default function Premium() {
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const loadRazorpayScript = () => {
-    console.log("[RazorpayLoader] [1] Payment button clicked");
-    return new Promise<boolean>((resolve, reject) => {
-      console.log("[RazorpayLoader] [2] loadRazorpayScript started");
-      if (typeof window === 'undefined') {
-        return resolve(false);
-      }
-      
-      if ((window as any).Razorpay) {
-        console.log("[RazorpayLoader] [6] window.Razorpay already exists");
-        return resolve(true);
-      }
-
-      const scriptId = 'razorpay-checkout-js';
-      let existingScript = document.getElementById(scriptId) as HTMLScriptElement;
-
-      if (existingScript) {
-        console.log("[RazorpayLoader] [3] Existing script found with state:", existingScript.getAttribute('data-state'));
-        if ((window as any).Razorpay) {
-            console.log("[RazorpayLoader] [6] window.Razorpay exists (from existing script)");
-            return resolve(true);
-        }
-        
-        const state = existingScript.getAttribute('data-state');
-        if (state === 'failed') {
-            console.log("[RazorpayLoader] [3] Existing script failed previously. Removing it.");
-            existingScript.remove();
-            existingScript = null as any;
-        } else if (state === 'loading') {
-            console.log("[RazorpayLoader] [3] Existing script is loading. Waiting for events...");
-            existingScript.addEventListener('load', () => {
-                console.log("[RazorpayLoader] [5] checkout.js load event fired on existing script");
-                resolve(!!(window as any).Razorpay);
-            });
-            existingScript.addEventListener('error', () => {
-                console.log("[RazorpayLoader] Error loading existing script");
-                reject(new Error("Failed to load Razorpay Checkout"));
-            });
-            return;
-        } else {
-            console.log("[RazorpayLoader] [3] Existing script in unknown state. Removing it.");
-            existingScript.remove();
-            existingScript = null as any;
-        }
-      }
-
-      if (!existingScript) {
-          console.log("[RazorpayLoader] [3] Creating new script...");
-          const script = document.createElement('script');
-          script.id = scriptId;
-          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-          script.async = true;
-          script.setAttribute('data-state', 'loading');
-          
-          script.onload = () => {
-            console.log("[RazorpayLoader] [5] checkout.js load event fired");
-            script.setAttribute('data-state', 'loaded');
-            if ((window as any).Razorpay) {
-              console.log("[RazorpayLoader] [6] window.Razorpay exists!");
-              resolve(true);
-            } else {
-              console.log("[RazorpayLoader] [6] window.Razorpay doesn't exist despite script onload");
-              reject(new Error("Razorpay loaded but window.Razorpay is unavailable"));
-            }
-          };
-          
-          script.onerror = (e) => {
-            console.log("[RazorpayLoader] Script onerror fired", e);
-            script.setAttribute('data-state', 'failed');
-            reject(new Error("Failed to load Razorpay Checkout"));
-          };
-          
-          console.log("[RazorpayLoader] [4] Script appended to document.body");
-          document.body.appendChild(script);
-      }
-    });
-  };
-
   const handlePurchase = async (planToPurchase: 'monthly' | 'yearly' | 'lifetime' = selectedPlan) => {
     if (isProcessing) return;
     if (!user) {
@@ -259,10 +266,17 @@ export default function Premium() {
     
     // Razorpay Web Flow (Primary Gateway)
     try {
-      const scriptLoaded = await loadRazorpayScript();
+      let scriptLoaded = false;
+      try {
+        scriptLoaded = await loadRazorpayScript();
+      } catch (loadErr: any) {
+        setScriptLoadError(true);
+        throw new Error(loadErr.message || "Unable to load the Razorpay checkout script. Please check your internet connection and try again.");
+      }
+
       if (!scriptLoaded) {
         setScriptLoadError(true);
-        throw new Error("Unable to load the Razorpay checkout script. Please check your internet connection and try again.");
+        throw new Error("Unable to load the Razorpay checkout script. Please check your browser settings.");
       }
 
       console.log("[RazorpayLoader] Calling /api/payments/razorpay/checkout with plan:", planToPurchase);
@@ -285,14 +299,10 @@ export default function Premium() {
         const checkoutData = await response.json();
         console.log("[RazorpayLoader] Received checkoutData from server:", checkoutData);
         
-        const options = {
+        const options: any = {
           key: checkoutData.key,
-          amount: checkoutData.amount,
-          currency: checkoutData.currency || "INR",
           name: checkoutData.name,
           description: checkoutData.description,
-          order_id: checkoutData.order_id,
-          subscription_id: checkoutData.subscription_id,
           prefill: checkoutData.prefill,
           theme: checkoutData.theme,
           handler: async (response: any) => {
@@ -341,6 +351,14 @@ export default function Premium() {
             }
           }
         };
+
+        if (checkoutData.order_id) {
+          options.order_id = checkoutData.order_id;
+          options.amount = checkoutData.amount;
+          options.currency = checkoutData.currency || "INR";
+        } else if (checkoutData.subscription_id) {
+          options.subscription_id = checkoutData.subscription_id;
+        }
 
         console.log("[RazorpayLoader] [7] Razorpay instance created");
         const rzp = new (window as any).Razorpay(options);
@@ -420,12 +438,16 @@ export default function Premium() {
           <div className="flex flex-wrap gap-3 pt-2 border-t border-white/5">
             <button
               onClick={async () => {
-                const loaded = await loadRazorpayScript();
-                if (loaded) {
-                  setScriptLoadError(false);
-                  toast.success("Razorpay script loaded successfully!");
-                } else {
-                  toast.error("Razorpay script is still being blocked.");
+                try {
+                  const loaded = await loadRazorpayScript();
+                  if (loaded) {
+                    setScriptLoadError(false);
+                    toast.success("Razorpay script loaded successfully!");
+                  } else {
+                    toast.error("Razorpay script is still being blocked.");
+                  }
+                } catch (err: any) {
+                  toast.error(err.message || "Razorpay script is still being blocked.");
                 }
               }}
               className="px-4 py-2 bg-[#FF3B30] hover:bg-[#FF3B30]/90 text-white rounded-lg text-xs font-black uppercase tracking-wider transition-all"
