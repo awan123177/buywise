@@ -171,43 +171,80 @@ export default function Premium() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const loadRazorpayScript = () => {
+    console.log("[RazorpayLoader] [1] Payment button clicked");
     return new Promise<boolean>((resolve, reject) => {
+      console.log("[RazorpayLoader] [2] loadRazorpayScript started");
       if (typeof window === 'undefined') {
         return resolve(false);
       }
       
       if ((window as any).Razorpay) {
+        console.log("[RazorpayLoader] [6] window.Razorpay already exists");
         return resolve(true);
       }
 
       const scriptId = 'razorpay-checkout-js';
-      const existingScript = document.getElementById(scriptId) as HTMLScriptElement;
+      let existingScript = document.getElementById(scriptId) as HTMLScriptElement;
 
       if (existingScript) {
-        if ((window as any).Razorpay) return resolve(true);
-        existingScript.addEventListener('load', () => resolve(!!(window as any).Razorpay));
-        existingScript.addEventListener('error', () => reject(new Error("Failed to load Razorpay Checkout")));
-        return;
+        console.log("[RazorpayLoader] [3] Existing script found with state:", existingScript.getAttribute('data-state'));
+        if ((window as any).Razorpay) {
+            console.log("[RazorpayLoader] [6] window.Razorpay exists (from existing script)");
+            return resolve(true);
+        }
+        
+        const state = existingScript.getAttribute('data-state');
+        if (state === 'failed') {
+            console.log("[RazorpayLoader] [3] Existing script failed previously. Removing it.");
+            existingScript.remove();
+            existingScript = null as any;
+        } else if (state === 'loading') {
+            console.log("[RazorpayLoader] [3] Existing script is loading. Waiting for events...");
+            existingScript.addEventListener('load', () => {
+                console.log("[RazorpayLoader] [5] checkout.js load event fired on existing script");
+                resolve(!!(window as any).Razorpay);
+            });
+            existingScript.addEventListener('error', () => {
+                console.log("[RazorpayLoader] Error loading existing script");
+                reject(new Error("Failed to load Razorpay Checkout"));
+            });
+            return;
+        } else {
+            console.log("[RazorpayLoader] [3] Existing script in unknown state. Removing it.");
+            existingScript.remove();
+            existingScript = null as any;
+        }
       }
 
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-      script.async = true;
-      
-      script.onload = () => {
-        if ((window as any).Razorpay) {
-          resolve(true);
-        } else {
-          reject(new Error("Razorpay loaded but window.Razorpay is unavailable"));
-        }
-      };
-      
-      script.onerror = () => {
-        reject(new Error("Failed to load Razorpay Checkout"));
-      };
-      
-      document.body.appendChild(script);
+      if (!existingScript) {
+          console.log("[RazorpayLoader] [3] Creating new script...");
+          const script = document.createElement('script');
+          script.id = scriptId;
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.async = true;
+          script.setAttribute('data-state', 'loading');
+          
+          script.onload = () => {
+            console.log("[RazorpayLoader] [5] checkout.js load event fired");
+            script.setAttribute('data-state', 'loaded');
+            if ((window as any).Razorpay) {
+              console.log("[RazorpayLoader] [6] window.Razorpay exists!");
+              resolve(true);
+            } else {
+              console.log("[RazorpayLoader] [6] window.Razorpay doesn't exist despite script onload");
+              reject(new Error("Razorpay loaded but window.Razorpay is unavailable"));
+            }
+          };
+          
+          script.onerror = (e) => {
+            console.log("[RazorpayLoader] Script onerror fired", e);
+            script.setAttribute('data-state', 'failed');
+            reject(new Error("Failed to load Razorpay Checkout"));
+          };
+          
+          console.log("[RazorpayLoader] [4] Script appended to document.body");
+          document.body.appendChild(script);
+      }
     });
   };
 
@@ -228,6 +265,7 @@ export default function Premium() {
         throw new Error("Unable to load the Razorpay checkout script. Please check your internet connection and try again.");
       }
 
+      console.log("[RazorpayLoader] Calling /api/payments/razorpay/checkout with plan:", planToPurchase);
       const response = await fetch('/api/payments/razorpay/checkout', {
           method: 'POST',
           headers: {
@@ -245,6 +283,7 @@ export default function Premium() {
         }
 
         const checkoutData = await response.json();
+        console.log("[RazorpayLoader] Received checkoutData from server:", checkoutData);
         
         const options = {
           key: checkoutData.key,
@@ -303,15 +342,18 @@ export default function Premium() {
           }
         };
 
+        console.log("[RazorpayLoader] [7] Razorpay instance created");
         const rzp = new (window as any).Razorpay(options);
         rzp.on('payment.failed', function (resp: any) {
           toast.error("Payment failed: " + resp.error.description);
           setIsProcessing(false);
         });
+        console.log("[RazorpayLoader] [8] checkout.open() called");
         rzp.open();
+        console.log("[RazorpayLoader] [9] checkout opened");
 
       } catch (rzpErr: any) {
-        console.error("Razorpay flow error:", rzpErr.message || rzpErr);
+        console.error("[RazorpayLoader] Razorpay flow error caught:", rzpErr.message, rzpErr.stack, rzpErr);
         toast.error(rzpErr.message || "Failed to initialize payment. Please try again.");
         setIsProcessing(false);
       }
