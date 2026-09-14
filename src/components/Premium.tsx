@@ -171,47 +171,43 @@ export default function Premium() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const loadRazorpayScript = () => {
-    return new Promise<boolean>((resolve) => {
+    return new Promise<boolean>((resolve, reject) => {
       if (typeof window === 'undefined') {
-        console.warn("[Razorpay Script Loader] window is undefined. Resolve false.");
-        resolve(false);
-        return;
+        return resolve(false);
       }
       
       if ((window as any).Razorpay) {
-        console.log("[Razorpay Script Loader] window.Razorpay already exists. Resolve true.");
-        resolve(true);
+        return resolve(true);
+      }
+
+      const scriptId = 'razorpay-checkout-js';
+      const existingScript = document.getElementById(scriptId) as HTMLScriptElement;
+
+      if (existingScript) {
+        if ((window as any).Razorpay) return resolve(true);
+        existingScript.addEventListener('load', () => resolve(!!(window as any).Razorpay));
+        existingScript.addEventListener('error', () => reject(new Error("Failed to load Razorpay Checkout")));
         return;
       }
 
-      // Check for any previous script tag pointing to Razorpay
-      const existingScript = document.querySelector('script[src*="razorpay.com"]') as HTMLScriptElement;
-      if (existingScript) {
-        console.log("[Razorpay Script Loader] Existing Razorpay script tag detected. Removing stale element to perform fresh load.");
-        existingScript.remove();
-      }
-
-      console.log("[Razorpay Script Loader] Creating and appending a fresh script element for checkout.js");
       const script = document.createElement('script');
+      script.id = scriptId;
       script.src = 'https://checkout.razorpay.com/v1/checkout.js';
       script.async = true;
       
       script.onload = () => {
         if ((window as any).Razorpay) {
-          console.log("[Razorpay Script Loader] Script loaded successfully. window.Razorpay initialized.");
           resolve(true);
         } else {
-          console.error("[Razorpay Script Loader] Script loaded but window.Razorpay is still undefined.");
-          resolve(false);
+          reject(new Error("Razorpay loaded but window.Razorpay is unavailable"));
         }
       };
-
-      script.onerror = (err) => {
-        console.error("[Razorpay Script Loader] Script load failed. This is typically a CSP block or Network reachability issue.", err);
-        resolve(false);
+      
+      script.onerror = () => {
+        reject(new Error("Failed to load Razorpay Checkout"));
       };
-
-      document.head.appendChild(script);
+      
+      document.body.appendChild(script);
     });
   };
 
