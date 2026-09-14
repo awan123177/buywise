@@ -429,7 +429,7 @@ export default function FounderMysteryBox({ onSelectFounderPlan }: FounderMyster
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => {
-                toast.info("Forever Founder purchases are coming soon!");
+                toast("Forever Founder purchases are coming soon!");
                 const founderSection = document.getElementById('forever-founder-plan-card');
                 if (founderSection) {
                   founderSection.scrollIntoView({ behavior: 'smooth' });

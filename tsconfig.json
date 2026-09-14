@@ -28,5 +28,9 @@
     "dist",
     "android",
     "public"
+  ],
+  "include": [
+    "src/**/*",
+    "server.ts"
   ]
 }

@@ -1,4 +1,4 @@
-import DodoPayments from 'dodopayments';
+import Razorpay from 'razorpay';
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
@@ -389,34 +389,10 @@ async function startServer() {
 
   const app = express();
 
-  const dodoApiKey = process.env.DODO_PAYMENTS_API_KEY;
-  const dodoEnv = process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode';
-  
   console.log("--- START DIAGNOSTICS ---");
-  console.log("DODO_PAYMENTS_API_KEY:", process.env.DODO_PAYMENTS_API_KEY ? "PRESENT" : (process.env.DODO_PAYMENTS_API_KEY === "" ? "EMPTY" : "MISSING"));
-  console.log("DODO_PAYMENTS_WEBHOOK_KEY:", process.env.DODO_PAYMENTS_WEBHOOK_KEY ? "PRESENT" : (process.env.DODO_PAYMENTS_WEBHOOK_KEY === "" ? "EMPTY" : "MISSING"));
-  console.log("DODO_PAYMENTS_ENVIRONMENT:", dodoEnv);
-  console.log("DODO_PAYMENTS_RETURN_URL:", process.env.DODO_PAYMENTS_RETURN_URL ? "PRESENT" : (process.env.DODO_PAYMENTS_RETURN_URL === "" ? "EMPTY" : "MISSING"));
   console.log("PORT:", process.env.PORT ? process.env.PORT : 3000);
   console.log("HOST: 0.0.0.0");
   console.log("--- END DIAGNOSTICS ---");
-
-  let _dodoClientInstance = null;
-  const dodoClient = new Proxy({}, {
-    get(target, prop) {
-      if (!_dodoClientInstance) {
-        const apiKey = process.env.DODO_PAYMENTS_API_KEY;
-        if (!apiKey) {
-          throw new Error("DODO_PAYMENTS_API_KEY environment variable is missing or empty");
-        }
-        _dodoClientInstance = new DodoPayments({
-          bearerToken: apiKey,
-          environment: process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode'
-        });
-      }
-      return _dodoClientInstance[prop];
-    }
-  });
 
 
 
@@ -425,7 +401,7 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  const PORT = process.env.PORT || 10000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // 2. SECURITY HEADERS (HELMET) WITH IFRAME COMPATIBILITY FOR GOOGLE AI STUDIO
   app.use(
@@ -590,180 +566,12 @@ app.post('/api/auth/google', async (req: any, res: any) => {
 });
 
 
-  app.post('/api/webhooks/dodo', express.text({ type: '*/*' }), async (req: any, res: any) => {
-  try {
-    const webhookKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
-    if (!webhookKey) {
-      console.error("Missing DODO_PAYMENTS_WEBHOOK_KEY");
-      return res.status(500).send("Server config error");
+  app.use(express.json({
+    limit: "15mb",
+    verify: (req: any, res: any, buf: Buffer) => {
+      req.rawBody = buf;
     }
-
-    const payload = req.body;
-    
-    // Convert headers to a standard object with string values
-    const headers: Record<string, string> = {};
-    for (const [key, value] of Object.entries(req.headers)) {
-      if (Array.isArray(value)) {
-        headers[key.toLowerCase()] = value[0];
-      } else if (typeof value === 'string') {
-        headers[key.toLowerCase()] = value;
-      }
-    }
-
-    let event;
-    try {
-      event = dodoClient.webhooks.unwrap(payload, { headers, key: webhookKey });
-
-  
-    } catch (err: any) {
-      console.error("Webhook verification failed:", err);
-      return res.status(400).send("Webhook verification failed");
-    }
-
-    console.log("Dodo webhook event received:", event.type);
-    
-    const { db } = await import('./src/lib/firebase.js');
-    const { doc, updateDoc, setDoc, getDoc } = await import('firebase/firestore');
-
-    // Idempotency check
-    const eventId = event.webhook_event_id || event.event_id || `dodo_${Date.now()}`;
-    const eventRef = doc(db, 'webhook_events', eventId);
-    const eventSnap = await getDoc(eventRef);
-    if (eventSnap.exists()) {
-       console.log("Event already processed:", eventId);
-       return res.json({ received: true, cached: true });
-    }
-    await setDoc(eventRef, {
-       type: event.type,
-       processedAt: new Date().toISOString()
-    });
-
-    const handlePremiumActivation = async (metadata: any, subscriptionId: string, paymentId: string) => {
-      const { userId, planId } = metadata || {};
-      if (!userId || !planId) {
-        console.warn("No userId or planId in metadata", metadata);
-        return;
-      }
-
-      const planDurationMap: Record<string, number> = {
-        monthly: 30,
-        yearly: 365,
-        lifetime: 36500
-      };
-
-      const subDays = planDurationMap[planId] || 0;
-      const expirationDate = new Date(Date.now() + subDays * 24 * 60 * 60 * 1000);
-
-      // 1. Supabase Authoritative Update
-      const supabaseClient = getSupabaseClient();
-      if (supabaseClient) {
-         try {
-            await supabaseClient.from('profiles').update({
-              premium: true,
-              premium_expiry: expirationDate.toISOString(),
-              active_plan_id: planId,
-              active_plan_name: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId
-            }).eq('id', userId);
-            
-            await supabaseClient.from('subscriptions').upsert({
-              id: subscriptionId || paymentId || `dodo_${Date.now()}`,
-              user_id: userId,
-              plan_id: planId,
-              payment_id: paymentId,
-              subscription_id: subscriptionId,
-              status: 'active',
-              provider: 'dodo'
-            });
-         } catch(e) {
-            console.error("Supabase webhook update failed", e);
-         }
-      }
-
-      // 2. Firebase Secondary (No rollback if this fails)
-      try {
-        const admin = await import('firebase-admin');
-        if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
-          const dbRef = ((admin as any).firestore || (admin.default as any).firestore)();
-          const orderId = subscriptionId || paymentId || `dodo_${Date.now()}`;
-          await dbRef.collection('orders').doc(orderId).set({
-            userId, planId, paymentId, subscriptionId,
-            status: 'completed', provider: 'dodo', createdAt: new Date().toISOString()
-        },
- { merge: true });
-
-          await dbRef.collection('users').doc(userId).set({
-            premiumStatus: 'active',
-            premiumPlan: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId,
-            premiumSince: new Date().toISOString(),
-            premiumExpiration: expirationDate.toISOString(),
-        },
- { merge: true });
-        }
-      } catch(e) {
-        console.error("Firebase secondary webhook update failed", e.message);
-      }
-
-      // 3. Update memory state so the app works synchronously
-      try {
-         const { activateUserPremium, claimFounderMysteryBox } = await import('./src/server/gamificationDb.ts');
-         activateUserPremium(userId, "unknown@buywise.in", "User", subDays, planId);
-         if (planId === 'lifetime' || planId === 'buywise_founder_forever') {
-            try {
-               claimFounderMysteryBox(userId);
-               console.log(`Successfully triggered Forever Founder Mystery Box for ${userId}`);
-            } catch (err: any) {
-               console.log(`Mystery Box already claimed or error for ${userId}:`, err.message);
-            }
-         }
-      } catch(e: any) {
-         console.error("Memory update failed", e.message);
-      }
-
-      console.log(`Activated premium ${planId} for user ${userId}`);
-    };
-
-    switch (event.type) {
-      case 'payment.succeeded': {
-        const payment = event.data;
-        // For one-time payments (lifetime)
-        if (payment.metadata && payment.metadata.userId) {
-          await handlePremiumActivation(payment.metadata, '', payment.payment_id);
-        }
-        break;
-      }
-      case 'subscription.active':
-      case 'subscription.renewed': {
-        const subscription = event.data;
-        if (subscription.metadata && subscription.metadata.userId) {
-          await handlePremiumActivation(subscription.metadata, subscription.subscription_id, '');
-        }
-        break;
-      }
-      case 'subscription.failed':
-      case 'subscription.expired':
-      case 'subscription.cancelled': {
-        const subscription = event.data;
-        if (subscription.metadata && subscription.metadata.userId) {
-           await updateDoc(doc(db, 'users', subscription.metadata.userId), {
-              premiumStatus: 'inactive'
-           });
-           console.log(`Deactivated premium for user ${subscription.metadata.userId} due to ${event.type}`);
-        }
-        break;
-      }
-      default:
-        console.log(`Unhandled webhook event type: ${event.type}`);
-    }
-
-    res.json({ received: true });
-  } catch (error) {
-    console.error("Webhook processing error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-
-  app.use(express.json({ limit: "15mb" }));
+  }));
   app.use(express.urlencoded({ limit: "15mb", extended: true }));
 
   // 3. DYNAMIC CORS ORIGIN AND EXTRA SECURITY HEADERS MIDDLEWARE
@@ -1162,289 +970,432 @@ app.post('/api/auth/google', async (req: any, res: any) => {
       amountPaise: 70000,
 },
 };
-const getDodoPlanMap = () => {
-  const isLive = process.env.DODO_PAYMENTS_ENVIRONMENT === 'live_mode';
-  if (isLive) {
-    return {
-      monthly: 'pdt_0NlsfvmdNk8MOUZDAPwFC',
-      yearly: 'pdt_0NlsgR5lg7OyWQ7hPFPO9',
-      lifetime: 'pdt_0NlsgAgxtmImcGR7BFMmx'
-    };
+
+// ==========================================
+// --- RAZORPAY PAYMENT INTEGRATION ---
+// ==========================================
+
+let razorpayInstance: any = null;
+const getRazorpayInstance = () => {
+  if (!razorpayInstance) {
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) {
+      throw new Error("Razorpay API Key ID or Secret is not configured.");
+    }
+    razorpayInstance = new Razorpay({
+      key_id: keyId,
+      key_secret: keySecret,
+    });
   }
-  return {
-    monthly: 'pdt_0Nlt1WQA2BzUbLbetJ4pm',
-    yearly: 'pdt_0Nlt1WS3rbm20BWDim4ZQ',
-    lifetime: 'pdt_0Nlt1WTtCUeiKeKnQRwsP'
-  };
+  return razorpayInstance;
 };
 
+const processedWebhookIds = new Set<string>();
 
-app.post("/api/gamification/premium/verify-test", getUserContext, async (req: any, res: any) => {
-    const { userId } = req.userContext;
-    try {
-      const storePath = path.join(process.cwd(), "data_store.json");
-      if (!fs.existsSync(storePath)) return res.json({ success: false, reason: "No data store" });
-      const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
-      const pending = raw.pendingCheckouts?.[userId];
-      
-      if (!pending) {
-         return res.json({ success: false, reason: "No pending checkout found." });
-      }
-
-      const sessionStatus = await dodoClient.checkoutSessions.retrieve(pending.sessionId);
-      
-      if (sessionStatus.payment_status === "succeeded" || sessionStatus.payment_status === "complete") {
-         const planId = pending.planId;
-         const planDurationMap: Record<string, number> = {
-           monthly: 30,
-           yearly: 365,
-           lifetime: 36500
-         };
-         const subDays = planDurationMap[planId] || 0;
-         const expirationDate = new Date(Date.now() + subDays * 24 * 60 * 60 * 1000);
-
-         const supabaseClient = getSupabaseClient();
-         if (supabaseClient) {
-            await supabaseClient.from('profiles').update({
-              premium: true,
-              premium_expiry: expirationDate.toISOString(),
-              active_plan_id: planId,
-              active_plan_name: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId
-            }).eq('id', userId);
-         }
-         
-         const profile = getOrCreateProfile(userId, "", "");
-         profile.isPremium = true;
-         profile.premiumExpiry = expirationDate.toISOString();
-         profile.activePlanId = planId;
-         
-         delete raw.pendingCheckouts[userId];
-         fs.writeFileSync(storePath, JSON.stringify(raw, null, 2));
-
-         return res.json({ success: true, verified: true });
-      }
-      return res.json({ success: true, verified: false, status: sessionStatus.payment_status });
-    } catch(e) {
-      console.error("Manual test verify error:", e);
-      return res.status(500).json({ error: "Verification failed." });
-    }
-  });
-
-  app.post('/api/payments/dodo/checkout', getUserContext, async (req: any, res: any) => {
-  console.log("Dodo Checkout requested:", {
-    body: req.body,
-    env: process.env.DODO_PAYMENTS_ENVIRONMENT,
-    hasApiKey: !!process.env.DODO_PAYMENTS_API_KEY
-  });
+const isOrderAlreadyCompleted = async (referenceId: string) => {
+  if (processedWebhookIds.has(referenceId)) return true;
   try {
-    const userId = req.userContext?.userId || req.userId;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const admin = await import('firebase-admin');
+    if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
+      const dbRef = ((admin as any).firestore || (admin.default as any).firestore)();
+      const docSnap = await dbRef.collection('orders').doc(referenceId).get();
+      if (docSnap.exists && docSnap.data()?.status === 'completed') {
+        return true;
+      }
+    }
+  } catch (e) {
+    console.error("Error checking order status in Firebase:", e);
+  }
+  return false;
+};
 
-    const { planId } = req.body;
-    const dodoPlanMap = getDodoPlanMap();
-    if (!planId || !dodoPlanMap[planId]) {
-      return res.status(400).json({ error: "Invalid plan ID" });
+async function activateUserEntitlement(
+  userId: string,
+  planId: string,
+  referenceId: string,
+  payId: string,
+  subId: string,
+  provider: "razorpay" = "razorpay",
+  userName?: string,
+  userEmail?: string
+) {
+  const planDurationMap: Record<string, number> = {
+    monthly: 30,
+    yearly: 365,
+    lifetime: 36500
+  };
+  const subDays = planDurationMap[planId] || 30;
+  const expirationDate = new Date(Date.now() + subDays * 24 * 60 * 60 * 1000);
+
+  // 1. Supabase Authoritative Update
+  const supabaseClient = getSupabaseClient();
+  if (supabaseClient) {
+     try {
+        await supabaseClient.from('profiles').update({
+          premium: true,
+          premium_expiry: expirationDate.toISOString(),
+          active_plan_id: planId,
+          active_plan_name: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId
+        }).eq('id', userId);
+        
+        await supabaseClient.from('subscriptions').upsert({
+          id: referenceId,
+          user_id: userId,
+          plan_id: planId,
+          payment_id: payId,
+          subscription_id: subId,
+          status: 'active',
+          provider: provider
+        });
+     } catch(e) { console.error("Entitlement activation Supabase error", e); }
+  }
+
+  // 2. Firebase Secondary
+  try {
+    const admin = await import('firebase-admin');
+    if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
+      const dbRef = ((admin as any).firestore || (admin.default as any).firestore)();
+      await dbRef.collection('orders').doc(referenceId).set({
+        userId, planId, paymentId: payId, subscriptionId: subId,
+        status: 'completed', provider: provider, createdAt: new Date().toISOString()
+      }, { merge: true });
+      await dbRef.collection('users').doc(userId).set({
+        premiumStatus: 'active',
+        premiumPlan: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId,
+        premiumSince: new Date().toISOString(),
+        premiumExpiration: expirationDate.toISOString(),
+      }, { merge: true });
+    }
+  } catch(e: any) { console.error("Firebase secondary entitlement activation error", e.message); }
+
+  // 3. Update gamification / memory state
+  try {
+     const { activateUserPremium, claimFounderMysteryBox } = await import('./src/server/gamificationDb.ts');
+     activateUserPremium(userId, userEmail || "unknown@buywise.in", userName || "User", subDays, planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId, planId);
+     if (planId === 'lifetime' || planId === 'buywise_founder_forever') {
+          try {
+             claimFounderMysteryBox(userId);
+          } catch (err: any) {
+             console.log(`Mystery Box already claimed or error for ${userId}:`, err.message);
+          }
+     }
+  } catch(e: any) { console.error("Memory entitlement activation error", e.message); }
+}
+
+function verifyRazorpaySignature(rawBody: string | Buffer, signature: string, secret: string): boolean {
+  try {
+    const crypto = require('crypto');
+    const hmac = crypto.createHmac('sha256', secret);
+    hmac.update(rawBody);
+    const expectedSignature = hmac.digest('hex');
+    return expectedSignature === signature;
+  } catch (e) {
+    console.error("Error verifying Razorpay signature:", e);
+    return false;
+  }
+}
+
+app.post('/api/payments/razorpay/checkout', getUserContext, async (req: any, res: any) => {
+  const userId = req.userContext?.userId || req.userId;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+  const { planId } = req.body;
+  if (!planId || !['monthly', 'yearly', 'lifetime'].includes(planId)) {
+    return res.status(400).json({ error: "Invalid plan ID" });
+  }
+
+  try {
+    const planConfig = PREMIUM_PLANS_CONFIG[planId];
+    if (!planConfig) {
+      return res.status(400).json({ error: "Plan configuration not found" });
     }
 
-    const productId = dodoPlanMap[planId];
-    
-    // Optional: fetch user data to attach to customer if possible
-    let email = req.userContext?.email || "user_" + userId + "@example.com";
+    let email = req.userContext?.email || `user_${userId}@buywise.in`;
     let name = req.userContext?.name || "BuyWise User";
 
-        let returnUrl = process.env.DODO_PAYMENTS_RETURN_URL || 'https://buywiser.store/premium/success';
-    const isTestMode = (process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode') === 'test_mode';
-    
-    if (isTestMode) {
-      let reqOrigin = req.get('origin');
-      if (!reqOrigin && req.get('referer')) {
-        try { reqOrigin = new URL(req.get('referer')).origin; } catch (e) {}
-      }
-      if (reqOrigin && (reqOrigin.endsWith('.run.app') || reqOrigin.startsWith('http://localhost') || reqOrigin.startsWith('https://localhost'))) {
-        returnUrl = `${reqOrigin}/premium/success`;
-      }
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    if (!keyId || !keySecret) {
+      return res.status(500).json({ 
+        error: "Razorpay payment integration is not configured on this server environment. Please set the RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables." 
+      });
     }
 
-    const session = await dodoClient.checkoutSessions.create({
-      product_cart: [{ product_id: productId, quantity: 1 }],
-      customer: { email, name },
-      return_url: returnUrl,
-      metadata: { userId, planId, source: "buywise" },
-      feature_flags: { allow_discount_code: true }
-    });
-    
-    // Write to data_store.json for preview environment verification
-    try {
-      const storePath = path.join(process.cwd(), "data_store.json");
-      if (fs.existsSync(storePath)) {
-         const raw = JSON.parse(fs.readFileSync(storePath, "utf-8"));
-         if (!raw.pendingCheckouts) raw.pendingCheckouts = {};
-         raw.pendingCheckouts[userId] = { sessionId: session.session_id, planId: planId, timestamp: Date.now() };
-         fs.writeFileSync(storePath, JSON.stringify(raw, null, 2));
-      }
-    } catch (e) {
-      console.error("Failed to store pending checkout", e);
+    const razorpay = getRazorpayInstance();
+
+    if (planId === 'lifetime') {
+      const order = await razorpay.orders.create({
+        amount: planConfig.amountPaise,
+        currency: 'INR',
+        receipt: `receipt_founder_${userId}_${Date.now()}`,
+        notes: {
+          userId: userId,
+          planId: 'lifetime',
+          email: email,
+          name: name
+        }
+      });
+
+      return res.json({
+        success: true,
+        key: process.env.RAZORPAY_KEY_ID,
+        amount: order.amount,
+        currency: order.currency,
+        order_id: order.id,
+        name: "BuyWise",
+        description: planConfig.name,
+        prefill: {
+          name,
+          email
+        },
+        theme: {
+          color: "#FF3B30"
+        }
+      });
+    } else {
+      const rzpPlanId = planId === 'monthly' ? 'plan_TbmNWzRVUXZQtO' : 'plan_ThmPgmFcSSWfk';
+      const subscription = await razorpay.subscriptions.create({
+        plan_id: rzpPlanId,
+        total_count: planId === 'monthly' ? 120 : 10,
+        quantity: 1,
+        customer_notify: 1,
+        notes: {
+          userId: userId,
+          planId: planId,
+          email: email,
+          name: name
+        }
+      });
+
+      return res.json({
+        success: true,
+        key: process.env.RAZORPAY_KEY_ID,
+        subscription_id: subscription.id,
+        name: "BuyWise",
+        description: planConfig.name,
+        prefill: {
+          name,
+          email
+        },
+        theme: {
+          color: "#FF3B30"
+        }
+      });
     }
-
-    // Tracking disabled due to localStorage mock
-
-    res.json({ checkout_url: session.checkout_url, session_id: session.session_id });
   } catch (error: any) {
-    console.error("Dodo checkout error details:", {
-      status: error.status,
-      message: error.message,
-      dodoError: error.error,
-      planId: req.body?.planId,
-      env: process.env.DODO_PAYMENTS_ENVIRONMENT || 'test_mode'
-    });
-    res.status(500).json({ error: "Checkout could not be created. Please try again." });
+    console.error("Razorpay checkout error:", error);
+    res.status(500).json({ error: error.message || "Failed to initialize Razorpay checkout" });
   }
 });
 
+app.post('/api/payments/razorpay/verify', getUserContext, async (req: any, res: any) => {
+  const userId = req.userContext?.userId || req.userId;
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-app.post("/api/payments/verify", getUserContext, async (req: any, res: any) => {
-  console.log("--- VERIFY ENDPOINT CALLED ---");
-  console.log("Body:", req.body);
-  console.log("Headers:", { uid: req.headers['x-user-id'], email: req.headers['x-user-email'] });
-  
+  const {
+    razorpay_payment_id,
+    razorpay_order_id,
+    razorpay_signature,
+    razorpay_subscription_id,
+    planId
+  } = req.body;
+
+  if (!razorpay_payment_id || (!razorpay_order_id && !razorpay_subscription_id) || !razorpay_signature) {
+    return res.status(400).json({ error: "Missing verification parameters" });
+  }
+
   try {
-    const userId = req.userContext?.userId || req.userId;
-    if (!userId) return res.status(401).json({ error: "Unauthorized" });
+    const crypto = require('crypto');
+    const secret = process.env.RAZORPAY_KEY_SECRET;
 
-    let { session_id, payment_id, subscription_id } = req.body;
-    session_id = session_id === 'null' ? null : session_id;
-    payment_id = payment_id === 'null' ? null : payment_id;
-    subscription_id = subscription_id === 'null' ? null : subscription_id;
-    if (!session_id && !payment_id && !subscription_id) {
-       return res.status(400).json({ error: "Missing checkout parameters" });
+    if (!secret) {
+      return res.status(500).json({ error: "Razorpay Secret Key is not configured on this server environment." });
     }
 
-    let planId = null;
-    let isSuccess = false;
-    let subId = subscription_id || '';
-    let payId = payment_id || '';
+    let expectedSignature = "";
+    if (razorpay_order_id) {
+      const text = razorpay_order_id + "|" + razorpay_payment_id;
+      expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(text)
+        .digest("hex");
+    } else {
+      const text = razorpay_payment_id + "|" + razorpay_subscription_id;
+      expectedSignature = crypto
+        .createHmac("sha256", secret)
+        .update(text)
+        .digest("hex");
+    }
 
-    if (session_id) {
-       const sess = await dodoClient.checkoutSessions.retrieve(session_id);
-       if (sess.metadata?.planId) planId = sess.metadata.planId;
-       
-       if (sess.payment_status === 'succeeded' || sess.payment_status === 'paid') {
-          isSuccess = true;
-          payId = sess.payment_id || payId;
-       }
-       if (sess.subscription_data?.subscription_id) {
-          subId = sess.subscription_data.subscription_id;
-       }
-    } 
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ error: "Signature mismatch. Unauthorized payment attempt." });
+    }
+
+    const razorpay = getRazorpayInstance();
+    const paymentInfo = await razorpay.payments.fetch(razorpay_payment_id);
     
-    if (subId && !isSuccess) {
-       const sub = await dodoClient.subscriptions.retrieve(subId);
-       if (sub.status === 'active' || sub.status === 'trialing') {
-          isSuccess = true;
-       }
-       if (sub.metadata?.planId) planId = sub.metadata.planId;
-    } 
-    
-    if (payId && !isSuccess) {
-       console.log("Retrieving payment with payId:", payId);
-       const pay = await dodoClient.payments.retrieve(payId);
-       console.log("Retrieved payment status:", pay.status);
-       if (pay.status === 'succeeded') {
-          isSuccess = true;
-       }
-       if (pay.metadata?.planId) planId = pay.metadata.planId;
+    if (paymentInfo.status !== 'captured' && paymentInfo.status !== 'authorized') {
+      return res.json({ verified: false, status: paymentInfo.status });
     }
 
-    if (!isSuccess) {
-       let currentStatus = 'pending';
-       if (session_id) {
-          const sess = await dodoClient.checkoutSessions.retrieve(session_id);
-          currentStatus = sess.payment_status || 'pending';
-       } else if (subId) {
-          const sub = await dodoClient.subscriptions.retrieve(subId);
-          currentStatus = sub.status || 'pending';
-       } else if (payId) {
-          const pay = await dodoClient.payments.retrieve(payId);
-          currentStatus = pay.status || 'pending';
-       }
-       return res.json({ verified: false, status: currentStatus });
-    }
-    
-    if (!planId) {
-      planId = 'monthly';
-    }
+    const verifiedPlanId = planId || (razorpay_order_id ? 'lifetime' : 'monthly');
+    const referenceId = razorpay_subscription_id || razorpay_order_id || razorpay_payment_id;
+    const isCompleted = await isOrderAlreadyCompleted(referenceId);
 
-    const planDurationMap: Record<string, number> = {
-      monthly: 30,
-      yearly: 365,
-      lifetime: 36500
-    };
-    const subDays = planDurationMap[planId] || 30;
-    const expirationDate = new Date(Date.now() + subDays * 24 * 60 * 60 * 1000);
-
-    // 1. Supabase Authoritative Update
-    const supabaseClient = getSupabaseClient();
-    if (supabaseClient) {
-       try {
-          await supabaseClient.from('profiles').update({
-            premium: true,
-            premium_expiry: expirationDate.toISOString(),
-            active_plan_id: planId,
-            active_plan_name: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId
-          }).eq('id', userId);
-          
-          await supabaseClient.from('subscriptions').upsert({
-            id: subId || payId || session_id || `dodo_${Date.now()}`,
-            user_id: userId,
-            plan_id: planId,
-            payment_id: payId,
-            subscription_id: subId,
-            status: 'active',
-            provider: 'dodo'
-          });
-       } catch(e) { console.error("Verify endpoint supabase error", e); }
+    if (!isCompleted) {
+      await activateUserEntitlement(
+        userId,
+        verifiedPlanId,
+        referenceId,
+        razorpay_payment_id,
+        razorpay_subscription_id || "",
+        "razorpay",
+        req.userContext?.name,
+        req.userContext?.email
+      );
+      processedWebhookIds.add(referenceId);
     }
 
-    // 2. Firebase Secondary
-    try {
-      const admin = await import('firebase-admin');
-      if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
-        const dbRef = ((admin as any).firestore || (admin.default as any).firestore)();
-        const orderId = subId || payId || session_id || `dodo_${Date.now()}`;
-        await dbRef.collection('orders').doc(orderId).set({
-          userId, planId, paymentId: payId, subscriptionId: subId,
-          status: 'completed', provider: 'dodo', createdAt: new Date().toISOString()
-      },
- { merge: true });
-        await dbRef.collection('users').doc(userId).set({
-          premiumStatus: 'active',
-          premiumPlan: planId === 'lifetime' ? 'buywise_founder_forever' : 'buywise_premium_' + planId,
-          premiumSince: new Date().toISOString(),
-          premiumExpiration: expirationDate.toISOString(),
-      },
- { merge: true });
-      }
-    } catch(e: any) { console.error("Firebase secondary verify error", e.message); }
-
-    // 3. Update memory state
-    try {
-       const { activateUserPremium, claimFounderMysteryBox } = await import('./src/server/gamificationDb.ts');
-       activateUserPremium(userId, "unknown@buywise.in", req.userContext?.name || "User", subDays, planId);
-       if (planId === 'lifetime' || planId === 'buywise_founder_forever') {
-            try {
-               claimFounderMysteryBox(userId);
-            } catch (err: any) {
-               console.log(`Mystery Box already claimed or error for ${userId}:`, err.message);
-            }
-       }
-    } catch(e: any) { console.error("Memory verify error", e.message); }
-
-    res.json({ verified: true, status: 'success' });
+    res.json({ success: true, verified: true, status: "success" });
   } catch (error: any) {
-    console.error("Dodo verify error:", error.message);
-    res.status(500).json({ error: "Verification failed." });
+    console.error("Razorpay direct verification error:", error);
+    res.status(500).json({ error: error.message || "Failed to verify Razorpay payment" });
   }
 });
+
+app.post('/api/webhooks/razorpay', async (req: any, res: any) => {
+  console.log("--- RAZORPAY WEBHOOK RECEIVED ---");
+  const signature = req.headers['x-razorpay-signature'];
+  const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+
+  if (!signature || !webhookSecret) {
+    console.warn("Webhook validation failed: missing signature or secret");
+    return res.status(400).send("Signature validation failed");
+  }
+
+  const rawBodyContent = req.rawBody ? req.rawBody : Buffer.from(JSON.stringify(req.body));
+  const isSignatureValid = verifyRazorpaySignature(rawBodyContent, signature, webhookSecret);
+
+  if (!isSignatureValid) {
+    console.error("Razorpay webhook signature verification failed");
+    return res.status(400).send("Invalid signature");
+  }
+
+  const event = req.body.event;
+  const payload = req.body.payload;
+
+  console.log(`Razorpay webhook event: ${event}`);
+
+  try {
+    if (event === 'subscription.charged' || event === 'subscription.activated') {
+      const subEntity = payload.subscription?.entity;
+      const paymentEntity = payload.payment?.entity;
+      if (subEntity) {
+        const rzpSubId = subEntity.id;
+        const userId = subEntity.notes?.userId;
+        const planId = subEntity.notes?.planId || 'monthly';
+        const payId = paymentEntity?.id || "";
+
+        if (userId) {
+          const isCompleted = await isOrderAlreadyCompleted(rzpSubId);
+          if (!isCompleted) {
+            await activateUserEntitlement(
+              userId,
+              planId,
+              rzpSubId,
+              payId,
+              rzpSubId,
+              "razorpay",
+              subEntity.notes?.name,
+              subEntity.notes?.email
+            );
+            processedWebhookIds.add(rzpSubId);
+            console.log(`Successfully activated/renewed subscription ${rzpSubId} for user ${userId} via webhook`);
+          }
+        }
+      }
+    } else if (event === 'payment.captured' || event === 'order.paid') {
+      const paymentEntity = payload.payment?.entity;
+      const orderEntity = payload.order?.entity;
+      
+      const payId = paymentEntity?.id;
+      const orderId = orderEntity?.id || paymentEntity?.order_id;
+      const userId = paymentEntity?.notes?.userId || orderEntity?.notes?.userId;
+      const planId = paymentEntity?.notes?.planId || orderEntity?.notes?.planId || 'lifetime';
+
+      if (userId && payId) {
+        const referenceId = orderId || payId;
+        const isCompleted = await isOrderAlreadyCompleted(referenceId);
+        if (!isCompleted) {
+          await activateUserEntitlement(
+            userId,
+            planId,
+            referenceId,
+            payId,
+            "",
+            "razorpay",
+            paymentEntity?.notes?.name || orderEntity?.notes?.name,
+            paymentEntity?.notes?.email || orderEntity?.notes?.email
+          );
+          processedWebhookIds.add(referenceId);
+          console.log(`Successfully completed payment ${payId} for user ${userId} via webhook`);
+        }
+      }
+    } else if (event === 'subscription.cancelled' || event === 'subscription.halted') {
+      const subEntity = payload.subscription?.entity;
+      if (subEntity) {
+        const rzpSubId = subEntity.id;
+        const userId = subEntity.notes?.userId;
+        
+        if (userId) {
+          console.log(`Subscription ${rzpSubId} cancelled/halted for user ${userId}. Revoking premium status.`);
+          
+          const supabaseClient = getSupabaseClient();
+          if (supabaseClient) {
+             try {
+                await supabaseClient.from('profiles').update({
+                  premium: false,
+                  active_plan_id: null,
+                  active_plan_name: null
+                }).eq('id', userId);
+             } catch(e) { console.error("Webhook Supabase status update error", e); }
+          }
+
+          try {
+            const admin = await import('firebase-admin');
+            if (((admin as any).apps?.length) || ((admin.default as any)?.apps?.length)) {
+              const dbRef = ((admin as any).firestore || (admin.default as any).firestore)();
+              await dbRef.collection('users').doc(userId).set({
+                premiumStatus: 'cancelled',
+                premiumPlan: null,
+                premiumExpiration: new Date().toISOString()
+              }, { merge: true });
+            }
+          } catch(e: any) { console.error("Webhook Firebase status revoke error", e.message); }
+
+          try {
+            const { getOrCreateProfile, saveDatabase } = await import('./src/server/gamificationDb.ts');
+            const profile = getOrCreateProfile(userId, "", "");
+            if (profile) {
+              profile.isPremium = false;
+              profile.activePlanId = undefined;
+              profile.activePlanName = undefined;
+              saveDatabase();
+            }
+          } catch(e: any) { console.error("Webhook memory status revoke error", e.message); }
+        }
+      }
+    }
+
+    res.status(200).json({ success: true });
+  } catch (err: any) {
+    console.error("Error processing Razorpay webhook:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 app.get("/api/receipts/:receiptId", getUserContext, (req: any, res: any) => {
     try {
