@@ -407,6 +407,7 @@ async function startServer() {
   app.use(
     helmet({
       crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+      crossOriginResourcePolicy: { policy: "cross-origin" },
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],

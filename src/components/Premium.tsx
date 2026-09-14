@@ -374,11 +374,7 @@ export default function Premium() {
             <div className="space-y-1">
               <h3 className="font-black text-red-400 uppercase tracking-wider text-sm">Payment Gateway Script Blocked</h3>
               <p className="text-xs text-white/70 leading-relaxed">
-                The secure Razorpay payment gateway script (<code className="bg-black/40 px-1.5 py-0.5 rounded font-mono text-red-300">checkout.js</code>) was blocked. 
-                This is typical when running inside the **AI Studio Preview Environment**, where iframe sandbox restrictions block external third-party script loads, or due to aggressive ad-blockers (such as Brave Shields, uBlock Origin).
-              </p>
-              <p className="text-xs text-white/50">
-                **Production Environment Ready**: The underlying payment logic is fully integrated with the real, production-ready Razorpay API and will execute seamlessly when loaded on the live website at <span className="font-semibold text-white/80">https://buywiser.store</span>.
+                Razorpay Checkout couldn't be loaded. Please retry or check whether your browser is blocking the payment gateway.
               </p>
             </div>
           </div>
