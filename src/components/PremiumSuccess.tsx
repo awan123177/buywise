@@ -66,13 +66,12 @@ export default function PremiumSuccess() {
       attemptCount++;
       
       try {
+        const token = localStorage.getItem('buywise_token');
         const verifyRes = await fetch('/api/payments/verify', {
            method: 'POST',
            headers: {
              'Content-Type': 'application/json',
-             'x-user-id': user.uid,
-             'x-user-email': user.email || '',
-             'x-user-name': encodeURIComponent(user.displayName || 'BuyWise User')
+             ...(token ? { 'Authorization': `Bearer ${token}`, 'x-session-token': token } : {})
            },
            body: JSON.stringify({
               session_id: searchParams.get('session_id'),

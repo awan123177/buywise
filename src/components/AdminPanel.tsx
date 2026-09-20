@@ -6,7 +6,7 @@ import {
   BarChart3, Users, Globe, ExternalLink, ShieldCheck, 
   Trash2, Plus, TrendingUp, AlertTriangle, Search, Activity, Heart, Check, X,
   Award, Gift, Bell, ShieldAlert, Sparkles, Scan, History, Tag, Barcode, Download,
-  Settings, Upload, MessageSquare, UserCheck, RefreshCw, Phone, Mail, Camera, Smartphone
+  Settings, Upload, MessageSquare, UserCheck, RefreshCw, Phone, Mail, Camera, Smartphone, LogOut
 } from 'lucide-react';
 import { fetchAdminStats, runAdminGamificationAction, fetchGamificationSettings, adminUpdateGamificationSettings, adminAdjustUserCoins, api } from '../lib/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -20,9 +20,52 @@ export default function AdminPanel() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [email, setEmail] = useState('');
   const [passcode, setPasscode] = useState('');
+  const [adminToken, setAdminToken] = useState('');
   const [isClearing, setIsClearing] = useState(false);
   const [trackLogs, setTrackLogs] = useState<any[]>([]);
   const [wishLogs, setWishLogs] = useState<any[]>([]);
+
+  useEffect(() => {
+    // Attempt automatic session restoration via server verification
+    const restoreSession = async () => {
+      try {
+        const savedEmail = sessionStorage.getItem('buywise_admin_email') || '';
+        const savedToken = sessionStorage.getItem('buywise_admin_token') || '';
+
+        const headers: Record<string, string> = {};
+        if (savedToken) {
+          headers['Authorization'] = `Bearer ${savedToken}`;
+          headers['x-admin-token'] = savedToken;
+        }
+        if (savedEmail) {
+          headers['x-admin-email'] = savedEmail;
+        }
+
+        const res = await fetch('/api/admin/verify', {
+          headers,
+          credentials: 'include',
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.admin) {
+            setEmail(data.admin.email || savedEmail);
+            setAdminToken(savedToken);
+            setIsAuthorized(true);
+            if (savedToken) {
+              api.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
+              api.defaults.headers.common["x-admin-token"] = savedToken;
+            }
+            api.defaults.headers.common["x-admin-email"] = data.admin.email || savedEmail;
+            delete api.defaults.headers.common["x-user-email"];
+            delete api.defaults.headers.common["x-user-id"];
+          }
+        }
+      } catch (e) {}
+    };
+
+    restoreSession();
+  }, []);
     
   // Gamification admin states
   const [activeTab, setActiveTab] = useState<'overview' | 'revenue' | 'users' | 'products' | 'coins' | 'referrals' | 'premium' | 'giftcards' | 'telegram' | 'ai' | 'analytics' | 'settings' | 'founder' | 'support' | 'livechat' | 'careers' | 'debug' | 'coupons' | 'apk'>('overview');
@@ -177,10 +220,8 @@ export default function AdminPanel() {
     setLoadingCareers(true);
     try {
       const res = await fetch('/api/admin/careers/applications', {
-        headers: {
-          'x-user-email': email,
-          'x-admin-passcode': passcode
-        }
+        headers: getAdminHeaders(),
+        credentials: 'include',
       });
       if (res.ok) {
         const contentType = res.headers.get('content-type') || '';
@@ -201,10 +242,8 @@ export default function AdminPanel() {
     try {
       const res = await fetch(`/api/admin/careers/applications/${id}`, {
         method: 'DELETE',
-        headers: {
-          'x-user-email': email,
-          'x-admin-passcode': passcode
-        }
+        headers: getAdminHeaders(),
+        credentials: 'include',
       });
       if (res.ok) {
         toast.success('Application deleted');
@@ -279,17 +318,74 @@ export default function AdminPanel() {
     }
   }, [isAuthorized]);
 
-  const handleAuth = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (email === 'mohammdsaeed24@gmail.com' && (passcode === 'awanwarsi' || passcode === 'awanwarsi1A@')) { 
-      setIsAuthorized(true);
-      // Set the authorization and user context headers on the Axios api client
-      api.defaults.headers.common["x-admin-passcode"] = passcode;
-      api.defaults.headers.common["x-user-email"] = email;
-      api.defaults.headers.common["x-user-id"] = "admin-uid-mohammdsaeed24";
-    } else {
-      alert('INVALID ACCESS CREDENTIALS');
+  const getAdminHeaders = (): Record<string, string> => {
+    const token = adminToken || sessionStorage.getItem('buywise_admin_token') || '';
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+      headers['x-admin-token'] = token;
     }
+    if (email) headers['x-admin-email'] = email;
+    if (passcode) headers['x-admin-passcode'] = passcode;
+    return headers;
+  };
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: email.trim(), passcode: passcode.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success && data.token) {
+        setIsAuthorized(true);
+        setAdminToken(data.token);
+        try {
+          sessionStorage.setItem('buywise_admin_email', email.trim());
+          sessionStorage.setItem('buywise_admin_token', data.token);
+          sessionStorage.setItem('buywise_admin_passcode', passcode.trim());
+        } catch (err) {}
+        // Set administrative authorization headers on Axios api client
+        api.defaults.headers.common["Authorization"] = `Bearer ${data.token}`;
+        api.defaults.headers.common["x-admin-token"] = data.token;
+        api.defaults.headers.common["x-admin-email"] = email.trim();
+        api.defaults.headers.common["x-admin-passcode"] = passcode.trim();
+        delete api.defaults.headers.common["x-user-email"];
+        delete api.defaults.headers.common["x-user-id"];
+        toast.success("Administrative clearance verified");
+      } else {
+        alert(data.error || 'INVALID ACCESS CREDENTIALS');
+      }
+    } catch (err: any) {
+      alert('Network or server error during admin authentication');
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    try {
+      await fetch('/api/admin/logout', {
+        method: 'POST',
+        headers: getAdminHeaders(),
+        credentials: 'include',
+      });
+    } catch (err) {}
+    try {
+      sessionStorage.removeItem('buywise_admin_email');
+      sessionStorage.removeItem('buywise_admin_token');
+      sessionStorage.removeItem('buywise_admin_passcode');
+    } catch (err) {}
+    delete api.defaults.headers.common["Authorization"];
+    delete api.defaults.headers.common["x-admin-token"];
+    delete api.defaults.headers.common["x-admin-email"];
+    delete api.defaults.headers.common["x-admin-passcode"];
+    setIsAuthorized(false);
+    setAdminToken('');
+    setEmail('');
+    setPasscode('');
+    toast.success("Administrative session terminated.");
   };
 
   const clearHistory = async () => {
@@ -522,6 +618,12 @@ export default function AdminPanel() {
               className="px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-lg text-red-500 hover:bg-red-500/20 text-[10px] font-black tracking-widest transition-all flex items-center gap-2"
             >
               <Trash2 size={14} /> {isClearing ? 'PURGING...' : 'CLEAR HISTORY'}
+            </button>
+            <button 
+              onClick={handleAdminLogout}
+              className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 text-white rounded-lg text-[10px] font-black tracking-widest transition-all flex items-center gap-2 cursor-pointer"
+            >
+              <LogOut size={14} className="text-[#FF3B30]" /> LOGOUT
             </button>
           </div>
         </header>
@@ -1926,10 +2028,10 @@ export default function AdminPanel() {
       )}
 
       {activeTab === 'support' && (
-        <AdminSupportDashboard email={email} passcode={passcode} />
+        <AdminSupportDashboard key="admin-support-desk" email={email} passcode={passcode} adminToken={adminToken} defaultFilter="open" />
       )}
       {activeTab === 'livechat' && (
-        <AdminSupportDashboard email={email} passcode={passcode} defaultFilter="livechat" />
+        <AdminSupportDashboard key="admin-live-chat" email={email} passcode={passcode} adminToken={adminToken} defaultFilter="livechat" />
       )}
 
       {activeTab === 'careers' && (
@@ -2274,7 +2376,7 @@ export default function AdminPanel() {
       )}
 
       {activeTab === 'apk' && (
-        <AdminApkManager email={email} passcode={passcode} />
+        <AdminApkManager email={email} passcode={passcode} adminToken={adminToken} />
       )}
 
       {activeTab !== 'overview' && activeTab !== 'revenue' && activeTab !== 'users' && activeTab !== 'products' && activeTab !== 'coins' && activeTab !== 'ai' && activeTab !== 'analytics' && activeTab !== 'premium' && activeTab !== 'referrals' && activeTab !== 'giftcards' && activeTab !== 'settings' && activeTab !== 'support' && activeTab !== 'livechat' && activeTab !== 'founder' && activeTab !== 'debug' && activeTab !== 'apk' && (

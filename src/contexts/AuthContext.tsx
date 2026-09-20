@@ -27,6 +27,7 @@ interface AuthContextType {
   updateAvatar: (url: string) => Promise<void>;
   updateProfile: (data: { password?: string; name?: string }) => Promise<void>;
   refreshPremium: () => Promise<boolean>;
+  deleteAccountAndData: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -44,6 +45,7 @@ const AuthContext = createContext<AuthContextType>({
   updateAvatar: async () => {},
   updateProfile: async () => {},
   refreshPremium: async () => false,
+  deleteAccountAndData: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -82,6 +84,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
          })();
        }
        setAccessToken(token);
+       if (token) {
+         localStorage.setItem('buywise_token', token);
+         localStorage.setItem('buywise_user_session', JSON.stringify({ user: sessionUser, token }));
+       }
        const baseUser: BuyWiseUser = {
           uid: sessionUser.id,
           email: sessionUser.email || null,
@@ -91,13 +97,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
        };
        setUser(baseUser);
        
-       // Configure Axios default headers for gamification session tracking
-       api.defaults.headers.common["x-user-id"] = sessionUser.id;
-       api.defaults.headers.common["x-user-email"] = sessionUser.email || "";
-       api.defaults.headers.common["x-user-name"] = sessionUser.user_metadata?.full_name || sessionUser.displayName || sessionUser.email?.split("@")[0] || "Anonymous User";
+       // Configure Axios default headers for server-trusted session tracking
+       if (token) {
+         api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+         api.defaults.headers.common["x-session-token"] = token;
+         try {
+           document.cookie = `buywise_session=${encodeURIComponent(token)}; path=/; max-age=${14 * 24 * 60 * 60}; SameSite=Lax`;
+         } catch (e) {}
+       }
+       delete api.defaults.headers.common["x-user-id"];
+       delete api.defaults.headers.common["x-user-email"];
+       delete api.defaults.headers.common["x-user-name"];
 
        // Trigger daily check-in streak reward
-       triggerDailyCheckIn().catch((err) => console.log("Daily check-in skipped:", err.message));
+       triggerDailyCheckIn().catch((err) => {
+         console.log("Daily check-in skipped:", err.message);
+         if (err.response?.status === 401) {
+           window.dispatchEvent(new Event("buywise_unauthorized"));
+         }
+       });
        
        // Check for premium status dynamically from backend and database!
        const checkPremium = async () => {
@@ -108,11 +126,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
            try {
              const res = await fetch('/api/gamification/profile', {
                headers: {
-                 'x-user-id': sessionUser.id,
-                 'x-user-email': sessionUser.email || '',
-                 'x-user-name': sessionUser.user_metadata?.full_name || sessionUser.displayName || sessionUser.email?.split('@')[0] || 'User'
+                 ...(token ? { 'Authorization': `Bearer ${token}`, 'x-session-token': token } : {})
                }
              });
+             if (res.status === 401) {
+               window.dispatchEvent(new Event("buywise_unauthorized"));
+               return;
+             }
              if (res.ok) {
                const profileData = await res.json();
                if (profileData) {
@@ -187,18 +207,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     };
 
   useEffect(() => {
-    
-
-    
-
     const handleActivatedEvent = () => {
       if (user) {
+        const token = accessToken || localStorage.getItem('buywise_token');
         fetch('/api/gamification/profile', {
-          headers: {
-            'x-user-id': user.uid,
-            'x-user-email': user.email || '',
-            'x-user-name': user.displayName || 'User'
-          }
+          headers: token ? {
+            'Authorization': `Bearer ${token}`,
+            'x-session-token': token
+          } : {}
         }).then(r => r.json()).then(p => {
           if (p?.isPremium) {
             setUser(prev => prev ? { ...prev, isPremium: true } : null);
@@ -207,6 +223,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
     window.addEventListener('buywisePremiumActivated', handleActivatedEvent);
+
+    const handleUnauthorizedEvent = () => {
+      logout();
+    };
+    window.addEventListener('buywise_unauthorized', handleUnauthorizedEvent);
+
+    let supabaseSubscription: any = null;
 
     if (hasSupabase) {
       // Get initial session
@@ -235,20 +258,42 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         }
         setLoading(false);
       });
-
-      return () => {
-         subscription.unsubscribe();
-         if(unsubPremiumRef.current) supabase.removeChannel(unsubPremiumRef.current);
-         if (fallbackIntervalRef.current) clearInterval(fallbackIntervalRef.current);
-      };
+      supabaseSubscription = subscription;
     } else {
-      // Mock auth initial state
+      // Non-Supabase initial state
+      const savedSession = localStorage.getItem('buywise_user_session');
+      const savedToken = localStorage.getItem('buywise_token');
       const savedUser = localStorage.getItem('mock_user');
-      if (savedUser) {
-        setupUser(JSON.parse(savedUser), 'mock_token');
+      if (savedSession) {
+        try {
+          const parsed = JSON.parse(savedSession);
+          if (parsed.user && parsed.token) {
+            setupUser(parsed.user, parsed.token);
+          }
+        } catch (e) {}
+      } else if (savedUser && savedToken) {
+        try {
+          setupUser(JSON.parse(savedUser), savedToken);
+        } catch (e) {}
       }
       setLoading(false);
     }
+
+    return () => {
+      if (supabaseSubscription) {
+        try {
+          supabaseSubscription.unsubscribe();
+        } catch (e) {}
+      }
+      if (unsubPremiumRef.current) {
+        try {
+          supabase.removeChannel(unsubPremiumRef.current);
+        } catch (e) {}
+      }
+      if (fallbackIntervalRef.current) clearInterval(fallbackIntervalRef.current);
+      window.removeEventListener('buywisePremiumActivated', handleActivatedEvent);
+      window.removeEventListener('buywise_unauthorized', handleUnauthorizedEvent);
+    };
   }, []);
 
   const openLogin = () => setLoginOpen(true);
@@ -292,9 +337,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw new Error(data.error || "Registration failed. Please try again.");
       }
 
-      // If development test mode or session returned
-      if (data.isDevTest && data.user) {
-        setupUser(data.user, 'dev_test_token_' + Date.now());
+      // If session returned from registration
+      if (data.user && data.token) {
+        setupUser(data.user, data.token);
         setLoginOpen(false);
       }
 
@@ -371,34 +416,26 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
 
     if (hasSupabase) {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password: password || '',
       });
       if (error) throw error;
+      if (data?.session?.access_token && data?.user) {
+        setupUser(data.user, data.session.access_token);
+      }
     } else {
-      // Mock auth flow
-      const mockUser = {
-        id: 'mock-uuid-' + Date.now(),
-        email: normalizedEmail,
-        displayName: name || normalizedEmail.split('@')[0],
-        user_metadata: {
-          full_name: name || normalizedEmail.split('@')[0],
-          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${normalizedEmail}`
-        }
-      };
-      localStorage.setItem('mock_user', JSON.stringify(mockUser));
-      setAccessToken('mock_token');
-      setUser({
-        uid: mockUser.id,
-        email: mockUser.email,
-        displayName: mockUser.displayName,
-        photoURL: mockUser.user_metadata.avatar_url,
-        isPremium: false
+      // Server-Authoritative Login: fetch cryptographically signed session token
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: normalizedEmail, password })
       });
-      api.defaults.headers.common["x-user-id"] = mockUser.id;
-      api.defaults.headers.common["x-user-email"] = mockUser.email;
-      api.defaults.headers.common["x-user-name"] = mockUser.displayName;
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Authentication failed.");
+      }
+      setupUser(data.user, data.token);
     }
     setLoginOpen(false);
   };
@@ -406,20 +443,28 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signInWithGoogle = async () => {
     try {
       const result = await signInWithPopup(authInstance, googleProvider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const token = credential?.accessToken || await result.user.getIdToken();
+      // Retrieve the Firebase ID Token (cryptographically verifiable on the server)
+      const token = await result.user.getIdToken();
       
-      const sessionUser = {
-        id: result.user.uid,
-        email: result.user.email,
-        displayName: result.user.displayName,
-        user_metadata: {
-          full_name: result.user.displayName,
-          avatar_url: result.user.photoURL,
-        }
-      };
+      // Exchange with our server-authoritative Google auth endpoint to get a secure signed session token
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token,
+          email: result.user.email,
+          name: result.user.displayName,
+          uid: result.user.uid,
+          photo: result.user.photoURL,
+        })
+      });
 
-      setupUser(sessionUser, token);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Google authentication failed on server.");
+      }
+
+      setupUser(data.sessionUser, data.token);
       setLoginOpen(false);
     } catch (error: any) {
       console.error("Google sign-in error:", error);
@@ -428,16 +473,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const logout = async () => {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        headers: accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {},
+      });
+    } catch (e) {}
     if (hasSupabase) {
-      await supabase.auth.signOut();
-    } else {
-      localStorage.removeItem('mock_user');
-      setUser(null);
-      setAccessToken(null);
-      delete api.defaults.headers.common["x-user-id"];
-      delete api.defaults.headers.common["x-user-email"];
-      delete api.defaults.headers.common["x-user-name"];
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
     }
+    localStorage.removeItem('mock_user');
+    localStorage.removeItem('buywise_token');
+    localStorage.removeItem('buywise_user_session');
+    try {
+      document.cookie = "buywise_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    } catch (e) {}
+    setUser(null);
+    setAccessToken(null);
+    delete api.defaults.headers.common["Authorization"];
+    delete api.defaults.headers.common["x-session-token"];
+    delete api.defaults.headers.common["x-user-id"];
+    delete api.defaults.headers.common["x-user-email"];
+    delete api.defaults.headers.common["x-user-name"];
   };
 
   const updateAvatar = async (url: string) => {
@@ -508,12 +568,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const refreshPremium = async (): Promise<boolean> => {
     if (!user) return false;
     try {
+      const token = accessToken || localStorage.getItem('buywise_token');
       const res = await fetch('/api/gamification/profile', {
-        headers: {
-          'x-user-id': user.uid,
-          'x-user-email': user.email || '',
-          'x-user-name': user.displayName || user.email?.split('@')[0] || 'User'
-        }
+        headers: token ? {
+          'Authorization': `Bearer ${token}`,
+          'x-session-token': token
+        } : {}
       });
       if (res.ok) {
         const profile = await res.json();
@@ -537,8 +597,52 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return false;
   };
 
+  const deleteAccountAndData = async (): Promise<void> => {
+    if (!user) throw new Error("Not authenticated");
+    const token = accessToken || localStorage.getItem('buywise_token');
+
+    // 1. Call real backend deletion endpoint with server-trusted credential
+    const res = await fetch('/api/account/delete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}`, 'x-session-token': token } : {})
+      }
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.error || "Failed to delete account on server.");
+    }
+
+    // 2. Sign out of Supabase if active
+    if (hasSupabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (sbErr) {
+        console.warn("Supabase signOut error during deletion:", sbErr);
+      }
+    }
+
+    // 3. Clear all cached local data
+    localStorage.removeItem('mock_user');
+    localStorage.removeItem('activeSupportTicketId');
+    localStorage.removeItem('guestSupportEmail');
+    localStorage.removeItem('buywise_cached_profile');
+    localStorage.removeItem('buywise_coins');
+
+    // 4. Reset auth state
+    setUser(null);
+    setAccessToken(null);
+    setLoginOpen(false);
+
+    // 5. Notify global listeners
+    window.dispatchEvent(new CustomEvent('buywiseAccountDeleted'));
+    window.dispatchEvent(new CustomEvent('buywiseCoinsUpdated', { detail: { coins: 0 } }));
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, accessToken, loginOpen, setLoginOpen, openLogin, signIn, signInWithGoogle, signUp, resendVerification, logout, updateAvatar, updateProfile, refreshPremium }}>
+    <AuthContext.Provider value={{ user, loading, accessToken, loginOpen, setLoginOpen, openLogin, signIn, signInWithGoogle, signUp, resendVerification, logout, updateAvatar, updateProfile, refreshPremium, deleteAccountAndData }}>
       {children}
     </AuthContext.Provider>
   );

@@ -718,6 +718,7 @@ export default function Home() {
             <div className="flex flex-col gap-2 mb-4">
               <a href="/privacy" onClick={(e) => { e.preventDefault(); navigate('/privacy'); }} className="hover:text-white transition-colors">Privacy Policy</a>
               <a href="/terms" onClick={(e) => { e.preventDefault(); navigate('/terms'); }} className="hover:text-white transition-colors">Terms of Service</a>
+              <a href="/delete-account" onClick={(e) => { e.preventDefault(); navigate('/delete-account'); }} className="text-red-400/90 hover:text-red-400 transition-colors font-medium">Delete Account & Data</a>
               <a href="/refund-policy" onClick={(e) => { e.preventDefault(); navigate('/refund-policy'); }} className="hover:text-white transition-colors">Refund & Cancellation Policy</a>
               <a href="/disclaimer" onClick={(e) => { e.preventDefault(); navigate('/disclaimer'); }} className="hover:text-white transition-colors">Disclaimer</a>
               <a href="/faq" onClick={(e) => { e.preventDefault(); navigate('/faq'); }} className="hover:text-white transition-colors">FAQ</a>

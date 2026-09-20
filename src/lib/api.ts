@@ -5,6 +5,40 @@ export const api = axios.create({
   baseURL: "/api",
 });
 
+// Automatic server-trusted authorization header injection
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("buywise_token");
+  if (token) {
+    if (!config.headers["Authorization"]) {
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+    if (!config.headers["x-session-token"]) {
+      config.headers["x-session-token"] = token;
+    }
+  }
+  return config;
+});
+
+// Automatic credentials clearance on 401 Unauthorized responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn("Unauthorized secure API request detected. Clearing stale credentials.");
+      localStorage.removeItem("buywise_token");
+      localStorage.removeItem("buywise_user_session");
+      localStorage.removeItem("buywise_cached_profile");
+      try {
+        document.cookie = "buywise_session=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      } catch (e) {}
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("buywise_unauthorized"));
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export async function searchProducts(query: string, originalUrl?: string) {
   try {
     const response = await api.get("/search", { params: { q: query, originalUrl } });
@@ -80,7 +114,8 @@ export async function submitMission(missionId: string) {
 
 export async function logSearchAction(queryText: string) {
   try {
-    if (!api.defaults.headers.common["x-user-id"]) {
+    const token = localStorage.getItem("buywise_token") || localStorage.getItem("buywise_user_session");
+    if (!token && !api.defaults.headers.common["Authorization"]) {
       // Guest search - no user context to record gamification coins
       return;
     }
@@ -186,10 +221,20 @@ export async function logProfileComplete() {
   }
 }
 
-// 6.5. Delete Account and Gamification Profile
+// 6.5. Comprehensive Account and Personal Data Deletion
 export async function deleteAccountAndData() {
   try {
-    const response = await api.post("/gamification/profile/delete");
+    const response = await api.post("/account/delete");
+    if (response.data && response.data.success) {
+      localStorage.removeItem("buywise_token");
+      localStorage.removeItem("buywise_user_session");
+      localStorage.removeItem("mock_user");
+      delete api.defaults.headers.common["Authorization"];
+      delete api.defaults.headers.common["x-session-token"];
+      delete api.defaults.headers.common["x-user-id"];
+      delete api.defaults.headers.common["x-user-email"];
+      delete api.defaults.headers.common["x-user-name"];
+    }
     return response.data;
   } catch (e: any) {
     console.error("deleteAccountAndData error:", e);

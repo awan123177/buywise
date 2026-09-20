@@ -21,6 +21,7 @@ import CompareProducts from './components/CompareProducts';
 import HubPage from './components/HubPage';
 import HumanSupport from './components/HumanSupport';
 import DownloadPage from './components/DownloadPage';
+import DeleteAccountPage from './components/DeleteAccountPage';
 import { Receipt } from './components/Receipt';
 import { MyReceipts } from './components/MyReceipts';
 import { AuthProvider } from './contexts/AuthContext';
@@ -80,6 +81,7 @@ export default function App() {
               <Route path="/hub/:slug" element={<HubPage />} />
               <Route path="/support" element={<HumanSupport />} />
               <Route path="/download" element={<DownloadPage />} />
+              <Route path="/delete-account" element={<DeleteAccountPage />} />
               <Route path="/receipt/:receiptId" element={<Receipt />} />
               <Route path="/my-receipts" element={<MyReceipts />} />
               <Route path="/receipts" element={<MyReceipts />} />

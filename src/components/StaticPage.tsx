@@ -73,6 +73,19 @@ const PAGES = {
         <p className="text-white/70 mb-6">We collect information that you provide directly to us, such as when you create an account, use our services, or communicate with us. This includes search queries to improve our AI models.</p>
         <h3 className="text-xl font-bold mb-4">Data Usage</h3>
         <p className="text-white/70 mb-6">We use the information we collect to operate, maintain, and provide the features of our services, and to communicate with you.</p>
+        <h3 className="text-xl font-bold mb-4">Account & Data Deletion</h3>
+        <p className="text-white/70 mb-4">BuyWise provides account deletion and data-rights controls designed to support applicable privacy requirements and platform policies, including Google Play account deletion standards. You have the right to delete your account and personal records at any time.</p>
+        <p className="text-white/70 mb-4">You can delete your account immediately in-app via your Account / Profile Settings, or visit our dedicated deletion request portal:</p>
+        <div className="mb-6">
+          <a href="/delete-account" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600/20 border border-red-500/30 text-red-400 hover:bg-red-600/30 font-bold text-xs uppercase tracking-wider transition-colors">
+            Go to Delete Account & Data Portal →
+          </a>
+        </div>
+        <h3 className="text-xl font-bold mb-4">Statutory & Regulatory Records</h3>
+        <p className="text-white/70 mb-6">Certain financial, tax, accounting, payment, or transaction records may be retained where required by applicable law or regulatory obligations. These records are restricted to the minimum necessary legal purpose and are not used for marketing.</p>
+        <h3 className="text-xl font-bold mb-4">Privacy & Grievance Redressal</h3>
+        <p className="text-white/70 mb-2">For privacy inquiries or grievance redressal, please contact our designated officer:</p>
+        <p className="text-white/90 font-mono text-sm mb-6"><a href="mailto:mohammdsaeed24@gmail.com" className="text-[#FF3B30] hover:underline">mohammdsaeed24@gmail.com</a></p>
       </>
     )
   },

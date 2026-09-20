@@ -108,12 +108,12 @@ export default function Premium() {
       const userId = user?.uid || (user as any)?.id;
       if (userId) {
         try {
+          const token = localStorage.getItem('buywise_token');
           const res = await fetch('/api/gamification/profile', {
-            headers: {
-              'x-user-id': userId,
-              'x-user-email': user?.email || '',
-              'x-user-name': user?.displayName || user?.email?.split('@')[0] || 'User'
-            }
+            headers: token ? {
+              'Authorization': `Bearer ${token}`,
+              'x-session-token': token
+            } : {}
           });
           if (res.ok) {
             const data = await res.json();
@@ -280,13 +280,12 @@ export default function Premium() {
       }
 
       console.log("[RazorpayLoader] Calling /api/payments/razorpay/checkout with plan:", planToPurchase);
+      const token = localStorage.getItem('buywise_token');
       const response = await fetch('/api/payments/razorpay/checkout', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-user-id': user?.uid || (user as any)?.id || '',
-            'x-user-email': user?.email || '',
-            'x-user-name': user?.displayName || ''
+            ...(token ? { 'Authorization': `Bearer ${token}`, 'x-session-token': token } : {})
           },
           body: JSON.stringify({ planId: planToPurchase })
         });
@@ -308,13 +307,12 @@ export default function Premium() {
           handler: async (response: any) => {
             const verificationToast = toast.loading("Verifying your payment securely...");
             try {
+              const verifyToken = localStorage.getItem('buywise_token');
               const verifyRes = await fetch('/api/payments/razorpay/verify', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
-                  'x-user-id': user?.uid || (user as any)?.id || '',
-                  'x-user-email': user?.email || '',
-                  'x-user-name': user?.displayName || ''
+                  ...(verifyToken ? { 'Authorization': `Bearer ${verifyToken}`, 'x-session-token': verifyToken } : {})
                 },
                 body: JSON.stringify({
                   razorpay_payment_id: response.razorpay_payment_id,

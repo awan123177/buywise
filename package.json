@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
+    "test:security": "node test_auth_security.cjs",
     "start": "node dist/server.cjs"
   },
   "dependencies": {

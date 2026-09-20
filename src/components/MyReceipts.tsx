@@ -28,12 +28,15 @@ export function MyReceipts() {
 
     const fetchReceipts = async () => {
       try {
+        const token = localStorage.getItem('buywise_token');
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
+          headers["x-session-token"] = token;
+        }
+
         const response = await fetch('/api/receipts', {
-          headers: {
-            "x-user-id": user.uid,
-            "x-user-email": user.email || "",
-            "x-user-name": user.displayName || ""
-          }
+          headers
         });
         
         if (!response.ok) {

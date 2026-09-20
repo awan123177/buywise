@@ -262,6 +262,15 @@ export interface RazorpayOrderRecord {
   activatedAt?: string;
 }
 
+export interface DeletionRequest {
+  id: string;
+  email: string;
+  reason?: string;
+  status: "pending" | "processed";
+  requestedAt: string;
+  processedAt?: string;
+}
+
 export interface DatabaseSchema {
   profiles: { [userId: string]: UserProfile };
   transactions: CoinTransaction[];
@@ -281,6 +290,7 @@ export interface DatabaseSchema {
   cashfreeOrders?: { [orderId: string]: CashfreeOrderRecord };
   razorpayOrders?: { [orderId: string]: RazorpayOrderRecord };
   gamificationSettings?: GamificationSettings;
+  deletionRequests?: DeletionRequest[];
 }
 
 // High-quality real product images from Unsplash to display beautiful photos of the products
@@ -1862,40 +1872,95 @@ export function completeMission(userId: string, missionId: string): { success: b
 
 // ---------------------- ACCOUNT DELETION ----------------------
 
-export function deleteUserProfile(userId: string): { success: boolean; message: string } {
-  if (!dbData.profiles[userId]) {
-    return { success: false, message: "Profile not found" };
+export function deleteUserProfile(userId: string, userEmail?: string): { success: boolean; message: string } {
+  const normEmail = userEmail?.trim().toLowerCase();
+
+  // 1. Remove profile from dbData.profiles
+  if (dbData.profiles) {
+    delete dbData.profiles[userId];
+    if (normEmail) {
+      for (const [pId, prof] of Object.entries(dbData.profiles)) {
+        if ((prof as any).email && (prof as any).email.toLowerCase() === normEmail) {
+          delete dbData.profiles[pId];
+        }
+      }
+    }
   }
 
-  // Remove profile
-  delete dbData.profiles[userId];
-
-  // Filter transactions
+  // 2. Filter transactions
   if (dbData.transactions) {
     dbData.transactions = dbData.transactions.filter(t => t.userId !== userId);
   }
 
-  // Filter referrals
+  // 3. Filter referrals
   if (dbData.referrals) {
     dbData.referrals = dbData.referrals.filter(r => r.referrerId !== userId && r.referredId !== userId);
   }
 
-  // Filter scans
+  // 4. Filter barcode scans
   if (dbData.scans) {
-    dbData.scans = dbData.scans.filter(s => s.userId !== userId);
+    dbData.scans = dbData.scans.filter(s => s.userId !== userId && (!normEmail || s.userEmail?.toLowerCase() !== normEmail));
   }
 
-  // Filter reviews
+  // 5. Filter reviews
   if (dbData.reviews) {
-    dbData.reviews = dbData.reviews.filter(r => r.userId !== userId);
+    dbData.reviews = dbData.reviews.filter(r => r.userId !== userId && (!normEmail || r.userEmail?.toLowerCase() !== normEmail));
+  }
+
+  // 6. Filter coupons
+  if (dbData.coupons) {
+    dbData.coupons = dbData.coupons.filter(c => (c as any).userId !== userId);
+  }
+
+  // 7. Update any pending deletion request for this email to processed
+  if (normEmail && dbData.deletionRequests) {
+    dbData.deletionRequests.forEach(req => {
+      if (req.email.toLowerCase() === normEmail && req.status === "pending") {
+        req.status = "processed";
+        req.processedAt = new Date().toISOString();
+      }
+    });
   }
 
   saveDatabase();
 
   return {
     success: true,
-    message: "User gamification profile and all associated data deleted successfully."
+    message: "User gamification profile, coins, scans, and associated personal records deleted successfully."
   };
+}
+
+export function recordDeletionRequest(email: string, reason?: string): { success: boolean; message: string; requestId: string } {
+  if (!email || !email.includes("@")) {
+    return { success: false, message: "A valid email address is required.", requestId: "" };
+  }
+
+  if (!dbData.deletionRequests) {
+    dbData.deletionRequests = [];
+  }
+
+  const normEmail = email.trim().toLowerCase();
+  const requestId = "del_req_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
+  const newReq: DeletionRequest = {
+    id: requestId,
+    email: normEmail,
+    reason: reason?.trim() || "User submitted account deletion request via public deletion request form.",
+    status: "pending",
+    requestedAt: new Date().toISOString()
+  };
+
+  dbData.deletionRequests.push(newReq);
+  saveDatabase();
+
+  return {
+    success: true,
+    message: "Your deletion request has been registered. Your account and associated personal data will be processed and removed within 24-48 hours.",
+    requestId
+  };
+}
+
+export function getDeletionRequests(): DeletionRequest[] {
+  return dbData.deletionRequests || [];
 }
 
 // ---------------------- FOUNDER IMAGE MANAGEMENT ----------------------

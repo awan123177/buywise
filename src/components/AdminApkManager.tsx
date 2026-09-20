@@ -35,10 +35,11 @@ interface ApkStats {
 
 interface AdminApkManagerProps {
   email: string;
-  passcode: string;
+  passcode?: string;
+  adminToken?: string;
 }
 
-export default function AdminApkManager({ email, passcode }: AdminApkManagerProps) {
+export default function AdminApkManager({ email, passcode, adminToken }: AdminApkManagerProps) {
   const [releases, setReleases] = useState<ApkRelease[]>([]);
   const [stats, setStats] = useState<ApkStats | null>(null);
   const [activeApk, setActiveApk] = useState<ApkRelease | null>(null);
@@ -70,9 +71,24 @@ export default function AdminApkManager({ email, passcode }: AdminApkManagerProp
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const authHeaders = {
-    'x-user-email': email,
-    'x-admin-passcode': passcode,
+  const getAuthHeaders = (): Record<string, string> => {
+    let effectiveToken = adminToken;
+    let effectiveEmail = email;
+    let effectivePasscode = passcode;
+    try {
+      if (!effectiveToken && typeof window !== 'undefined') effectiveToken = sessionStorage.getItem('buywise_admin_token') || '';
+      if (!effectiveEmail && typeof window !== 'undefined') effectiveEmail = sessionStorage.getItem('buywise_admin_email') || '';
+      if (!effectivePasscode && typeof window !== 'undefined') effectivePasscode = sessionStorage.getItem('buywise_admin_passcode') || '';
+    } catch (e) {}
+
+    const headers: Record<string, string> = {};
+    if (effectiveToken) {
+      headers['Authorization'] = `Bearer ${effectiveToken}`;
+      headers['x-admin-token'] = effectiveToken;
+    }
+    if (effectiveEmail) headers['x-admin-email'] = effectiveEmail;
+    if (effectivePasscode) headers['x-admin-passcode'] = effectivePasscode;
+    return headers;
   };
 
   const safeParseJson = async (res: Response) => {
@@ -90,7 +106,10 @@ export default function AdminApkManager({ email, passcode }: AdminApkManagerProp
   const fetchApkData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/apk/releases', { headers: authHeaders });
+      const res = await fetch('/api/admin/apk/releases', { 
+        headers: getAuthHeaders(),
+        credentials: 'include',
+      });
       if (res.ok) {
         const data = await safeParseJson(res);
         setReleases(data.releases || []);
@@ -109,7 +128,7 @@ export default function AdminApkManager({ email, passcode }: AdminApkManagerProp
 
   useEffect(() => {
     fetchApkData();
-  }, []);
+  }, [email, passcode, adminToken]);
 
   const handleCopyUrl = (url: string = 'https://buywiser.store/downloads/buywise.apk') => {
     navigator.clipboard.writeText(url);
@@ -138,7 +157,8 @@ export default function AdminApkManager({ email, passcode }: AdminApkManagerProp
     try {
       const res = await fetch('/api/admin/apk/validate', {
         method: 'POST',
-        headers: authHeaders,
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: formData,
       });
 
@@ -176,7 +196,8 @@ export default function AdminApkManager({ email, passcode }: AdminApkManagerProp
     try {
       const res = await fetch('/api/admin/apk/publish', {
         method: 'POST',
-        headers: authHeaders,
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: formData,
       });
 
@@ -203,7 +224,8 @@ export default function AdminApkManager({ email, passcode }: AdminApkManagerProp
     try {
       const res = await fetch(`/api/admin/apk/${id}/activate`, {
         method: 'POST',
-        headers: authHeaders,
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
 
       const data = await safeParseJson(res);
@@ -224,7 +246,8 @@ export default function AdminApkManager({ email, passcode }: AdminApkManagerProp
     try {
       const res = await fetch(`/api/admin/apk/${id}`, {
         method: 'DELETE',
-        headers: authHeaders,
+        headers: getAuthHeaders(),
+        credentials: 'include',
       });
 
       const data = await safeParseJson(res);

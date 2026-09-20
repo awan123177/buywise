@@ -47,6 +47,8 @@ import {
   spinWheel,
   completeMission,
   deleteUserProfile,
+  recordDeletionRequest,
+  getDeletionRequests,
   setFounderImage,
   getActiveApkRelease,
   getAllApkReleases,
@@ -478,16 +480,285 @@ async function startServer() {
     })
   );
 
+  // =========================================================================
+  // --- SERVER-TRUSTED CRYPTOGRAPHIC AUTHENTICATION & SESSION MANAGEMENT ---
+  // =========================================================================
+
+  const SERVER_AUTH_SECRET =
+    process.env.SESSION_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.RAZORPAY_KEY_SECRET ||
+    "buywise_production_secure_auth_secret_key_v1";
+
+  const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "mohammdsaeed24@gmail.com").trim().toLowerCase();
+  const VALID_ADMIN_PASSCODES = [
+    process.env.ADMIN_PASSCODE,
+    process.env.ADMIN_SECRET,
+    "awanwarsi1A@",
+    "awanwarsi",
+  ].filter(Boolean) as string[];
+
+  // Server-side revoked tokens set (in-memory blacklist for immediate invalidation upon logout)
+  const revokedTokens = new Set<string>();
+
+  function revokeToken(token: string) {
+    if (token && typeof token === "string") {
+      revokedTokens.add(token.trim());
+    }
+  }
+
+  function isTokenRevoked(token: string): boolean {
+    if (!token) return true;
+    return revokedTokens.has(token.trim());
+  }
+
+  function buildSessionCookie(name: string, value: string, maxAgeSeconds: number, req?: any): string {
+    const isSecure = process.env.NODE_ENV === "production" || req?.secure || req?.headers?.["x-forwarded-proto"] === "https";
+    let cookie = `${name}=${encodeURIComponent(value)}; Path=/; Max-Age=${maxAgeSeconds}; HttpOnly; SameSite=Lax`;
+    if (isSecure) {
+      cookie += "; Secure";
+    }
+    return cookie;
+  }
+
+  function buildClearCookie(name: string, req?: any): string {
+    const isSecure = process.env.NODE_ENV === "production" || req?.secure || req?.headers?.["x-forwarded-proto"] === "https";
+    let cookie = `${name}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax`;
+    if (isSecure) {
+      cookie += "; Secure";
+    }
+    return cookie;
+  }
+
+  interface VerifiedUserCredential {
+    userId: string;
+    email: string;
+    name: string;
+    role?: string;
+    isAdmin?: boolean;
+    authMethod: "server_jwt" | "supabase_auth" | "firebase_auth";
+  }
+
+  function createSignedSessionToken(payload: {
+    userId: string;
+    email: string;
+    name?: string;
+    role?: string;
+    isAdmin?: boolean;
+    expMs?: number;
+  }): string {
+    const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+    const now = Math.floor(Date.now() / 1000);
+    const exp = now + Math.floor((payload.expMs || 14 * 24 * 60 * 60 * 1000) / 1000); // 14 days default
+    const body = Buffer.from(
+      JSON.stringify({
+        iss: "buywise_auth",
+        aud: "buywise_app",
+        sub: payload.userId,
+        userId: payload.userId,
+        email: payload.email.trim().toLowerCase(),
+        name: payload.name || payload.email.split("@")[0],
+        role: payload.role || "user",
+        isAdmin: payload.isAdmin || false,
+        iat: now,
+        exp,
+      })
+    ).toString("base64url");
+    const signature = crypto
+      .createHmac("sha256", SERVER_AUTH_SECRET)
+      .update(`${header}.${body}`)
+      .digest("base64url");
+    return `${header}.${body}.${signature}`;
+  }
+
+  function parseCookies(req: any): Record<string, string> {
+    if (req.cookies && typeof req.cookies === "object" && Object.keys(req.cookies).length > 0) {
+      return req.cookies;
+    }
+    const list: Record<string, string> = {};
+    const cookieHeader = req.headers?.cookie;
+    if (!cookieHeader || typeof cookieHeader !== "string") return list;
+    cookieHeader.split(";").forEach((cookie: string) => {
+      const parts = cookie.split("=");
+      const name = parts[0]?.trim();
+      if (!name) return;
+      const value = parts.slice(1).join("=").trim();
+      if (!value) return;
+      try {
+        list[name] = decodeURIComponent(value);
+      } catch {
+        list[name] = value;
+      }
+    });
+    return list;
+  }
+
+  function extractTokenFromRequest(req: any): string {
+    // Deterministic Authentication Priority:
+    // 1. Verified server session cookie
+    const cookies = parseCookies(req);
+    if (cookies.buywise_session && typeof cookies.buywise_session === "string" && cookies.buywise_session.trim()) {
+      return cookies.buywise_session.trim();
+    }
+    if (cookies["sb-access-token"] && typeof cookies["sb-access-token"] === "string" && cookies["sb-access-token"].trim()) {
+      return cookies["sb-access-token"].trim();
+    }
+
+    // 2. Verified Authorization Bearer token
+    const authHeader = req.headers["authorization"] as string;
+    if (authHeader && typeof authHeader === "string") {
+      if (authHeader.toLowerCase().startsWith("bearer ")) {
+        const t = authHeader.slice(7).trim();
+        if (t) return t;
+      } else if (authHeader.trim()) {
+        return authHeader.trim();
+      }
+    }
+
+    // 3. Other explicitly supported verified credentials
+    if (req.headers["x-session-token"] && typeof req.headers["x-session-token"] === "string") {
+      const t = (req.headers["x-session-token"] as string).trim();
+      if (t) return t;
+    }
+    if (req.headers["x-auth-token"] && typeof req.headers["x-auth-token"] === "string") {
+      const t = (req.headers["x-auth-token"] as string).trim();
+      if (t) return t;
+    }
+    return "";
+  }
+
+  async function verifyCallerCredential(rawToken: string): Promise<VerifiedUserCredential | null> {
+    if (!rawToken || typeof rawToken !== "string") return null;
+    const token = rawToken.trim();
+    if (!token) return null;
+
+    // Check revocation list
+    if (isTokenRevoked(token)) {
+      console.warn("[Auth Security] Rejected revoked session token.");
+      return null;
+    }
+
+    // 1. BuyWise Server-Signed Session JWT verification (Timing-safe HMAC comparison)
+    try {
+      const parts = token.split(".");
+      if (parts.length === 3) {
+        const [headerB64, payloadB64, signature] = parts;
+        const expectedSig = crypto
+          .createHmac("sha256", SERVER_AUTH_SECRET)
+          .update(`${headerB64}.${payloadB64}`)
+          .digest("base64url");
+
+        const sigBuf = Buffer.from(signature);
+        const expectedBuf = Buffer.from(expectedSig);
+        if (sigBuf.length === expectedBuf.length && crypto.timingSafeEqual(sigBuf, expectedBuf)) {
+          const header = JSON.parse(Buffer.from(headerB64, "base64url").toString("utf-8"));
+          if (header.alg !== "HS256") {
+            console.warn("[Auth Security] Rejected token with invalid algorithm:", header.alg);
+            return null;
+          }
+
+          const payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf-8"));
+          const now = Math.floor(Date.now() / 1000);
+          if (payload.exp && payload.exp < now) {
+            console.warn("[Auth Security] Expired session token rejected");
+            return null;
+          }
+          if (payload.iss && payload.iss !== "buywise_auth") {
+            console.warn("[Auth Security] Invalid issuer rejected:", payload.iss);
+            return null;
+          }
+          const userId = payload.sub || payload.userId;
+          const email = payload.email?.toLowerCase();
+          if (userId && email) {
+            return {
+              userId,
+              email,
+              name: payload.name || email.split("@")[0],
+              role: payload.role || "user",
+              isAdmin: payload.isAdmin || false,
+              authMethod: "server_jwt",
+            };
+          }
+        }
+      }
+    } catch (e) {
+      // Non-fatal, check other providers
+    }
+
+    // 2. Authoritative Supabase Auth JWT verification
+    const supabase = getSupabaseClient();
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.auth.getUser(token);
+        if (!error && data?.user) {
+          const user = data.user;
+          const userEmail = (user.email || "").toLowerCase();
+          return {
+            userId: user.id,
+            email: userEmail,
+            name:
+              user.user_metadata?.full_name ||
+              user.user_metadata?.name ||
+              user.email?.split("@")[0] ||
+              "User",
+            role: (user.user_metadata?.role as string) || "user",
+            isAdmin: user.user_metadata?.role === "admin" || userEmail === ADMIN_EMAIL,
+            authMethod: "supabase_auth",
+          };
+        }
+      } catch (sbErr) {
+        // Fall through
+      }
+    }
+
+    // 3. Firebase Auth ID Token verification
+    try {
+      const admin = await import("firebase-admin");
+      if (process.env.FIREBASE_PRIVATE_KEY) {
+        if (!(((admin as any).apps?.length) || ((admin.default as any)?.apps?.length))) {
+          ((admin as any).initializeApp || (admin.default as any).initializeApp)({
+            credential: ((admin as any).credential || (admin.default as any).credential).cert({
+              projectId: process.env.FIREBASE_PROJECT_ID,
+              clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+              privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            })
+          });
+        }
+      }
+      if ((admin as any).apps?.length || (admin.default as any)?.apps?.length) {
+        const decoded = await ((admin as any).auth || (admin.default as any).auth)().verifyIdToken(token);
+        if (decoded && decoded.uid) {
+          const userEmail = (decoded.email || "").toLowerCase();
+          return {
+            userId: decoded.uid,
+            email: userEmail,
+            name: decoded.name || decoded.email?.split("@")[0] || "User",
+            role: decoded.admin === true ? "admin" : "user",
+            isAdmin: decoded.admin === true || userEmail === ADMIN_EMAIL,
+            authMethod: "firebase_auth",
+          };
+        }
+      }
+    } catch (fbErr) {
+      // Fall through
+    }
+
+    return null;
+  }
   
 app.post('/api/auth/google', async (req: any, res: any) => {
   try {
-    const { token, email: clientEmail, name: clientName, uid: clientUid, photo: clientPhoto } = req.body;
-    let email = clientEmail;
-    let name = clientName;
-    let picture = clientPhoto;
-    let uid = clientUid;
+    const { token, email: clientEmail, name: clientName, uid: clientUid, photo: clientPhoto } = req.body || {};
+    let email = "";
+    let name = clientName || "";
+    let picture = clientPhoto || "";
+    let uid = clientUid || "";
+    let isVerified = false;
 
-    let adminApp;
+    if (!token || typeof token !== "string") {
+      return res.status(401).json({ error: "Cryptographic authentication token required." });
+    }
+
     try {
       const admin = await import('firebase-admin');
       if (process.env.FIREBASE_PRIVATE_KEY) {
@@ -501,17 +772,48 @@ app.post('/api/auth/google', async (req: any, res: any) => {
           });
         }
         const decodedToken = await ((admin as any).auth || (admin.default as any).auth)().verifyIdToken(token);
-        email = decodedToken.email || email;
-        name = decodedToken.name || name;
-        picture = decodedToken.picture || picture;
-        uid = decodedToken.uid || uid;
+        if (decodedToken && decodedToken.email) {
+          email = decodedToken.email.toLowerCase();
+          name = decodedToken.name || clientName || email.split("@")[0];
+          picture = decodedToken.picture || clientPhoto || "";
+          uid = decodedToken.uid;
+          isVerified = true;
+        }
       }
-    } catch(e) {
-      console.warn("Firebase admin verification skipped or failed", e.message);
+    } catch(e: any) {
+      console.warn("Firebase admin verification skipped or failed:", e.message);
     }
 
-    if (!email) {
-      return res.status(400).json({ error: "Email is required" });
+    // Google TokenInfo verification fallback (authoritative check against Google OAuth endpoint)
+    if (!isVerified) {
+      try {
+        const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+        if (googleRes.ok) {
+          const googleData = await googleRes.json();
+          if (googleData.email) {
+            email = (googleData.email as string).toLowerCase();
+            name = (googleData.name as string) || clientName || email.split("@")[0];
+            picture = (googleData.picture as string) || clientPhoto || "";
+            uid = (googleData.sub as string) || clientUid || "";
+            isVerified = true;
+          }
+        }
+      } catch (gErr) {
+        console.warn("Google tokeninfo verification failed:", gErr);
+      }
+    }
+
+    // Development fallback ONLY if explicit DEV environment flag is active and clientEmail provided
+    if (!isVerified && process.env.NODE_ENV !== "production" && clientEmail && typeof clientEmail === "string") {
+      console.warn("[Auth Notice] Local development simulated Google login used for test suite");
+      email = clientEmail.toLowerCase();
+      name = clientName || email.split("@")[0];
+      uid = clientUid || "dev_user_" + crypto.createHash("sha256").update(email).digest("hex").slice(0, 12);
+      isVerified = true;
+    }
+
+    if (!isVerified || !email) {
+      return res.status(401).json({ error: "Authentication failed: Untrusted or invalid Google ID token." });
     }
 
     // 1. Stable internal ID by email
@@ -560,9 +862,19 @@ app.post('/api/auth/google', async (req: any, res: any) => {
        },
  { merge: true });
       }
-    } catch(e) {
+    } catch(e: any) {
       console.error("Firebase secondary sync failed:", e.message);
     }
+
+    const signedToken = createSignedSessionToken({
+      userId: buywiseUserId,
+      email,
+      name,
+    });
+
+    res.setHeader("Set-Cookie", [
+      buildSessionCookie("buywise_session", signedToken, 14 * 24 * 60 * 60, req)
+    ]);
 
     res.json({
       success: true,
@@ -571,9 +883,8 @@ app.post('/api/auth/google', async (req: any, res: any) => {
         email,
         displayName: name,
         user_metadata: { full_name: name, avatar_url: picture }
-    },
-
-      token: "session_token_" + buywiseUserId
+      },
+      token: signedToken
     });
   } catch (error: any) {
     console.error("Auth google error", error);
@@ -622,7 +933,7 @@ app.post('/api/auth/google', async (req: any, res: any) => {
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
     res.setHeader(
       "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, x-user-id, x-user-email, x-user-name"
+      "Content-Type, Authorization, x-session-token, x-auth-token, x-admin-passcode, x-admin-email, x-user-id, x-user-email, x-user-name"
     );
     res.setHeader("Access-Control-Allow-Credentials", "true");
 
@@ -752,10 +1063,16 @@ app.post('/api/auth/google', async (req: any, res: any) => {
         const devUserId = "dev_usr_" + Buffer.from(normalizedEmail).toString("hex").slice(0, 12);
         getOrCreateProfile(devUserId, normalizedEmail, name || normalizedEmail.split("@")[0]);
         recordRegistrationAttempt(ip, normalizedEmail, { success: true });
+        const token = createSignedSessionToken({
+          userId: devUserId,
+          email: normalizedEmail,
+          name: name || normalizedEmail.split("@")[0],
+        });
         
         return res.json({
           success: true,
           mode: "mock",
+          token,
           message: "Account created successfully!",
           user: {
             id: devUserId,
@@ -792,10 +1109,16 @@ app.post('/api/auth/google', async (req: any, res: any) => {
             const devUserId = "test_usr_" + Buffer.from(normalizedEmail).toString("hex").slice(0, 12);
             getOrCreateProfile(devUserId, normalizedEmail, name || normalizedEmail.split("@")[0]);
             console.log(`[Dev Auth] Safe development test account initialized for ${normalizedEmail}`);
+            const token = createSignedSessionToken({
+              userId: devUserId,
+              email: normalizedEmail,
+              name: name || normalizedEmail.split("@")[0],
+            });
 
             return res.json({
               success: true,
               isDevTest: true,
+              token,
               message: "Account created successfully! (Development Test Mode: external email quota rate limit handled safely).",
               user: {
                 id: devUserId,
@@ -919,39 +1242,316 @@ app.post('/api/auth/google', async (req: any, res: any) => {
     }
   });
 
+  // Server-Authoritative Login Endpoint (Issues cryptographically signed session tokens)
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body || {};
+      if (!email || typeof email !== "string" || !email.includes("@")) {
+        return res.status(400).json({ success: false, error: "Please enter a valid email address." });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password: password || "",
+        });
+        if (error) {
+          return res.status(400).json({ success: false, error: error.message });
+        }
+        const user = data.user;
+        const token =
+          data.session?.access_token ||
+          createSignedSessionToken({
+            userId: user.id,
+            email: normalizedEmail,
+            name: user.user_metadata?.full_name || normalizedEmail.split("@")[0],
+          });
+
+        res.setHeader("Set-Cookie", [
+          buildSessionCookie("buywise_session", token, 14 * 24 * 60 * 60, req)
+        ]);
+        return res.json({
+          success: true,
+          token,
+          user: {
+            id: user.id,
+            email: normalizedEmail,
+            displayName: user.user_metadata?.full_name || normalizedEmail.split("@")[0],
+            user_metadata: user.user_metadata || {},
+          },
+        });
+      }
+
+      // Local / Development authentication fallback with cryptographically signed session token
+      const userId = "usr_" + crypto.createHash("sha256").update(normalizedEmail).digest("hex").slice(0, 16);
+      const name = normalizedEmail.split("@")[0];
+      getOrCreateProfile(userId, normalizedEmail, name);
+
+      const token = createSignedSessionToken({
+        userId,
+        email: normalizedEmail,
+        name,
+      });
+
+      res.setHeader("Set-Cookie", [
+        buildSessionCookie("buywise_session", token, 14 * 24 * 60 * 60, req)
+      ]);
+
+      return res.json({
+        success: true,
+        token,
+        user: {
+          id: userId,
+          email: normalizedEmail,
+          displayName: name,
+          user_metadata: {
+            full_name: name,
+            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${normalizedEmail}`,
+          },
+        },
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: e.message || "Authentication failed." });
+    }
+  });
+
+  // Server-Authoritative Logout Endpoint (Invalidates tokens and clears HttpOnly cookies)
+  app.post("/api/auth/logout", async (req, res) => {
+    try {
+      const token = extractTokenFromRequest(req);
+      if (token) {
+        revokeToken(token);
+      }
+      const cookies = parseCookies(req);
+      if (cookies.buywise_session) {
+        revokeToken(cookies.buywise_session);
+      }
+      if (cookies.buywise_admin_session) {
+        revokeToken(cookies.buywise_admin_session);
+      }
+
+      res.setHeader("Set-Cookie", [
+        buildClearCookie("buywise_session", req),
+        buildClearCookie("buywise_admin_session", req),
+        buildClearCookie("sb-access-token", req),
+      ]);
+      return res.json({ success: true, message: "Logged out successfully" });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: "Logout failed" });
+    }
+  });
+
   // ==========================================
   // --- BUYWISE GAMIFICATION API ENDPOINTS ---
   // ==========================================
 
-  // Helper middleware to extract user context from custom headers passed by the client
-  const getUserContext = (req: any, res: any, next: any) => {
-    const userId = req.headers["x-user-id"] as string;
-    const email = req.headers["x-user-email"] as string;
-    const name = req.headers["x-user-name"] as string;
+  // Server-trusted authentication middleware.
+  // CRITICAL SECURITY ENFORCEMENT:
+  // 1. Authenticates caller using server-verifiable credentials (signed JWT, Supabase session, or Firebase ID token).
+  // 2. Derives userId and email strictly from the verified credential.
+  // 3. Rejects spoofed client headers (x-user-id / x-user-email) with 403 Forbidden.
+  // 4. Never trusts client-supplied identity headers without cryptographic proof.
+  const getUserContext = async (req: any, res: any, next: any) => {
+    // 1. Extract credential from Authorization Bearer header, x-session-token, x-auth-token, or cookies
+    const token = extractTokenFromRequest(req);
 
-    if (!userId) {
-      return res.status(401).json({ error: "Unauthorized. Missing user context headers." });
+    if (!token) {
+      return res.status(401).json({
+        error: "Unauthorized: Missing server-trusted authentication credential. Client-supplied identity headers (x-user-id/x-user-email) are not accepted as proof of identity.",
+      });
     }
-    req.userContext = { userId, email: email || "", name: name || "Anonymous User" };
+
+    // 2. Cryptographically verify credential and derive trusted identity
+    const verified = await verifyCallerCredential(token);
+    if (!verified) {
+      return res.status(401).json({
+        error: "Unauthorized: Invalid, expired, or untrusted authentication token.",
+      });
+    }
+
+    // 3. Reject Spoofed Identity Headers (Anti-spoofing and IDOR enforcement)
+    const clientSuppliedUserId = req.headers["x-user-id"] as string;
+    const clientSuppliedEmail = req.headers["x-user-email"] as string;
+
+    if (clientSuppliedUserId && clientSuppliedUserId !== verified.userId) {
+      console.warn(
+        `[Security Alert] Blocked spoofed x-user-id header! Verified=${verified.userId}, Spoofed=${clientSuppliedUserId}`
+      );
+      return res.status(403).json({
+        error: "Access Denied: Spoofed identity detected. Client-supplied x-user-id does not match server-verified credential.",
+      });
+    }
+
+    if (clientSuppliedEmail && clientSuppliedEmail.toLowerCase() !== verified.email.toLowerCase()) {
+      console.warn(
+        `[Security Alert] Blocked spoofed x-user-email header! Verified=${verified.email}, Spoofed=${clientSuppliedEmail}`
+      );
+      return res.status(403).json({
+        error: "Access Denied: Spoofed identity detected. Client-supplied x-user-email does not match server-verified credential.",
+      });
+    }
+
+    // 4. Derive identity strictly from the verified credential
+    req.userContext = {
+      userId: verified.userId,
+      email: verified.email,
+      name: verified.name,
+      authMethod: verified.authMethod,
+    };
     next();
   };
 
-  // Helper middleware to verify administrative credentials on protected routes
-  const adminAuth = (req: any, res: any, next: any) => {
-    const passcode = req.headers["x-admin-passcode"] as string;
-    const email = req.headers["x-user-email"] as string;
+  // Cryptographic server-side check for administrative authorization
+  async function checkIsAdminRequest(req: any): Promise<{ isAdmin: boolean; adminEmail?: string; userId?: string }> {
+    const cookies = parseCookies(req);
 
-    // Both the passcode must be correct AND the user email must match the admin email
-    if (
-      (passcode === "awanwarsi" || passcode === "awanwarsi1A@") &&
-      email &&
-      email.toLowerCase() === "mohammdsaeed24@gmail.com"
-    ) {
-      next();
-    } else {
-      res.status(403).json({ error: "Access Denied: Administrative authorization is required." });
+    // Priority 1: Check admin session cookie
+    let adminToken = cookies.buywise_admin_session;
+
+    // Priority 2: Check Authorization Bearer or x-admin-token header
+    if (!adminToken) {
+      const authHeader = req.headers["authorization"] as string;
+      if (authHeader && authHeader.toLowerCase().startsWith("bearer ")) {
+        adminToken = authHeader.slice(7).trim();
+      } else if (req.headers["x-admin-token"] && typeof req.headers["x-admin-token"] === "string") {
+        adminToken = (req.headers["x-admin-token"] as string).trim();
+      } else if (cookies.buywise_session) {
+        adminToken = cookies.buywise_session.trim();
+      }
+    }
+
+    if (adminToken) {
+      const verified = await verifyCallerCredential(adminToken);
+      if (verified) {
+        const isEmailAdmin = verified.email.toLowerCase() === ADMIN_EMAIL;
+        const isAdminRole = (verified as any).role === "admin" || (verified as any).isAdmin === true;
+        if (isEmailAdmin && isAdminRole) {
+          return { isAdmin: true, adminEmail: verified.email.toLowerCase(), userId: verified.userId };
+        }
+      }
+    }
+
+    // Fallback for automation/CLI test scripts: Server-verified timing-safe passcode check
+    const directPasscode = req.headers["x-admin-passcode"] as string;
+    const directEmail = req.headers["x-admin-email"] as string;
+    if (directPasscode && directEmail) {
+      const isEmailMatch = directEmail.trim().toLowerCase() === ADMIN_EMAIL;
+      const isPasscodeMatch = VALID_ADMIN_PASSCODES.some(p => {
+        try {
+          const pBuf = Buffer.from(String(p));
+          const inBuf = Buffer.from(String(directPasscode));
+          return pBuf.length === inBuf.length && crypto.timingSafeEqual(pBuf, inBuf);
+        } catch {
+          return false;
+        }
+      });
+
+      if (isEmailMatch && isPasscodeMatch) {
+        return { isAdmin: true, adminEmail: ADMIN_EMAIL, userId: "admin_script" };
+      }
+    }
+
+    return { isAdmin: false };
+  }
+
+  // Server-trusted administrative authorization middleware
+  const adminAuth = async (req: any, res: any, next: any) => {
+    try {
+      const check = await checkIsAdminRequest(req);
+      if (check.isAdmin) {
+        req.adminUser = {
+          userId: check.userId || "admin",
+          email: check.adminEmail,
+          role: "admin",
+        };
+        return next();
+      }
+      return res.status(403).json({ error: "Access Denied: Administrative authorization is required." });
+    } catch (e: any) {
+      return res.status(403).json({ error: "Access Denied: Administrative authorization error." });
     }
   };
+
+  // Executive Admin Authentication Gateways
+  app.post("/api/admin/login", async (req, res) => {
+    try {
+      const { email, passcode } = req.body || {};
+      if (!email || !passcode || typeof email !== "string" || typeof passcode !== "string") {
+        return res.status(400).json({ success: false, error: "Administrative email and passcode are required." });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+      const isEmailMatch = normalizedEmail === ADMIN_EMAIL;
+      const isPasscodeMatch = VALID_ADMIN_PASSCODES.some(p => {
+        try {
+          const pBuf = Buffer.from(String(p));
+          const inBuf = Buffer.from(String(passcode));
+          return pBuf.length === inBuf.length && crypto.timingSafeEqual(pBuf, inBuf);
+        } catch {
+          return false;
+        }
+      });
+
+      if (!isEmailMatch || !isPasscodeMatch) {
+        console.warn(`[Admin Security] Unauthorized admin login attempt for: ${normalizedEmail}`);
+        return res.status(401).json({ success: false, error: "Invalid administrative credentials." });
+      }
+
+      const adminToken = createSignedSessionToken({
+        userId: "admin_" + crypto.createHash("sha256").update(normalizedEmail).digest("hex").slice(0, 16),
+        email: normalizedEmail,
+        name: "BuyWise Executive Admin",
+        role: "admin",
+        isAdmin: true,
+      });
+
+      res.setHeader("Set-Cookie", [
+        buildSessionCookie("buywise_admin_session", adminToken, 7 * 24 * 60 * 60, req)
+      ]);
+
+      return res.json({
+        success: true,
+        token: adminToken,
+        admin: {
+          email: normalizedEmail,
+          role: "admin",
+        }
+      });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: "Admin authentication service error." });
+    }
+  });
+
+  app.get("/api/admin/verify", adminAuth, (req, res) => {
+    return res.json({
+      success: true,
+      admin: (req as any).adminUser,
+    });
+  });
+
+  app.post("/api/admin/logout", (req, res) => {
+    try {
+      const cookies = parseCookies(req);
+      if (cookies.buywise_admin_session) {
+        revokeToken(cookies.buywise_admin_session);
+      }
+      const authHeader = req.headers["authorization"];
+      if (authHeader?.toLowerCase().startsWith("bearer ")) {
+        revokeToken(authHeader.slice(7).trim());
+      }
+      if (req.headers["x-admin-token"]) {
+        revokeToken(String(req.headers["x-admin-token"]).trim());
+      }
+      res.setHeader("Set-Cookie", [
+        buildClearCookie("buywise_admin_session", req)
+      ]);
+      return res.json({ success: true, message: "Administrative session logged out." });
+    } catch (e: any) {
+      return res.status(500).json({ success: false, error: "Admin logout failed" });
+    }
+  });
 
   // Server-side Premium Plans Configuration (Canonical source of truth for pricing)
   const PREMIUM_PLANS_CONFIG: Record<string, {
@@ -1670,12 +2270,120 @@ app.get("/api/receipts/:receiptId", getUserContext, (req: any, res: any) => {
 
   // Delete User Profile (Right to be Forgotten)
   app.post("/api/gamification/profile/delete", getUserContext, (req: any, res: any) => {
-    const { userId } = req.userContext;
+    const { userId, email } = req.userContext;
     try {
-      const result = deleteUserProfile(userId);
+      const result = deleteUserProfile(userId, email);
       res.json(result);
     } catch (e: any) {
       res.sendSecureError(e, "Failed to delete user profile.");
+    }
+  });
+
+  // Comprehensive Account & Data Deletion (Authenticated)
+  // Enforces server-side authentication, derives identity strictly from verified token,
+  // rejects spoofed headers, and prevents IDOR / deleting another user's account.
+  app.post("/api/account/delete", getUserContext, async (req: any, res: any) => {
+    const { userId, email } = req.userContext;
+    if (!userId) {
+      return res.status(401).json({ error: "Verified authentication required to delete account." });
+    }
+
+    try {
+      // 1. Delete user gamification profile, coins, scans, reviews, coupons
+      const result = deleteUserProfile(userId, email);
+
+      // 2. Clean up support tickets for this user in data_store.json
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      if (fs.existsSync(storePath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+          if (raw.support_tickets && email) {
+            raw.support_tickets = raw.support_tickets.filter((t: any) => t.email?.toLowerCase() !== email.toLowerCase());
+            fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+          }
+        } catch (storeErr) {
+          console.error("Error cleaning up tickets on account deletion:", storeErr);
+        }
+      }
+
+      // 3. Clean up Supabase records if connected
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          await supabase.from('profiles').delete().eq('id', userId);
+          if (email) {
+            await supabase.from('support_requests').delete().eq('email', email.toLowerCase());
+          }
+          if (supabase.auth?.admin) {
+            await supabase.auth.admin.deleteUser(userId).catch(() => {});
+          }
+        } catch (sbErr) {
+          console.warn("Supabase account deletion sync notice:", sbErr);
+        }
+      }
+
+      console.log(`[Account Deletion] User ${userId} (${email || "no-email"}) permanently deleted.`);
+      res.json({
+        success: true,
+        message: "Your BuyWise account and all associated personal data have been permanently deleted."
+      });
+    } catch (e: any) {
+      res.sendSecureError(e, "Failed to delete user account.");
+    }
+  });
+
+  // Public Deletion Request Submission Form (for users requesting deletion via public webpage)
+  app.post("/api/account/delete-request", async (req: any, res: any) => {
+    try {
+      const { email, reason } = req.body;
+      if (!email || typeof email !== 'string' || !email.includes('@')) {
+        return res.status(400).json({ error: "Please provide a valid registered email address." });
+      }
+
+      // If caller provides an auth token, enforce ownership to prevent harassment
+      const token = extractTokenFromRequest(req);
+      if (token) {
+        const verified = await verifyCallerCredential(token);
+        if (verified && verified.email.toLowerCase() !== email.trim().toLowerCase()) {
+          return res.status(403).json({
+            error: "Access Denied: You cannot submit a deletion request for another user's email address."
+          });
+        }
+      }
+
+      const result = recordDeletionRequest(email, reason);
+
+      // Also create an administrative notice ticket so team is alerted immediately
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      if (fs.existsSync(storePath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+          if (!raw.support_tickets) raw.support_tickets = [];
+          raw.support_tickets.unshift({
+            id: 'TK-DEL-' + Math.floor(10000 + Math.random() * 90000),
+            name: email.split('@')[0] || 'User',
+            email: email.trim().toLowerCase(),
+            subject: 'Account & Personal Data Deletion Request',
+            message: `User requested permanent account deletion via public form.\nReason: ${reason || "Not specified"}\nRequest ID: ${result.requestId}`,
+            status: 'open',
+            createdAt: new Date().toISOString(),
+            messages: [
+              {
+                id: 'msg-' + Date.now(),
+                sender: 'customer',
+                text: `Account & data deletion requested for ${email}. Reason: ${reason || "Self-service public deletion request"}`,
+                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: 'delivered'
+              }
+            ]
+          });
+          fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+        } catch (e) {}
+      }
+
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: "Failed to submit deletion request. Please contact mohammdsaeed24@gmail.com directly." });
     }
   });
 
@@ -3478,35 +4186,40 @@ After running our multi-threaded analysis on your search for **"${query}"**, our
         return res.status(400).json({ error: "Missing messages array" });
       }
 
-      const systemInstruction = `You are the "BuyWise Support Bot", a polite, empathetic, patient, and highly intelligent customer support agent for BuyWise.
+      const systemInstruction = `You are the "BuyWise Support Bot", a polite, empathetic, patient, and highly intelligent customer support assistant for BuyWise.
 
 CORE MANDATE & PERSONALITY:
 - Your name is "BuyWise Support Bot".
-- Always maintain a warm, polite, understanding, and highly professional tone. Never sound robotic or dismissive.
-- Listen carefully to the customer's problem, ask clarifying follow-up questions if needed, and give clear, step-by-step solutions.
-- Remember the conversation context and build upon prior user messages.
+- Maintain a warm, polite, helpful, and highly professional tone.
+- Listen carefully to the customer's problem, ask clarifying questions if needed, and provide clear step-by-step guidance.
+- Adhere strictly to verified BuyWise knowledge. Do NOT hallucinate prices, fake payment methods, or historical UTR systems.
 
-COVERED SUPPORT TOPICS & SOLUTIONS:
-1. **Premium Subscriptions & Upgrade**:
-   - Monthly Elite (₹100), Yearly Pro (₹500), Forever Founder (₹700).
-   - Paid via UPI QR code. User submits 12-digit UTR. Verification takes 5-10 mins on weekends, 15-30 mins during weekday hours (9 AM - 3 PM IST).
-2. **Rewards & BuyWise Coins**:
-   - Explain how users earn coins through searches, referrals, and daily logins, and how coins can be redeemed for vouchers or discount coupons.
-3. **Orders & Delivery Tracking**:
-   - Guide users to check order status, redirect to original retailer (Amazon, Flipkart, Croma, Reliance Digital), or track delivery ETAs.
-4. **Search Issues & Wrong Product/Price**:
-   - Help troubleshoot missing search items, price mismatches between BuyWise and seller sites, or incorrect product specifications.
-5. **Account & Login**:
-   - Assist with password resets, Google login issues, guest session data, or profile updates.
-6. **Payments & Refunds**:
-   - Explain UTR verification steps. For double charges or refund requests, gather details (email
-           UTR, amount) and offer to transfer to human support for manual bank verification.
-7. **Bugs & Feature Requests**:
-   - Thank the customer warmly for reporting bugs or suggesting features. Log the details and offer to pass them to creator/owner Awanwarsi.
-
-WHEN TO OFFER HUMAN TRANSFER:
-- If the customer explicitly asks for a human ("human", "agent", "representative", "transfer me", "person"), or if the issue requires manual bank verification/refund processing.
-- In those cases, politely inform the customer that you can connect them directly to our human support specialist and guide them to use the "Transfer to Human" option.
+CANONICAL BUYWISE KNOWLEDGE & POLICIES:
+1. **Premium Plans & Pricing**:
+   - **Monthly Elite (₹100)**: 30 days of unlimited price tracking, priority AI assistance, ad-free experience, custom profile badge.
+   - **Yearly Pro (₹500)**: 365 days of all Monthly Elite benefits (save 20%).
+   - **Forever Founder (₹700)**: Lifetime VIP access to all current and future features, permanent 👑 Super Enhanced Founder badge, and Forever Founder Mystery Box unlocking guaranteed 10,000 BuyWise coins.
+   - **Payment Gateway**: Powered by **Razorpay**. Supports UPI (Google Pay, PhonePe, Paytm, BHIM), Debit/Credit Cards, NetBanking, and Wallets. Membership activates automatically and instantly upon payment. No manual UTR submission is required.
+2. **Payment Verification & Issues**:
+   - Payments are processed in real-time via Razorpay.
+   - If payment succeeded but membership did not activate immediately, advise the user to click "Restore/Refresh Membership" in their Account menu or share their Razorpay Payment ID (starts with "pay_") so our human support desk can verify it.
+   - For refund inquiries or billing disputes, collect the payment ID and transfer the ticket to our Human Support Desk.
+3. **BuyWise Coins & Gamification**:
+   - Earning Coins: +10 coins per unique daily product search, +5 to +50 coins for daily check-in streaks, +50 coins for both referrer and friend on the friend's first search, +20 coins for sharing deals, +10 coins for writing reviews, +15 coins for barcode scans.
+   - Redeeming: Instant shopping vouchers, discount coupons, and daily spin-the-wheel rewards in the Rewards Hub.
+4. **Founder Benefits & Mystery Box**:
+   - Forever Founder members unlock their Mystery Box in the Rewards/Founder hub to receive 10,000 coins and display the exclusive Super Enhanced Founder badge.
+5. **Product Search & Price Comparison**:
+   - Searches and compares prices across Amazon India, Flipkart, Croma, Reliance Digital, JioMart, Vijay Sales, Myntra, Ajio, and Nykaa.
+   - Supports both keyword search and direct product URLs (including Amazon URL with exact ASIN extraction).
+6. **Account & Data Deletion (Right to be Forgotten)**:
+   - Users can permanently delete their account and personal data anytime.
+   - In-app: Open Account / Profile Settings and click "Delete Account & Data".
+   - Web: Visit https://buywiser.store/delete-account to submit a deletion request or execute instant deletion.
+   - Deletion permanently erases login credentials, gamification profile, coins, saved items, reviews, scans, and support tickets.
+7. **Human Escalation**:
+   - When a user asks for a human ("human", "agent", "person", "representative", "transfer me"), or requires manual investigation/refund, guide them to click "Transfer to Human Support".
+   - Explain that a real ticket is created in the database and handed over to our Human Support Desk with complete conversation context. Never pretend to be the human agent after handoff.
 
 Current logged-in user email: ${userEmail || "guest@buywise.app"}`;
 
@@ -3539,73 +4252,89 @@ Current logged-in user email: ${userEmail || "guest@buywise.app"}`;
         const lastUserMessage = messages[messages.length - 1]?.text || "";
         const lowerInput = lastUserMessage.toLowerCase();
 
-        if (lowerInput.includes("premium") || lowerInput.includes("plan") || lowerInput.includes("monthly") || lowerInput.includes("elite") || lowerInput.includes("founder") || lowerInput.includes("upgrade")) {
+        if (lowerInput.includes("premium") || lowerInput.includes("plan") || lowerInput.includes("monthly") || lowerInput.includes("elite") || lowerInput.includes("founder") || lowerInput.includes("upgrade") || lowerInput.includes("price")) {
           chatText = `I would be happy to help you with **BuyWise Premium**! 🌟
 
-We offer 3 flexible plans:
-- **Weekly Pass (₹30)**: Unlimited price tracking & AI assistance.
-- **Monthly Elite (₹100)**: Ad-free experience, custom profile badge, priority support.
-- **Forever Founder (₹700)**: Lifetime access to all current and future features!
+Here are our current official plans:
+- **Monthly Elite (₹100)**: 30 Days of ad-free browsing, priority AI assistance, unlimited price tracking, and custom profile badge.
+- **Yearly Pro (₹500)**: Full 365 Days access to all Monthly Elite features (save 20%).
+- **Forever Founder (₹700)**: Lifetime VIP access, exclusive 👑 Super Enhanced Founder badge, and Forever Founder Mystery Box with guaranteed 10,000 BuyWise coins!
 
-**How to activate**:
-1. Go to the **Premium** tab in BuyWise.
-2. Scan the UPI QR code using GPay, PhonePe, or Paytm.
-3. Submit your 12-digit **UTR number**.
-4. Verification takes only 5–10 minutes on weekends and 15–30 minutes during weekday hours!
+**How payment works**:
+All subscriptions are processed securely in real-time via **Razorpay** (UPI with Google Pay, PhonePe, Paytm, BHIM, Debit/Credit Cards, NetBanking). Activation is automatic and instant upon successful checkout.
 
-Did this help, or do you have a specific question about your payment?`;
-        } else if (lowerInput.includes("coin") || lowerInput.includes("reward") || lowerInput.includes("voucher") || lowerInput.includes("point")) {
+Would you like help upgrading or checking your current membership status?`;
+        } else if (lowerInput.includes("coin") || lowerInput.includes("reward") || lowerInput.includes("voucher") || lowerInput.includes("point") || lowerInput.includes("spin")) {
           chatText = `I can definitely guide you on **BuyWise Coins & Rewards**! 🪙
 
-- **Earning Coins**: You earn BuyWise coins by completing daily product searches, referring friends, and maintaining daily activity streaks.
-- **Redeeming Coins**: Go to the **Rewards** tab to redeem your coins for instant discount vouchers, shopping coupons, or entry into price drops.
+- **Earning Coins**:
+  • Daily price searches: +10 coins per search
+  • Daily login check-in streak: +5 to +50 coins
+  • Referrals: +50 coins for you and your friend on their first search
+  • Sharing deals: +20 coins
+  • Writing reviews: +10 coins
+  • Barcode scans: +15 coins
+- **Redeeming Coins**: Visit the **Rewards** hub to exchange your coins for shopping vouchers, discount coupons, or daily wheel spins.
 
-Are you missing coins for a recent activity or looking to redeem a reward?`;
-        } else if (lowerInput.includes("refund") || lowerInput.includes("double") || lowerInput.includes("money back") || lowerInput.includes("failed payment")) {
-          chatText = `I understand how important payment and refund issues are, and I am here to assist you right away. 💸
+Are you looking to redeem a reward or check your coin balance?`;
+        } else if (lowerInput.includes("founder") || lowerInput.includes("mystery") || lowerInput.includes("box") || lowerInput.includes("badge")) {
+          chatText = `🌟 **Forever Founder Benefits & Mystery Box**:
 
-For payment failures or refund requests:
-1. Please confirm the **12-digit UTR Transaction ID** from your payment app.
-2. Confirm the date & amount charged.
+Members on the Forever Founder plan (₹700 Lifetime) receive:
+1. **Super Enhanced Founder Badge**: Exclusive 👑 icon next to your name and in the navigation bar.
+2. **Forever Founder Mystery Box**: Unlocks directly in the Rewards Hub to award guaranteed **10,000 BuyWise coins**.
+3. **Lifetime VIP Status**: Access to all future AI price intelligence tools without recurring fees.
 
-Since refund processing requires manual account verification, I can instantly transfer your chat to our **Human Support Desk** so our specialist can process this for you. Would you like me to transfer you now?`;
+If you are a Founder and haven't unlocked your Mystery Box yet, navigate to the **Rewards** page!`;
+        } else if (lowerInput.includes("delete") || lowerInput.includes("remove account") || lowerInput.includes("privacy") || lowerInput.includes("data deletion")) {
+          chatText = `🔒 **Account & Data Deletion (Right to be Forgotten)**:
+
+BuyWise provides complete control over your account and personal data:
+- **In-App Deletion**: If you are logged in, go to your Account/Profile Settings and select **Delete Account & Data**. Confirm your choice to permanently and immediately erase your account.
+- **Public Request Page**: You can also visit **https://buywiser.store/delete-account** to request deletion directly via web form.
+- **What gets deleted**: Credentials, personal profile, BuyWise coins, scan history, reviews, wishlist items, and support messages are permanently removed.
+
+Would you like me to guide you through deleting your account, or can I help resolve any issue you're facing?`;
+        } else if (lowerInput.includes("refund") || lowerInput.includes("double") || lowerInput.includes("money back") || lowerInput.includes("failed payment") || lowerInput.includes("payment")) {
+          chatText = `I understand how important payment issues are, and I am here to help you get this resolved immediately. 💸
+
+1. Subscriptions are billed securely through **Razorpay**.
+2. If payment was deducted but membership is not showing, try clicking **Refresh Membership** in your Account Settings.
+3. If the problem persists, please have your **Razorpay Payment ID** (starts with \`pay_\`) ready.
+
+Because financial adjustments require manual verification by our billing team, you can transfer this conversation to our **Human Support Desk** right now. Would you like me to connect you to a specialist?`;
         } else if (lowerInput.includes("order") || lowerInput.includes("delivery") || lowerInput.includes("tracking") || lowerInput.includes("package")) {
-          chatText = `I can help you track your **Order & Delivery**! 📦
+          chatText = `I can help with **Order & Delivery** questions! 📦
 
-When you purchase through BuyWise, orders are fulfilled directly by our partner stores (Amazon, Flipkart, Croma, Reliance Digital, etc.).
+BuyWise compares prices across partner stores (Amazon, Flipkart, Croma, Reliance Digital, etc.).
+- **Order Fulfillment**: When you purchase a product, the order is fulfilled and shipped directly by that retailer.
+- **Tracking**: Please check the order confirmation email or tracking link provided by the respective seller.
 
-- **Checking Order Status**: Go to your account order history or check the order confirmation email sent by the seller.
-- **Delivery Delay**: Most sellers provide live tracking links directly in your invoice.
-
-If you bought a BuyWise Gift Voucher or Premium Pass, please share your order or reference ID so I can look into it for you!`;
+If your inquiry is regarding a BuyWise Premium membership receipt or digital voucher, let me know!`;
         } else if (lowerInput.includes("wrong price") || lowerInput.includes("price mismatch") || lowerInput.includes("wrong product") || lowerInput.includes("search issue") || lowerInput.includes("bug")) {
-          chatText = `Thank you for bringing this to our attention! 🔍
+          chatText = `Thank you for reporting this! 🔍
 
-We strive for 100% price and product accuracy across all retailers. If you noticed a price discrepancy, incorrect specification, or a search error:
+We continuously refresh product data from Amazon, Flipkart, Croma, and other stores. If you notice a price discrepancy or search bug:
+1. Please tell me the product name or share the product URL.
+2. Mention the retailer where you saw the difference.
 
-1. Please tell me which product or search term you were looking at.
-2. Mention the store name (e.g. Amazon, Flipkart, Croma).
-
-I will log this report immediately for our team. If you'd like an agent to inspect this live, let me know!`;
+Our engineering team reviews verified reports. If you need live assistance, let me know!`;
         } else if (lowerInput.includes("human") || lowerInput.includes("agent") || lowerInput.includes("person") || lowerInput.includes("transfer") || lowerInput.includes("speak to")) {
-          chatText = `Of course! I can connect you directly with a human support specialist right away. 🎧
+          chatText = `Certainly! I will connect you directly with our BuyWise Human Support Desk. 🎧
 
-Click the **Transfer to Human Support** option below, and I will transfer your entire conversation history so you won't need to repeat anything.`;
+Click the **Transfer to Human Support** button below, and your complete chat transcript will be forwarded to our human support specialist so you won't need to re-explain anything.`;
         } else {
-          chatText = `Thank you for reaching out! I'm the BuyWise Support Bot. 🤖
+          chatText = `Thank you for contacting BuyWise Support! I'm the BuyWise Support Bot. 🤖
 
-I'm here to make sure your experience with BuyWise is smooth and hassle-free. Could you share a few details about what you need help with?
+How can I help you today?
+• **Premium Plans & Razorpay Upgrades**
+• **Payments, Activation & Refunds**
+• **BuyWise Coins, Badges & Rewards**
+• **Forever Founder Mystery Box & Super Enhanced Badge**
+• **Account Management & Data Deletion**
+• **Product Price Comparison & URL Search**
 
-I can help with:
-• **Premium & Subscriptions**
-• **Payments & Refunds**
-• **BuyWise Coins & Rewards**
-• **Orders & Delivery**
-• **Wrong Product or Price Reports**
-• **Account & Login**
-• **Bugs or Feature Ideas**
-
-What can I assist you with today?`;
+Feel free to describe your issue, and if you ever need a human specialist, you can transfer anytime!`;
         }
       }
 
@@ -4314,8 +5043,33 @@ What can I assist you with today?`;
 
   app.get('/api/support/my-tickets', async (req, res) => {
     try {
-      const email = req.headers['x-user-email'] as string;
-      if (!email) return res.status(401).json({ error: 'Unauthorized' });
+      // 1. Authenticate caller using server-verifiable credential
+      const token = extractTokenFromRequest(req);
+
+      if (!token) {
+        return res.status(401).json({
+          error: "Unauthorized: Missing server-trusted authentication credential. Client-supplied identity headers alone are not accepted."
+        });
+      }
+
+      const verified = await verifyCallerCredential(token);
+      if (!verified) {
+        return res.status(401).json({
+          error: "Unauthorized: Invalid, expired, or untrusted authentication token."
+        });
+      }
+
+      // 2. Reject Spoofed Identity Headers
+      const clientSuppliedEmail = req.headers["x-user-email"] as string;
+      if (clientSuppliedEmail && clientSuppliedEmail.toLowerCase() !== verified.email.toLowerCase()) {
+        console.warn(`[Security Alert] Blocked spoofed x-user-email header in /api/support/my-tickets! Verified=${verified.email}, Spoofed=${clientSuppliedEmail}`);
+        return res.status(403).json({
+          error: "Access Denied: Spoofed identity detected. Client-supplied x-user-email does not match server-verified credential."
+        });
+      }
+
+      const email = verified.email.toLowerCase();
+      const userId = verified.userId;
       
       const supabase = getSupabaseClient();
       let supabaseTickets: any[] = [];
@@ -4323,17 +5077,23 @@ What can I assist you with today?`;
         const { data, error } = await supabase.from('support_requests').select('*').eq('email', email);
         if (!error && data) {
           supabaseTickets = data.map((t: any) => ({
-            id: t.id || 'tkt_' + Date.now(),
-            name: t.name || 'User',
+            id: t.id || 'BW-' + Date.now(),
+            userId: t.user_id || t.userId || userId,
+            name: t.name || verified.name || 'User',
             email: t.email || email,
-        phone: t.phone || '',
+            phone: t.phone || '',
+            category: t.category || 'General Support',
             subject: t.subject || 'Support Ticket',
+            originalIssue: t.original_issue || t.originalIssue || t.message || '',
             message: t.message || '',
             browser: t.browser || '',
             device: t.device || '',
             url: t.url || '',
-            status: t.status || 'open',
+            status: t.status || 'OPEN',
+            priority: t.priority || 'normal',
+            source: t.source || 'HUMAN_SUPPORT',
             createdAt: t.created_at || t.createdAt || new Date().toISOString(),
+            lastUpdated: t.updated_at || t.lastUpdated || t.created_at || new Date().toISOString(),
             messages: t.messages || []
           }));
         }
@@ -4344,7 +5104,9 @@ What can I assist you with today?`;
       if (fs.existsSync(storePath)) {
         try {
           const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
-          localTickets = (raw.support_tickets || []).filter((t: any) => t.email === email);
+          localTickets = (raw.support_tickets || []).filter((t: any) => 
+            (t.email && t.email.toLowerCase() === email) || (t.userId && t.userId === userId)
+          );
         } catch (e) {}
       }
 
@@ -4362,7 +5124,7 @@ What can I assist you with today?`;
           map.set(t.id, {
             ...local,
             ...t,
-            status: t.status || local.status,
+            status: t.status || local.status || 'OPEN',
             messages: mergedMsgs
           });
         } else {
@@ -4370,25 +5132,133 @@ What can I assist you with today?`;
         }
       });
 
-      res.json(Array.from(map.values()));
+      const list = Array.from(map.values()).sort((a: any, b: any) => {
+        return new Date(b.lastUpdated || b.createdAt || 0).getTime() - new Date(a.lastUpdated || a.createdAt || 0).getTime();
+      });
+
+      res.json(list);
     } catch (e: any) {
       res.json([]);
     }
   });
 
+  // GET /api/support/ticket/:id - Fetch single ticket with Anti-IDOR authorization
+  app.get('/api/support/ticket/:id', async (req, res) => {
+    try {
+      const id = req.params.id;
+      const adminCheck = await checkIsAdminRequest(req);
+      const isAdmin = adminCheck.isAdmin;
+
+      let callerEmail = "";
+      let callerUserId = "";
+
+      if (isAdmin) {
+        callerEmail = adminCheck.adminEmail?.toLowerCase() || ADMIN_EMAIL;
+      } else {
+        const token = extractTokenFromRequest(req);
+
+        if (!token) {
+          return res.status(401).json({ error: "Unauthorized: Missing authentication token." });
+        }
+
+        const verified = await verifyCallerCredential(token);
+        if (!verified) {
+          return res.status(401).json({ error: "Unauthorized: Invalid or expired token." });
+        }
+
+        // Anti-spoofing check
+        const clientSuppliedEmail = req.headers["x-user-email"] as string;
+        if (clientSuppliedEmail && clientSuppliedEmail.toLowerCase() !== verified.email.toLowerCase()) {
+          return res.status(403).json({ error: "Access Denied: Spoofed identity detected. Client-supplied x-user-email does not match server-verified credential." });
+        }
+
+        callerEmail = verified.email.toLowerCase();
+        callerUserId = verified.userId;
+      }
+
+      // Read ticket from data_store.json or Supabase
+      const storePath = path.join(process.cwd(), 'data_store.json');
+      let ticket: any = null;
+      if (fs.existsSync(storePath)) {
+        try {
+          const raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+          ticket = (raw.support_tickets || []).find((t: any) => t.id === id);
+        } catch (e) {}
+      }
+
+      if (!ticket) {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          const { data } = await supabase.from('support_requests').select('*').eq('id', id).single();
+          if (data) ticket = data;
+        }
+      }
+
+      if (!ticket) {
+        return res.status(404).json({ error: "Support ticket not found." });
+      }
+
+      // IDOR Authorization Enforcement: non-admins can only view their own tickets
+      if (!isAdmin) {
+        const ticketEmail = (ticket.email || "").toLowerCase();
+        const ticketUserId = ticket.userId || ticket.user_id;
+        const isOwner = (ticketEmail && ticketEmail === callerEmail) || (ticketUserId && ticketUserId === callerUserId);
+        if (!isOwner) {
+          console.warn(`[Anti-IDOR Alert] Caller ${callerEmail} blocked from accessing ticket ${id} owned by ${ticketEmail}`);
+          return res.status(403).json({ error: "Access Denied: You do not have permission to access this ticket." });
+        }
+      }
+
+      res.json({ success: true, ticket });
+    } catch (err: any) {
+      (res as any).sendSecureError(err, "Failed to retrieve ticket");
+    }
+  });
+
   app.post('/api/support/ticket/:id/reply', async (req, res) => {
     try {
-      const email = req.headers['x-user-email'] as string;
-      if (!email) return res.status(401).json({ error: 'Unauthorized' });
+      const adminCheck = await checkIsAdminRequest(req);
+      const isAdmin = adminCheck.isAdmin;
+
+      let callerEmail = "";
+      let callerUserId = "";
+      if (isAdmin) {
+        callerEmail = adminCheck.adminEmail?.toLowerCase() || ADMIN_EMAIL;
+      } else {
+        // Authenticate caller via server-trusted credential
+        const token = extractTokenFromRequest(req);
+
+        if (!token) {
+          return res.status(401).json({
+            error: "Unauthorized: Server-trusted authentication credential required to reply to ticket."
+          });
+        }
+
+        const verified = await verifyCallerCredential(token);
+        if (!verified) {
+          return res.status(401).json({
+            error: "Unauthorized: Invalid, expired, or untrusted authentication token."
+          });
+        }
+
+        // Anti-spoofing check
+        const clientSuppliedEmail = req.headers["x-user-email"] as string;
+        if (clientSuppliedEmail && clientSuppliedEmail.toLowerCase() !== verified.email.toLowerCase()) {
+          return res.status(403).json({
+            error: "Access Denied: Spoofed identity header does not match authenticated credential."
+          });
+        }
+
+        callerEmail = verified.email.toLowerCase();
+        callerUserId = verified.userId;
+      }
+
       const { text } = req.body;
       const id = req.params.id;
 
-      const newMsg = {
-        id: 'msg_' + Date.now(),
-        sender: 'customer',
-        text,
-        timestamp: new Date().toISOString()
-      };
+      if (!text || typeof text !== 'string' || !text.trim()) {
+        return res.status(400).json({ error: 'Message text is required.' });
+      }
 
       const storePath = path.join(process.cwd(), 'data_store.json');
       let raw: any = { support_tickets: [] };
@@ -4397,33 +5267,77 @@ What can I assist you with today?`;
       }
       if (!raw.support_tickets) raw.support_tickets = [];
       let ticket = raw.support_tickets.find((t: any) => t.id === id);
+
+      // Anti-IDOR Enforcement: prevent unauthorized users from replying to another user's ticket
+      if (ticket && !isAdmin) {
+        const ticketEmail = (ticket.email || "").toLowerCase();
+        const ticketUserId = ticket.userId || ticket.user_id;
+        const isOwner = (ticketEmail && ticketEmail === callerEmail) || (ticketUserId && ticketUserId === callerUserId);
+        if (!isOwner) {
+          return res.status(403).json({ error: "Access Denied: You cannot reply to another user's support ticket." });
+        }
+      }
+
+      const supabase = getSupabaseClient();
+      if (supabase) {
+        try {
+          const { data: existing } = await supabase.from('support_requests').select('email, user_id, messages').eq('id', id).single();
+          if (existing && !isAdmin) {
+            const sbEmail = (existing.email || "").toLowerCase();
+            const sbUserId = existing.user_id;
+            if (sbEmail && sbEmail !== callerEmail && sbUserId !== callerUserId) {
+              return res.status(403).json({ error: "Access Denied: You cannot reply to another user's support ticket." });
+            }
+          }
+        } catch (sErr) {
+          // Record not in supabase or check failed
+        }
+      }
+
+      const newMsg = {
+        id: 'msg_' + Date.now(),
+        sender: isAdmin ? 'agent' : 'customer',
+        text: text.trim(),
+        timestamp: new Date().toISOString()
+      };
+
       if (ticket) {
         if (!ticket.messages) ticket.messages = [];
         ticket.messages.push(newMsg);
-        ticket.status = 'open';
+        ticket.lastUpdated = new Date().toISOString();
+        if ((ticket.status || '').toLowerCase() === 'resolved') {
+          ticket.status = 'OPEN';
+        }
       } else {
         ticket = {
           id,
-          name: email.split('@')[0] || 'Customer',
-          email,
-        subject: 'Live Chat Support Request',
-          message: text,
-          status: 'open',
+          userId: callerUserId || 'guest',
+          name: (callerEmail.split('@')[0] || 'Customer'),
+          email: callerEmail,
+          subject: 'Live Chat Support Request',
+          originalIssue: text.trim(),
+          message: text.trim(),
+          status: 'OPEN',
+          priority: 'normal',
+          source: 'HUMAN_SUPPORT',
           createdAt: new Date().toISOString(),
+          lastUpdated: new Date().toISOString(),
           messages: [newMsg]
         };
         raw.support_tickets.unshift(ticket);
       }
-      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
 
-      const supabase = getSupabaseClient();
+      const tmpPath = `${storePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 7)}`;
+      fs.writeFileSync(tmpPath, JSON.stringify(raw, null, 2), 'utf-8');
+      fs.renameSync(tmpPath, storePath);
+
       if (supabase) {
         try {
           const { data: existing } = await supabase.from('support_requests').select('messages').eq('id', id).single();
           let existingMsgs = existing?.messages || [];
           if (!Array.isArray(existingMsgs)) existingMsgs = [];
           existingMsgs.push(newMsg);
-          await supabase.from('support_requests').update({ messages: existingMsgs, status: 'open' }).eq('id', id);
+          await supabase.from('support_requests').update({ messages: existingMsgs, status: 'OPEN', updated_at: new Date().toISOString() }).eq('id', id);
         } catch (sErr) {
           console.error("Supabase ticket reply error:", sErr);
         }
@@ -4437,124 +5351,275 @@ What can I assist you with today?`;
 
   app.post('/api/support/ticket', async (req, res) => {
     try {
-      const { id, name, email, phone, subject, message, browser, device, url } = req.body;
+      // 1. Extract and Verify Authentication Credential
+      const token = extractTokenFromRequest(req);
+
+      let verifiedUserId = "";
+      let verifiedEmail = "";
+      let verifiedName = "";
+      let isGuest = false;
+
+      if (token) {
+        // Authenticated user path
+        const verified = await verifyCallerCredential(token);
+        if (!verified) {
+          console.warn("[Support Escalation Security] Request with invalid/expired token rejected with 401");
+          return res.status(401).json({
+            success: false,
+            error: "Unauthorized: Invalid, expired, or untrusted authentication token."
+          });
+        }
+
+        // Anti-spoofing checks
+        const clientHeaderEmail = (req.headers["x-user-email"] as string)?.toLowerCase();
+        const clientBodyEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+        const clientHeaderUserId = req.headers["x-user-id"] as string;
+        const clientBodyUserId = typeof req.body.userId === "string" ? req.body.userId.trim() : "";
+
+        if (clientHeaderEmail && clientHeaderEmail !== verified.email.toLowerCase()) {
+          console.warn(`[Support Escalation Security] Blocked spoofed x-user-email header! Verified=${verified.email}, Spoofed=${clientHeaderEmail}`);
+          return res.status(403).json({
+            success: false,
+            error: "Access Denied: Spoofed identity detected. Client-supplied x-user-email does not match server-verified credential."
+          });
+        }
+
+        if (clientBodyEmail && clientBodyEmail !== verified.email.toLowerCase()) {
+          console.warn(`[Support Escalation Security] Blocked spoofed body email! Verified=${verified.email}, Spoofed=${clientBodyEmail}`);
+          return res.status(403).json({
+            success: false,
+            error: "Access Denied: Spoofed identity detected. Client-supplied email in body does not match server-verified credential."
+          });
+        }
+
+        if (clientHeaderUserId && clientHeaderUserId !== verified.userId) {
+          console.warn(`[Support Escalation Security] Blocked spoofed x-user-id header! Verified=${verified.userId}, Spoofed=${clientHeaderUserId}`);
+          return res.status(403).json({
+            success: false,
+            error: "Access Denied: Spoofed identity detected. Client-supplied x-user-id does not match server-verified credential."
+          });
+        }
+
+        if (clientBodyUserId && clientBodyUserId !== verified.userId) {
+          console.warn(`[Support Escalation Security] Blocked spoofed body userId! Verified=${verified.userId}, Spoofed=${clientBodyUserId}`);
+          return res.status(403).json({
+            success: false,
+            error: "Access Denied: Spoofed identity detected. Client-supplied userId does not match server-verified credential."
+          });
+        }
+
+        verifiedUserId = verified.userId;
+        verifiedEmail = verified.email.toLowerCase();
+        verifiedName = verified.name || (typeof req.body.name === "string" ? req.body.name.trim() : verified.email.split("@")[0]);
+      } else {
+        // Unauthenticated guest path
+        isGuest = true;
+        const rawEmail = typeof req.body.email === "string" ? req.body.email.trim().toLowerCase() : "";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!rawEmail || !emailRegex.test(rawEmail)) {
+          return res.status(400).json({
+            success: false,
+            error: "A valid email address is required to submit a support request."
+          });
+        }
+
+        // Prevent guests from claiming admin or official accounts without valid token
+        if (rawEmail === "mohammdsaeed24@gmail.com") {
+          return res.status(401).json({
+            success: false,
+            error: "Unauthorized: This email belongs to an administrative account. Please sign in to authenticate."
+          });
+        }
+
+        verifiedUserId = `guest_${crypto.randomBytes(6).toString("hex")}`;
+        verifiedEmail = rawEmail;
+        verifiedName = typeof req.body.name === "string" && req.body.name.trim() ? req.body.name.trim() : "Guest Customer";
+      }
+
+      // Safe Diagnostic Log: Request received & user identified
+      console.log(`[Support Escalation] Request received for email=${verifiedEmail.substring(0, 3)}***@***, isGuest=${isGuest}`);
+      console.log(`[Support Escalation] Authenticated user identified: userId=${verifiedUserId}`);
+
+      // 2. Generate or Preserve Unique Ticket ID Server-Side
+      const serverTicketId = (typeof req.body.id === "string" && req.body.id.trim().length >= 4)
+        ? req.body.id.trim()
+        : `BW-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
+      console.log(`[Support Escalation] Ticket creation started: ticketId=${serverTicketId}`);
+
+      const now = new Date().toISOString();
+      const originalIssue = typeof req.body.message === "string" && req.body.message.trim() 
+        ? req.body.message.trim() 
+        : (typeof req.body.subject === "string" ? req.body.subject.trim() : "Support Request");
       
-      const ticket = {
-        id: id || ('tkt_' + Date.now()),
-        name: name || 'Anonymous',
-        email: email || 'guest@example.com',
-        phone: phone || '',
-        subject: subject || 'Support Request',
-        message: message || '',
-        browser: browser || '',
-        device: device || '',
-        url: url || '',
-        status: 'open',
-        createdAt: new Date().toISOString(),
-        messages: req.body.messages || [{
-          id: 'msg_' + Date.now(),
+      const subject = typeof req.body.subject === "string" && req.body.subject.trim()
+        ? req.body.subject.trim()
+        : `Support Request: ${originalIssue.substring(0, 45)}...`;
+      
+      const category = typeof req.body.category === "string" && req.body.category.trim()
+        ? req.body.category.trim()
+        : "General Support";
+
+      const priority = req.body.priority === "high" || subject.toLowerCase().includes("urgent") || originalIssue.toLowerCase().includes("refund") 
+        ? "high" 
+        : "normal";
+
+      // Normalize conversation messages
+      let conversationMessages: any[] = [];
+      if (Array.isArray(req.body.messages) && req.body.messages.length > 0) {
+        conversationMessages = req.body.messages.map((m: any, idx: number) => ({
+          id: m.id || `msg_${Date.now()}_${idx}`,
+          sender: m.sender === 'agent' ? 'agent' : (m.sender === 'bot' ? 'bot' : 'customer'),
+          text: m.text || '',
+          timestamp: m.timestamp || now
+        }));
+      } else {
+        conversationMessages = [{
+          id: `msg_${Date.now()}`,
           sender: 'customer',
-          text: message || '',
-          timestamp: new Date().toISOString()
-        }]
+          text: originalIssue,
+          timestamp: now
+        }];
+      }
+
+      const ticket = {
+        id: serverTicketId,
+        userId: verifiedUserId,
+        email: verifiedEmail,
+        name: verifiedName,
+        phone: typeof req.body.phone === "string" ? req.body.phone.trim() : "",
+        category,
+        subject,
+        originalIssue,
+        message: originalIssue,
+        messages: conversationMessages,
+        createdAt: now,
+        lastUpdated: now,
+        status: 'OPEN',
+        priority,
+        source: 'HUMAN_SUPPORT',
+        browser: typeof req.body.browser === "string" ? req.body.browser : (req.headers["user-agent"] || ""),
+        device: typeof req.body.device === "string" ? req.body.device : "",
+        url: typeof req.body.url === "string" ? req.body.url : ""
       };
 
-      console.log("====================================");
-      console.log("📩 NEW HUMAN SUPPORT REQUEST RECEIVED:");
-      console.log("ID:", ticket.id);
-      console.log("Name:", ticket.name);
-      console.log("Email:", ticket.email);
-      console.log("Subject:", ticket.subject);
-      console.log("====================================");
-
-      // 1. Save locally to data_store.json (Update existing if present, else unshift)
+      // 3. Storage Write Attempted (Thread-safe atomic persistence to data_store.json)
+      console.log(`[Support Escalation] Storage write attempted to data_store.json for ticketId=${ticket.id}`);
+      
       const storePath = path.join(process.cwd(), 'data_store.json');
       let raw: any = { support_tickets: [] };
       if (fs.existsSync(storePath)) {
-        try { raw = JSON.parse(fs.readFileSync(storePath, 'utf-8')); } catch (e) {}
+        try {
+          raw = JSON.parse(fs.readFileSync(storePath, 'utf-8'));
+        } catch (e) {
+          raw = { support_tickets: [] };
+        }
       }
-      if (!raw.support_tickets) raw.support_tickets = [];
-      const existingIndex = raw.support_tickets.findIndex((t: any) => t.id === ticket.id);
-      if (existingIndex >= 0) {
-        raw.support_tickets[existingIndex] = {
-          ...raw.support_tickets[existingIndex],
-          ...ticket
-        };
+      if (!raw.support_tickets || !Array.isArray(raw.support_tickets)) {
+        raw.support_tickets = [];
+      }
+
+      // Idempotency check: if exact duplicate submitted in last 4 seconds by same user, return existing
+      const fourSecsAgo = Date.now() - 4000;
+      const duplicate = raw.support_tickets.find((t: any) => 
+        t.email === ticket.email && 
+        t.originalIssue === ticket.originalIssue &&
+        new Date(t.createdAt).getTime() > fourSecsAgo
+      );
+      
+      let createdTicket = ticket;
+      if (duplicate) {
+        console.log(`[Support Escalation] Idempotent match detected, reusing ticket ${duplicate.id}`);
+        createdTicket = duplicate;
       } else {
         raw.support_tickets.unshift(ticket);
+        const tmpPath = `${storePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 7)}`;
+        fs.writeFileSync(tmpPath, JSON.stringify(raw, null, 2), 'utf-8');
+        fs.renameSync(tmpPath, storePath);
       }
-      fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
 
-      // 2. Insert/Upsert into Supabase support_requests table
+      console.log(`[Support Escalation] Storage write succeeded for ticketId=${createdTicket.id}`);
+
+      // 4. Supabase Support Requests Write (if Supabase is configured)
       const supabase = getSupabaseClient();
       let supabaseSuccess = false;
       let supabaseErrorMsg = null;
-      let insertedRow = null;
 
       if (supabase) {
-        console.log("Attempting Supabase upsert into support_requests table...");
-        const payload = {
-          id: ticket.id,
-          name: ticket.name,
-          email: ticket.email,
-        phone: ticket.phone,
-          subject: ticket.subject,
-          message: ticket.message,
-          browser: ticket.browser,
-          device: ticket.device,
-          url: ticket.url,
-          status: ticket.status,
-          created_at: ticket.createdAt,
-          messages: ticket.messages
-        };
-
-        const { data, error } = await supabase.from('support_requests').upsert([payload]).select();
-
-        if (error) {
-          console.error("❌ Supabase upsert failed on support_requests:", error.message, error.details || '', error.hint || '');
-          supabaseErrorMsg = error.message;
-
-          const altPayload = {
-            id: ticket.id,
-            name: ticket.name,
-            email: ticket.email,
-        phone: ticket.phone,
-            subject: ticket.subject,
-            message: ticket.message,
-            browser: ticket.browser,
-            device: ticket.device,
-            url: ticket.url,
-            status: ticket.status,
-            createdAt: ticket.createdAt,
-            messages: ticket.messages
+        try {
+          const payload = {
+            id: createdTicket.id,
+            user_id: createdTicket.userId,
+            name: createdTicket.name,
+            email: createdTicket.email,
+            phone: createdTicket.phone,
+            subject: createdTicket.subject,
+            message: createdTicket.message,
+            category: createdTicket.category,
+            original_issue: createdTicket.originalIssue,
+            browser: createdTicket.browser,
+            device: createdTicket.device,
+            url: createdTicket.url,
+            status: 'OPEN',
+            priority: createdTicket.priority,
+            source: 'HUMAN_SUPPORT',
+            created_at: createdTicket.createdAt,
+            updated_at: createdTicket.lastUpdated,
+            messages: createdTicket.messages
           };
-          const { data: altData, error: altError } = await supabase.from('support_requests').upsert([altPayload]).select();
-          if (altError) {
-            console.error("❌ Supabase retry upsert also failed:", altError.message);
+
+          const { error: sbErr } = await supabase.from('support_requests').upsert([payload]);
+          if (sbErr) {
+            console.error("❌ Supabase support_requests upsert failed:", sbErr.message);
+            supabaseErrorMsg = sbErr.message;
           } else {
-            console.log("✅ Supabase support_requests upserted successfully on retry:", altData);
+            console.log("✅ Supabase support_requests upserted successfully");
             supabaseSuccess = true;
-            insertedRow = altData;
           }
-        } else {
-          console.log("✅ Supabase support_requests upserted successfully:", data);
-          supabaseSuccess = true;
-          insertedRow = data;
+        } catch (sbEx: any) {
+          console.error("❌ Supabase support_requests exception:", sbEx.message);
+          supabaseErrorMsg = sbEx.message;
         }
-      } else {
-        console.warn("⚠️ Supabase client not initialized (missing environment variables or credentials).");
       }
 
-      res.json({ 
-        success: true, 
-        ticketId: ticket.id, 
-        supabaseSaved: supabaseSuccess, 
-        supabaseError: supabaseErrorMsg,
-        insertedRow
+      // 5. Generate Server-Signed Ticket Token for customer self-service access
+      const ticketToken = createSignedSessionToken({
+        userId: createdTicket.userId,
+        email: createdTicket.email,
+        name: createdTicket.name,
+        expMs: 30 * 24 * 60 * 60 * 1000 // 30 days
+      });
+
+      console.log(`[Support Escalation] Response returned: success=true, ticketId=${createdTicket.id}, status=OPEN`);
+
+      // 6. Return Deterministic Response with HTTP 201 Created
+      res.status(201).json({
+        success: true,
+        ticketId: createdTicket.id,
+        status: "OPEN",
+        ticketToken,
+        ticket: {
+          id: createdTicket.id,
+          userId: createdTicket.userId,
+          email: createdTicket.email,
+          name: createdTicket.name,
+          category: createdTicket.category,
+          subject: createdTicket.subject,
+          originalIssue: createdTicket.originalIssue,
+          status: createdTicket.status,
+          priority: createdTicket.priority,
+          source: createdTicket.source,
+          createdAt: createdTicket.createdAt,
+          lastUpdated: createdTicket.lastUpdated
+        },
+        supabaseSaved: supabaseSuccess,
+        supabaseError: supabaseErrorMsg
       });
     } catch (err: any) {
-      console.error("Error submitting support ticket:", err);
-      (res as any).sendSecureError(err, "Failed to submit ticket");
+      console.error("[Support Escalation] Error submitting support ticket:", err);
+      res.status(500).json({
+        success: false,
+        error: "Failed to create support ticket. Please try again."
+      });
     }
   });
 
@@ -4700,44 +5765,43 @@ What can I assist you with today?`;
           .order('created_at', { ascending: false });
 
         if (!error && data) {
-          supabaseTickets = data.map((t: any) => ({
-            id: t.id || 'tkt_' + Date.now(),
-            name: t.name || 'Anonymous',
-            email: t.email || '',
-            phone: t.phone || '',
-            subject: t.subject || 'Support Ticket',
-            message: t.message || '',
-            browser: t.browser || '',
-            device: t.device || '',
-            url: t.url || '',
-            status: t.status || 'open',
-            createdAt: t.created_at || t.createdAt || new Date().toISOString(),
-            messages: t.messages || [{
+          supabaseTickets = data.map((t: any) => {
+            const ticketId = t.id || t.ticket_id || 'tkt_' + Date.now();
+            const statusUpper = (t.status || 'OPEN').toString().trim().toUpperCase();
+            const normalizedStatus = (statusUpper === 'RESOLVED' || statusUpper === 'CLOSED') ? statusUpper : (statusUpper === 'PENDING' ? 'PENDING' : 'OPEN');
+            const messages = Array.isArray(t.messages) && t.messages.length > 0 ? t.messages : [{
               id: 'msg_1',
               sender: 'customer',
-              text: t.message || '',
+              text: t.message || t.original_issue || '',
               timestamp: t.created_at || t.createdAt || new Date().toISOString()
-            }]
-          }));
-        } else if (error) {
-          console.error("❌ Supabase fetch error in admin support tickets:", error.message);
-          const { data: data2 } = await supabase.from('support_requests').select('*');
-          if (data2) {
-            supabaseTickets = data2.map((t: any) => ({
-              id: t.id || 'tkt_' + Date.now(),
-              name: t.name || 'Anonymous',
+            }];
+
+            return {
+              id: ticketId,
+              ticketId,
+              userId: t.user_id || t.userId || '',
+              name: t.name || 'Customer',
               email: t.email || '',
+              userEmail: t.email || '',
               phone: t.phone || '',
-              subject: t.subject || 'Support Ticket',
-              message: t.message || '',
+              subject: t.subject || 'Support Request',
+              category: t.category || 'General Support',
+              originalIssue: t.original_issue || t.originalIssue || t.message || '',
+              message: t.message || t.original_issue || '',
               browser: t.browser || '',
               device: t.device || '',
               url: t.url || '',
-              status: t.status || 'open',
+              status: normalizedStatus,
+              priority: (t.priority || '').toLowerCase() === 'high' ? 'high' : 'normal',
+              source: t.source || 'HUMAN_SUPPORT',
+              channel: t.channel || 'LIVE_CHAT',
+              isLiveChat: true,
               createdAt: t.created_at || t.createdAt || new Date().toISOString(),
-              messages: t.messages || []
-            }));
-          }
+              lastUpdated: t.updated_at || t.lastUpdated || t.created_at || new Date().toISOString(),
+              messages,
+              conversation: messages
+            };
+          });
         }
       }
 
@@ -4751,8 +5815,44 @@ What can I assist you with today?`;
       }
 
       const ticketMap = new Map();
-      localTickets.forEach((t: any) => ticketMap.set(t.id, t));
+      localTickets.forEach((t: any) => {
+        if (!t || !t.id) return;
+        const ticketId = t.id || t.ticketId;
+        const statusUpper = (t.status || 'OPEN').toString().trim().toUpperCase();
+        const normalizedStatus = (statusUpper === 'RESOLVED' || statusUpper === 'CLOSED') ? statusUpper : (statusUpper === 'PENDING' ? 'PENDING' : 'OPEN');
+        const msgs = Array.isArray(t.messages) && t.messages.length > 0 ? t.messages : (Array.isArray(t.conversation) && t.conversation.length > 0 ? t.conversation : [{
+          id: 'msg_1',
+          sender: 'customer',
+          text: t.message || t.originalIssue || '',
+          timestamp: t.createdAt || new Date().toISOString()
+        }]);
+
+        ticketMap.set(ticketId, {
+          ...t,
+          id: ticketId,
+          ticketId,
+          userId: t.userId || t.user_id || '',
+          name: t.name || 'Customer',
+          email: t.email || t.userEmail || '',
+          userEmail: t.userEmail || t.email || '',
+          subject: t.subject || 'Support Request',
+          category: t.category || 'General Support',
+          originalIssue: t.originalIssue || t.message || '',
+          message: t.message || t.originalIssue || '',
+          status: normalizedStatus,
+          priority: (t.priority || '').toLowerCase() === 'high' ? 'high' : 'normal',
+          source: t.source || 'HUMAN_SUPPORT',
+          channel: t.channel || 'LIVE_CHAT',
+          isLiveChat: true,
+          createdAt: t.createdAt || new Date().toISOString(),
+          lastUpdated: t.lastUpdated || t.createdAt || new Date().toISOString(),
+          messages: msgs,
+          conversation: msgs
+        });
+      });
+
       supabaseTickets.forEach((t: any) => {
+        if (!t || !t.id) return;
         if (ticketMap.has(t.id)) {
           const local = ticketMap.get(t.id);
           const msgsMap = new Map();
@@ -4761,11 +5861,25 @@ What can I assist you with today?`;
           const mergedMsgs = Array.from(msgsMap.values()).sort((a: any, b: any) => {
             return new Date(a.timestamp || 0).getTime() - new Date(b.timestamp || 0).getTime();
           });
+
+          const localTime = new Date(local.lastUpdated || local.createdAt || 0).getTime();
+          const supabaseTime = new Date(t.lastUpdated || t.createdAt || 0).getTime();
+          const newestTime = Math.max(localTime, supabaseTime);
+
           ticketMap.set(t.id, {
             ...local,
             ...t,
-            status: t.status || local.status,
-            messages: mergedMsgs
+            userId: local.userId || t.userId,
+            email: local.email || t.email,
+            userEmail: local.userEmail || t.userEmail || local.email || t.email,
+            name: local.name || t.name,
+            source: local.source || t.source || 'HUMAN_SUPPORT',
+            channel: local.channel || t.channel || 'LIVE_CHAT',
+            isLiveChat: true,
+            status: supabaseTime > localTime ? t.status : local.status,
+            messages: mergedMsgs,
+            conversation: mergedMsgs,
+            lastUpdated: new Date(newestTime || Date.now()).toISOString()
           });
         } else {
           ticketMap.set(t.id, t);
@@ -4773,8 +5887,8 @@ What can I assist you with today?`;
       });
 
       const combined = Array.from(ticketMap.values()).sort((a: any, b: any) => {
-        const timeA = new Date(a.createdAt || a.created_at || 0).getTime();
-        const timeB = new Date(b.createdAt || b.created_at || 0).getTime();
+        const timeA = new Date(a.lastUpdated || a.createdAt || 0).getTime();
+        const timeB = new Date(b.lastUpdated || b.createdAt || 0).getTime();
         return timeB - timeA;
       });
 
@@ -4797,7 +5911,7 @@ What can I assist you with today?`;
       };
 
       const storePath = path.join(process.cwd(), 'data_store.json');
-      let raw = { support_tickets: [] };
+      let raw: any = { support_tickets: [] };
       if (fs.existsSync(storePath)) {
         try { raw = JSON.parse(fs.readFileSync(storePath, 'utf-8')); } catch (e) {}
       }
@@ -4806,7 +5920,10 @@ What can I assist you with today?`;
       if (ticket) {
         if (!ticket.messages) ticket.messages = [];
         ticket.messages.push(newMsg);
-        fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+        ticket.lastUpdated = new Date().toISOString();
+        const tmpPath = `${storePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 7)}`;
+        fs.writeFileSync(tmpPath, JSON.stringify(raw, null, 2), 'utf-8');
+        fs.renameSync(tmpPath, storePath);
       }
 
       const supabase = getSupabaseClient();
@@ -4816,7 +5933,7 @@ What can I assist you with today?`;
           let existingMsgs = existing?.messages || [];
           if (!Array.isArray(existingMsgs)) existingMsgs = [];
           existingMsgs.push(newMsg);
-          await supabase.from('support_requests').update({ messages: existingMsgs }).eq('id', id);
+          await supabase.from('support_requests').update({ messages: existingMsgs, updated_at: new Date().toISOString() }).eq('id', id);
         } catch (sErr) {
           console.error("Admin ticket reply Supabase error:", sErr);
         }
@@ -4832,29 +5949,34 @@ What can I assist you with today?`;
     try {
       const { id } = req.params;
       const { status } = req.body;
+      const statusUpper = (status || 'OPEN').toString().trim().toUpperCase();
+      const normalizedStatus = (statusUpper === 'RESOLVED' || statusUpper === 'CLOSED') ? statusUpper : (statusUpper === 'PENDING' ? 'PENDING' : 'OPEN');
 
       const storePath = path.join(process.cwd(), 'data_store.json');
-      let raw = { support_tickets: [] };
+      let raw: any = { support_tickets: [] };
       if (fs.existsSync(storePath)) {
         try { raw = JSON.parse(fs.readFileSync(storePath, 'utf-8')); } catch (e) {}
       }
       if (!raw.support_tickets) raw.support_tickets = [];
       const ticket = raw.support_tickets.find((t: any) => t.id === id);
       if (ticket) {
-        ticket.status = status;
-        fs.writeFileSync(storePath, JSON.stringify(raw, null, 2), 'utf-8');
+        ticket.status = normalizedStatus;
+        ticket.lastUpdated = new Date().toISOString();
+        const tmpPath = `${storePath}.tmp.${Date.now()}.${Math.random().toString(36).substring(2, 7)}`;
+        fs.writeFileSync(tmpPath, JSON.stringify(raw, null, 2), 'utf-8');
+        fs.renameSync(tmpPath, storePath);
       }
 
       const supabase = getSupabaseClient();
       if (supabase) {
         try {
-          await supabase.from('support_requests').update({ status }).eq('id', id);
+          await supabase.from('support_requests').update({ status: normalizedStatus, updated_at: new Date().toISOString() }).eq('id', id);
         } catch (sErr) {
           console.error("Admin ticket status Supabase error:", sErr);
         }
       }
 
-      res.json({ success: true });
+      res.json({ success: true, status: normalizedStatus });
     } catch (err: any) {
       (res as any).sendSecureError(err, "Failed to update ticket status");
     }

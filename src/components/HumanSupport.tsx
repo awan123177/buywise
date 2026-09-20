@@ -11,8 +11,9 @@ export default function HumanSupport() {
   const { user } = useAuth();
   
   // Ticket Identifiers & State
-  const [ticketId, setTicketId] = useState<string>(() => 'TK-' + Math.floor(10000 + Math.random() * 90000));
+  const [ticketId, setTicketId] = useState<string>(() => localStorage.getItem('activeSupportTicketId') || '');
   const [isTransferredToHuman, setIsTransferredToHuman] = useState(false);
+  const [isEscalating, setIsEscalating] = useState(false);
   const [isBotTyping, setIsBotTyping] = useState(false);
   const [typingText, setTypingText] = useState('BuyWise Support Bot is thinking...');
   const [chatSearch, setChatSearch] = useState('');
@@ -71,37 +72,40 @@ export default function HumanSupport() {
     return () => clearInterval(timer);
   }, [isRecording]);
 
-  // Restore existing active support ticket on mount if available
+  // Restore existing active support ticket on mount ONLY if confirmed on backend
   useEffect(() => {
     const activeEmail = user?.email || guestEmail;
-    if (!activeEmail) return;
-
     const savedTicketId = localStorage.getItem('activeSupportTicketId');
-    if (savedTicketId) {
-      setTicketId(savedTicketId);
-      setIsTransferredToHuman(true);
-    }
+    const token = localStorage.getItem('buywise_token') || localStorage.getItem('activeSupportTicketToken');
+
+    if (!savedTicketId) return;
 
     const restoreActiveTicket = async () => {
       try {
-        const res = await fetch('/api/support/my-tickets', {
-          headers: { 'x-user-email': activeEmail }
-        });
+        if (!token) return;
+        const headers: Record<string, string> = {
+          'Authorization': `Bearer ${token}`,
+          'x-session-token': token
+        };
+
+        const res = await fetch('/api/support/my-tickets', { headers });
         if (res.ok) {
           const tickets = await res.json();
-          if (tickets && tickets.length > 0) {
-            // Find open or pending ticket, or the saved ticket
-            const target = tickets.find((t: any) => t.id === savedTicketId) || tickets.find((t: any) => t.status === 'open' || t.status === 'pending') || tickets[0];
-            if (target) {
+          if (Array.isArray(tickets) && tickets.length > 0) {
+            const target = tickets.find((t: any) => t.id === savedTicketId);
+            const statusUpper = (target?.status || '').toUpperCase();
+            if (target && (statusUpper === 'OPEN' || statusUpper === 'PENDING')) {
               setTicketId(target.id);
               setIsTransferredToHuman(true);
-              localStorage.setItem('activeSupportTicketId', target.id);
               if (Array.isArray(target.messages) && target.messages.length > 0) {
                 setChatMessages(target.messages);
               }
+              return;
             }
           }
         }
+        // If ticket not found or resolved, remove stale localStorage reference
+        localStorage.removeItem('activeSupportTicketId');
       } catch (err) {
         console.error('Failed to restore active ticket:', err);
       }
@@ -116,28 +120,45 @@ export default function HumanSupport() {
       const emailToUse = user?.email || guestEmail;
       const fetchTicketUpdates = async () => {
         try {
-          if (!emailToUse) return;
-          const res = await fetch('/api/support/my-tickets', {
-            headers: { 'x-user-email': emailToUse }
-          });
+          const token = localStorage.getItem('buywise_token') || localStorage.getItem('activeSupportTicketToken');
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json'
+          };
+          if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+            headers['x-session-token'] = token;
+          }
+
+          // Fetch active ticket directly by ticketId for maximum speed and reliability
+          const res = await fetch(`/api/support/ticket/${ticketId}`, { headers });
+          let targetTicket: any = null;
+
           if (res.ok) {
-            const tickets = await res.json();
-            const current = tickets.find((t: any) => t.id === ticketId);
-            if (current && Array.isArray(current.messages) && current.messages.length > 0) {
-              setChatMessages(prev => {
-                const existingIds = new Set(prev.map(m => m.id));
-                const newMsgs = current.messages.filter((m: any) => !existingIds.has(m.id));
-                if (newMsgs.length > 0) {
-                  // Show toast when new agent reply arrives!
-                  const hasAgentReply = newMsgs.some((m: any) => m.sender === 'agent');
-                  if (hasAgentReply) {
-                    toast.success('New reply from Human Support!');
-                  }
-                  return [...prev, ...newMsgs];
-                }
-                return prev;
-              });
+            const data = await res.json();
+            targetTicket = data.ticket;
+          } else if (emailToUse && token) {
+            // Fallback to my-tickets
+            const myRes = await fetch('/api/support/my-tickets', { headers });
+            if (myRes.ok) {
+              const tickets = await myRes.json();
+              targetTicket = Array.isArray(tickets) ? tickets.find((t: any) => t.id === ticketId) : null;
             }
+          }
+
+          if (targetTicket && Array.isArray(targetTicket.messages) && targetTicket.messages.length > 0) {
+            setChatMessages(prev => {
+              const existingIds = new Set(prev.map(m => m.id));
+              const newMsgs = targetTicket.messages.filter((m: any) => !existingIds.has(m.id));
+              if (newMsgs.length > 0) {
+                // Show toast when new agent reply arrives
+                const hasAgentReply = newMsgs.some((m: any) => m.sender === 'agent' || m.sender === 'admin');
+                if (hasAgentReply) {
+                  toast.success('New reply from Human Support Specialist!');
+                }
+                return [...prev, ...newMsgs];
+              }
+              return prev;
+            });
           }
         } catch (err) {
           console.error('Ticket update fetch error:', err);
@@ -151,65 +172,96 @@ export default function HumanSupport() {
   }, [isTransferredToHuman, ticketId, user?.email, guestEmail]);
 
   // Function to Transfer Conversation to Human Specialist
-  const handleTransferToHuman = async () => {
-    if (isTransferredToHuman) return;
+  const handleTransferToHuman = async (overrideMessages?: any[]) => {
+    if (isTransferredToHuman || isEscalating) return;
 
+    setIsEscalating(true);
     setIsBotTyping(true);
     setTypingText('Connecting to BuyWise Human Support Specialist...');
     const toastId = toast.loading('Connecting to BuyWise Human Specialist...');
 
+    const messagesToSend = overrideMessages || chatMessages;
+    const lastUserMsg = [...messagesToSend].reverse().find(m => m.sender === 'customer')?.text || 'Support Request';
+
     try {
-      const generatedId = ticketId || ('TK-' + Math.floor(10000 + Math.random() * 90000));
-      setTicketId(generatedId);
-      localStorage.setItem('activeSupportTicketId', generatedId);
+      const token = localStorage.getItem('buywise_token') || localStorage.getItem('activeSupportTicketToken');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      const email = getUserEmail();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        headers['x-session-token'] = token;
+      }
 
-      const lastUserMsg = [...chatMessages].reverse().find(m => m.sender === 'customer')?.text || 'Support Request';
-
-      // Create ticket on server with COMPLETE message history
-      await fetch('/api/support/ticket', {
+      // Create ticket on server with COMPLETE message history and server-verified identity
+      const createRes = await fetch('/api/support/ticket', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
-          id: generatedId,
-          name: user?.displayName || 'BuyWise Customer',
-          email: getUserEmail(),
-          subject: `Support Request: ${lastUserMsg.substring(0, 40)}...`,
+          name: user?.displayName || (email ? email.split('@')[0] : 'Customer'),
+          email: email || undefined,
+          subject: `Support Request: ${lastUserMsg.substring(0, 45)}...`,
           message: lastUserMsg,
-          messages: chatMessages,
+          messages: messagesToSend,
           browser: navigator.userAgent,
           device: navigator.platform,
-          url: window.location.href
+          url: window.location.href,
+          source: 'HUMAN_SUPPORT'
         })
       });
 
-      setTimeout(() => {
-        setIsBotTyping(false);
-        setIsTransferredToHuman(true);
-        toast.dismiss(toastId);
-        toast.success(`Connected! Ticket #${generatedId} assigned to Human Specialist.`);
+      if (!createRes.ok) {
+        const errData = await createRes.json().catch(() => ({}));
+        throw new Error(errData.error || 'Server rejected ticket creation. Please try again.');
+      }
 
-        setChatMessages(prev => [
-          ...prev,
-          {
-            id: 'sys-transfer-' + Date.now(),
-            sender: 'system',
-            text: `🤖 Issue transferred to Human Support Desk! Ticket #${generatedId} generated with complete history.`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          },
-          {
-            id: 'agent-welcome-' + Date.now(),
-            sender: 'agent',
-            text: `Namaste ${user?.displayName || 'there'}! I am a **BuyWise Human Support Specialist**. I have received your complete issue details and transcript above. How can I best assist you right now?`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            status: 'seen'
-          }
-        ]);
-      }, 800);
-    } catch (err) {
+      const createData = await createRes.json();
+      if (!createData.success || !createData.ticketId) {
+        throw new Error(createData.error || 'Could not verify ticket creation on server.');
+      }
+
+      const confirmedTicketId = createData.ticketId;
+      setTicketId(confirmedTicketId);
+      localStorage.setItem('activeSupportTicketId', confirmedTicketId);
+      if (createData.ticketToken) {
+        localStorage.setItem('activeSupportTicketToken', createData.ticketToken);
+      }
+
       setIsBotTyping(false);
       setIsTransferredToHuman(true);
       toast.dismiss(toastId);
-      toast.error('Connected to human support desk.');
+      toast.success(`Connected! Ticket #${confirmedTicketId} assigned to Human Specialist.`);
+
+      setChatMessages(prev => [
+        ...(overrideMessages || prev),
+        {
+          id: 'sys-transfer-' + Date.now(),
+          sender: 'system',
+          text: `🎧 Connected to Human Support Desk! Your ticket #${confirmedTicketId} has been registered with your conversation history. A human support specialist will review your request and reply directly in this chat.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+    } catch (err: any) {
+      console.error('Human support transfer failed:', err);
+      setIsBotTyping(false);
+      setIsTransferredToHuman(false);
+      toast.dismiss(toastId);
+      toast.error(err.message || 'Could not connect to support desk. Please check your connection and try again.');
+
+      setChatMessages(prev => [
+        ...(overrideMessages || prev),
+        {
+          id: 'sys-error-' + Date.now(),
+          sender: 'system',
+          text: `⚠️ Could not connect to human support: ${err.message || 'Server error'}. Please click below to retry.`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          showTransferOption: true
+        }
+      ]);
+    } finally {
+      setIsEscalating(false);
+      setIsBotTyping(false);
     }
   };
 
@@ -233,13 +285,24 @@ export default function HumanSupport() {
     };
 
     setReplyingTo(null);
-    setChatMessages(prev => [...prev, newMsg]);
+    const updatedMessages = [...chatMessages, newMsg];
+    setChatMessages(updatedMessages);
 
     const lower = userText.toLowerCase();
 
     // Check if user explicitly requested a human
-    if (!isTransferredToHuman && (lower.includes('human') || lower.includes('agent') || lower.includes('person') || lower.includes('transfer') || lower.includes('talk to human') || lower.includes('speak to human'))) {
-      handleTransferToHuman();
+    if (!isTransferredToHuman && (
+      lower.includes('human') || 
+      lower.includes('agent') || 
+      lower.includes('person') || 
+      lower.includes('transfer') || 
+      lower.includes('talk to human') || 
+      lower.includes('speak to human') ||
+      lower.includes('contact human') ||
+      lower.includes('escalate') ||
+      lower.includes('support ticket')
+    )) {
+      handleTransferToHuman(updatedMessages);
       return;
     }
 
@@ -285,12 +348,18 @@ export default function HumanSupport() {
     } else {
       // Post reply to ticket when transferred to human
       try {
+        const token = localStorage.getItem('buywise_token') || localStorage.getItem('activeSupportTicketToken');
+        const replyHeaders: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        if (token) {
+          replyHeaders['Authorization'] = `Bearer ${token}`;
+          replyHeaders['x-session-token'] = token;
+        }
+
         await fetch(`/api/support/ticket/${ticketId}/reply`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-user-email': getUserEmail()
-          },
+          headers: replyHeaders,
           body: JSON.stringify({ text: userText })
         });
 
@@ -483,9 +552,11 @@ export default function HumanSupport() {
                       initial={{ scale: 0.95, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       onClick={() => handleTransferToHuman()}
-                      className="mt-2.5 px-4 py-2.5 bg-gradient-to-r from-[#FF3B30] to-orange-500 hover:from-[#FF3B30]/90 text-white text-xs font-black rounded-xl uppercase tracking-wider flex items-center gap-2 shadow-[0_0_15px_rgba(255,59,48,0.4)] transition-all"
+                      disabled={isEscalating}
+                      className="mt-2.5 px-4 py-2.5 bg-gradient-to-r from-[#FF3B30] to-orange-500 hover:from-[#FF3B30]/90 disabled:opacity-50 text-white text-xs font-black rounded-xl uppercase tracking-wider flex items-center gap-2 shadow-[0_0_15px_rgba(255,59,48,0.4)] transition-all"
                     >
-                      <PhoneCall size={14} /> Transfer to Human Support
+                      <PhoneCall size={14} className={isEscalating ? 'animate-spin' : ''} />
+                      {isEscalating ? 'Connecting to Specialist...' : 'Transfer to Human Support'}
                     </motion.button>
                   )}
 
