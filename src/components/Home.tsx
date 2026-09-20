@@ -384,7 +384,7 @@ export default function Home() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="INPUT QUERY OR URL"
-                className="bg-transparent border-none outline-none text-white w-full text-base md:text-3xl font-black placeholder:text-white/30 uppercase tracking-tighter truncate"
+                className="bg-transparent border-none outline-none text-white w-full text-base md:text-3xl font-black placeholder:text-white/30 uppercase tracking-tighter"
               />
             </div>
             <div className="flex h-16 md:h-24 shrink-0">
