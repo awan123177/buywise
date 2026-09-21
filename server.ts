@@ -6276,11 +6276,8 @@ Feel free to describe your issue, and if you ever need a human specialist, you c
  5000);
   }
 
-  // Determine if we are in production
-  const isProduction = process.env.NODE_ENV === "production" || fs.existsSync(path.join(process.cwd(), "dist", "index.html"));
-
   // Vite middleware for development
-  if (!isProduction) {
+  if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
