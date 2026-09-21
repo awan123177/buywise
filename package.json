@@ -13,6 +13,9 @@
     "start": "node dist/server.cjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "@google/genai": "^2.10.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
