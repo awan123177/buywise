@@ -1,6 +1,55 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script>
+      (function() {
+        // Intercept and prevent "Cannot set property fetch of #<Window>" runtime errors
+        window.addEventListener('error', function(event) {
+          if (event && (
+            (event.message && event.message.indexOf('Cannot set property fetch') !== -1) ||
+            (event.error && event.error.message && event.error.message.indexOf('Cannot set property fetch') !== -1)
+          )) {
+            event.preventDefault();
+            if (typeof event.stopImmediatePropagation === 'function') {
+              event.stopImmediatePropagation();
+            }
+            return true;
+          }
+        }, true);
+
+        // Ensure window.fetch has a defined setter for third-party scripts / extensions
+        try {
+          var originalFetch = window.fetch;
+          var currentFetch = originalFetch ? originalFetch.bind(window) : null;
+          Object.defineProperty(window, 'fetch', {
+            get: function() {
+              return currentFetch;
+            },
+            set: function(fn) {
+              currentFetch = typeof fn === 'function' ? fn : currentFetch;
+            },
+            configurable: true,
+            enumerable: true
+          });
+        } catch (_) {
+          try {
+            if (typeof Window !== 'undefined' && Window.prototype) {
+              var protoFetch = Window.prototype.fetch;
+              Object.defineProperty(Window.prototype, 'fetch', {
+                get: function() {
+                  return protoFetch;
+                },
+                set: function(fn) {
+                  protoFetch = typeof fn === 'function' ? fn : protoFetch;
+                },
+                configurable: true,
+                enumerable: true
+              });
+            }
+          } catch (__) {}
+        }
+      })();
+    </script>
     <!-- Google Tag Manager -->
     <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
     new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -44,7 +93,7 @@
       }
     }
     </script>
-  <script type="module" crossorigin src="/assets/index-BkCmyHMe.js"></script>
+  <script type="module" crossorigin src="/assets/index-xPB_b5kG.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-DXmsmkvh.css">
 </head>
   <body>

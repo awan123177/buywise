@@ -486,15 +486,15 @@
       "userId": "usr_5f526ec8e1814d1d",
       "email": "mohammdsaeed24@gmail.com",
       "name": "mohammdsaeed24",
-      "coins": 10,
+      "coins": 15,
       "referralCode": "MOHAMMDSAEED24940",
       "referredBy": null,
       "searchesCount": 0,
       "totalSaved": 0,
       "lastSearchDate": null,
-      "lastLoginDate": "2026-09-21",
-      "streakCount": 2,
-      "lastStreakCheckDate": "2026-09-21",
+      "lastLoginDate": "2026-10-03",
+      "streakCount": 1,
+      "lastStreakCheckDate": "2026-10-03",
       "achievements": [],
       "notificationsEnabled": true,
       "notificationPreferences": {
@@ -511,6 +511,17 @@
     }
   },
   "transactions": [
+    {
+      "id": "txn_1791038318855_6",
+      "userId": "usr_5f526ec8e1814d1d",
+      "amount": 5,
+      "reason": "Daily login reward (Streak reset)",
+      "timestamp": "2026-10-03T14:38:38.855Z",
+      "type": "EARNED",
+      "source": "SEARCH_REWARD",
+      "description": "Daily login reward (Streak reset)",
+      "multiplierApplied": 1
+    },
     {
       "id": "txn_1789972851238_764",
       "userId": "usr_5f526ec8e1814d1d",
@@ -727,13 +738,13 @@
     }
   ],
   "publicStats": {
-    "totalSearches": 567,
+    "totalSearches": 582,
     "totalUsers": 43,
-    "productsCompared": 1698,
-    "priceAlertsTriggered": 85,
+    "productsCompared": 1743,
+    "priceAlertsTriggered": 89,
     "dealsFoundToday": 0,
     "activePremiumUsers": 0,
-    "totalSavedAmount": 10605
+    "totalSavedAmount": 10924
   },
   "bannedUsers": [],
   "reviews": [

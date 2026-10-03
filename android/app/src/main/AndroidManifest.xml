@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-sdk
+        android:minSdkVersion="24"
+        android:targetSdkVersion="36" />
+
     <!-- Hardware Feature Declarations (Ensure all devices including tablets and Wi-Fi only are supported) -->
     <uses-feature
         android:name="android.hardware.telephony"

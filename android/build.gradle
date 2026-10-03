@@ -17,6 +17,11 @@ buildscript {
 
 apply from: "variables.gradle"
 
+// Ensure minSdkVersion is strictly enforced at 24 across all modules
+if (!rootProject.ext.has('minSdkVersion') || (rootProject.ext.minSdkVersion as int) < 24) {
+    rootProject.ext.minSdkVersion = 24
+}
+
 allprojects {
     repositories {
         google()
